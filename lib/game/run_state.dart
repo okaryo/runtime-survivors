@@ -52,6 +52,13 @@ class RunState {
   double _gcTimer = 3;
   double _patternTimer = 0;
   double shieldTimer = 0;
+  double dynamicTimer = 0;
+  double dynamicCooldown = 0;
+  int? _lastTargetKind;
+  TypingPolicy? get typingPolicy => _stats.policy;
+  bool get dynamicBoostActive => _stats.dynamicBoost;
+  double get telegraphBonus =>
+      typingPolicy == TypingPolicy.staticTyping ? 0.45 : 0;
   bool get shieldReady => rank(Upgrade.nullSafety) > 0 && shieldTimer <= 0;
   static const featureSlots = 4;
   int get featureCount =>
@@ -86,8 +93,17 @@ class RunState {
     return '${(seconds ~/ 60).toString().padLeft(2, '0')}:${(seconds % 60).toString().padLeft(2, '0')}';
   }
 
-  void start() {
-    phase = RunPhase.running;
+  void resetToSetup() => _initialize(null, RunPhase.ready);
+
+  void start({TypingPolicy? policy}) => _initialize(policy, RunPhase.running);
+
+  void _initialize(TypingPolicy? policy, RunPhase initialPhase) {
+    _stats.policy = policy;
+    _stats.dynamicBoost = false;
+    dynamicTimer = 0;
+    dynamicCooldown = 0;
+    _lastTargetKind = null;
+    phase = initialPhase;
     player.setZero();
     movement.setZero();
     enemies.clear();
@@ -115,6 +131,11 @@ class RunState {
     rushCount = 0;
     eliteCount = 0;
     events.clear();
+    if (initialPhase == RunPhase.ready) {
+      log(const RunLog('log.ready'));
+      cues.clear();
+      return;
+    }
     log(const RunLog('log.start'));
     cues
       ..clear()
@@ -153,8 +174,8 @@ class RunState {
     final available = Upgrade.values
         .where(
           (u) =>
-              !u.isFeature ||
-              (rank(u) < 4 && (rank(u) > 0 || featureCount < featureSlots)),
+              (u.maxRank == null || rank(u) < u.maxRank!) &&
+              (!u.isFeature || rank(u) > 0 || featureCount < featureSlots),
         )
         .toList();
     // Weighted sampling without replacement; later choices favor invested features.
@@ -182,11 +203,16 @@ class RunState {
 
   /// Predicts an acquisition without mutating combat, RNG, ranks or HP.
   UpgradePreview preview(Upgrade upgrade) {
-    final before = BuildStats.snapshot(upgrades);
-    final after = BuildStats.snapshot({
-      ...upgrades,
-      upgrade: rank(upgrade) + 1,
-    });
+    final before = BuildStats.snapshot(
+      upgrades,
+      policy: typingPolicy,
+      dynamicBoost: dynamicBoostActive,
+    );
+    final after = BuildStats.snapshot(
+      {...upgrades, upgrade: rank(upgrade) + 1},
+      policy: typingPolicy,
+      dynamicBoost: dynamicBoostActive,
+    );
     return UpgradePreview(
       upgrade: upgrade,
       before: before,
@@ -201,14 +227,18 @@ class RunState {
 
   void choose(Upgrade upgrade) {
     if (phase != RunPhase.choosing || !choices.contains(upgrade)) return;
-    if (upgrade.isFeature &&
-        (rank(upgrade) >= 4 ||
-            (rank(upgrade) == 0 && featureCount >= featureSlots))) {
+    if ((upgrade.maxRank != null && rank(upgrade) >= upgrade.maxRank!) ||
+        (upgrade.isFeature &&
+            rank(upgrade) == 0 &&
+            featureCount >= featureSlots)) {
       return;
     }
     final prediction = preview(upgrade);
     upgrades[upgrade] = rank(upgrade) + 1;
     health = prediction.afterHealth;
+    if (upgrade == Upgrade.nullSafety) {
+      shieldTimer = min(shieldTimer, _stats.shieldCooldown);
+    }
     if (upgrade == Upgrade.garbageCollection) _gcTimer = min(_gcTimer, 0.6);
     seenUpgrades.add(upgrade);
     log(RunLog('log.upgrade', args: {'rank': rank(upgrade)}, upgrade: upgrade));
@@ -235,6 +265,9 @@ class RunState {
     }
     invulnerability = max(0, invulnerability - dt);
     shieldTimer = max(0, shieldTimer - dt);
+    dynamicTimer = max(0, dynamicTimer - dt);
+    dynamicCooldown = max(0, dynamicCooldown - dt);
+    _stats.dynamicBoost = dynamicTimer > 0;
     if (elapsed >= _nextRush) {
       rushCount++;
       _rushUntil = elapsed + 9;
@@ -298,6 +331,7 @@ class RunState {
                   .distanceToSquared(player)
                   .compareTo(b.position.distanceToSquared(player)),
             );
+      if (targets.isNotEmpty) _observeTarget(targets.first.kind);
       for (final target in targets.take(targetCount)) {
         instructions.add(
           Instruction(
@@ -462,6 +496,19 @@ class RunState {
     }
   }
 
+  void _observeTarget(int kind) {
+    if (typingPolicy == TypingPolicy.dynamicTyping &&
+        _lastTargetKind != null &&
+        _lastTargetKind != kind &&
+        dynamicCooldown <= 0) {
+      dynamicTimer = 3;
+      dynamicCooldown = 6;
+      _stats.dynamicBoost = true;
+      effects.add(RunEffect(player.clone(), radius: 40));
+    }
+    _lastTargetKind = kind;
+  }
+
   TaskEnemy? _nearestEnemy(Vector2 origin, double range) {
     TaskEnemy? result;
     var distance = range * range;
@@ -578,7 +625,7 @@ class RunState {
     enemy.attackCooldown -= dt;
     if (enemy.attackCooldown <= 0 && delta.length > 1 && delta.length < 430) {
       enemy.chargeDirection.setFrom(delta.normalized());
-      enemy.telegraphRemaining = ranged ? 0.9 : 1.2;
+      enemy.telegraphRemaining = (ranged ? 0.9 : 1.2) + telegraphBonus;
     }
   }
 
@@ -597,7 +644,7 @@ class RunState {
       enemy.chargeCooldown -= dt;
       if (enemy.chargeCooldown <= 0 && delta.length > 1 && delta.length < 450) {
         enemy.chargeDirection.setFrom(delta.normalized());
-        enemy.telegraphRemaining = 0.9;
+        enemy.telegraphRemaining = 0.9 + telegraphBonus;
       }
     }
   }

@@ -1,4 +1,5 @@
 import '../game/run_state.dart';
+import '../game/language_profile.dart';
 
 /// All player-facing copy lives here; each entry is [Japanese, English].
 class GameText {
@@ -11,6 +12,23 @@ class GameText {
       value = value.replaceAll('{${entry.key}}', '${entry.value}');
     }
     return value;
+  }
+
+  String policyName(TypingPolicy policy) => call('policy.${policy.name}.title');
+  String profileTitle(LanguageProfile profile) => profile.language == 'custom'
+      ? call('profile.custom')
+      : call('profile.affinity', {'language': profile.language});
+  String profileDescription(LanguageProfile profile) {
+    final policy = profile.policy == null
+        ? call('profile.unspecified')
+        : policyName(profile.policy!);
+    final features = profile.dominantFeatures
+        .map((u) => '${title(u)} Lv.${profile.investments[u]}')
+        .join(' / ');
+    return call('profile.description', {
+      'policy': policy,
+      'features': features.isEmpty ? call('emptyFeatures') : features,
+    });
   }
 
   String title(Upgrade upgrade) => call('${upgrade.name}.title');
@@ -201,6 +219,48 @@ class GameText {
     'featureSlots': ['採用枠 {used} / {max}', 'Feature slots {used} / {max}'],
     'shieldReady': ['防壁：準備完了', 'Shield: ready'],
     'shieldCharging': ['防壁：{seconds}秒', 'Shield: {seconds}s'],
+    'policyTitle': ['型付けの設計方針', 'Typing policy'],
+    'policy.staticTyping.title': ['Static Typing', 'Static Typing'],
+    'policy.dynamicTyping.title': ['Dynamic Typing', 'Dynamic Typing'],
+    'policy.staticTyping.description': [
+      '事前に備える設計。射撃・突進・召喚の予告時間が0.45秒長くなります。',
+      'Plan ahead: ranged, charge, and summon telegraphs last 0.45s longer.',
+    ],
+    'policy.staticTyping.cost': [
+      '通常攻撃の威力 −10%。GC・OOP・貫通攻撃は対象外。',
+      'Base attack damage −10%. GC, objects, and piercing damage are unaffected.',
+    ],
+    'policy.dynamicTyping.description': [
+      '異なる敵種へ通常攻撃の対象が変わると、3秒間、通常攻撃速度 ×1.3。',
+      'Switch the primary target to a different task type for ×1.3 base attack speed for 3s.',
+    ],
+    'policy.dynamicTyping.cost': [
+      '再発動まで6秒。同じ敵種だけでは発動しません。',
+      '6s cooldown. Fighting only one task type does not activate it.',
+    ],
+    'policyKeys': [
+      '1 / 2 で方針選択 · Enter で起動',
+      '1 / 2 selects a policy · Enter starts the run',
+    ],
+    'policyCurrent': ['設計方針', 'Typing policy'],
+    'dynamicActive': ['適応加速：{seconds}秒', 'Adaptive boost: {seconds}s'],
+    'dynamicWaiting': [
+      '適応待機 · 再発動まで{seconds}秒',
+      'Adaptive standby · cooldown {seconds}s',
+    ],
+    'resultBuild': ['取得した能力', 'Your build'],
+    'profile.label': ['今回の言語プロフィール', 'Your language profile'],
+    'profile.custom': ['独自設計の言語', 'An original language'],
+    'profile.affinity': ['{language}寄りの言語', 'A {language}-leaning language'],
+    'profile.unspecified': ['型付け未選択', 'No typing policy selected'],
+    'profile.description': [
+      '{policy}を採用。主に伸ばした機能：{features}。',
+      '{policy}. Main investments: {features}.',
+    ],
+    'profile.note': [
+      '取得・強化した機能から見た傾向です。実際の言語との一致を示すものではありません。',
+      'A playful affinity based on your choices and ranks, rather than an exact match to a real language.',
+    ],
     'newUpgrade': ['新規', 'NEW'],
     'featureBadge': ['言語機能', 'FEATURE'],
     'infraBadge': ['基盤強化', 'INFRA'],
@@ -304,7 +364,7 @@ class GameText {
       '今回は初期構成。次は機能を実装してみよう。',
       'A minimal build. Try adding features next run.',
     ],
-    'restart': ['新しいランタイムを起動', 'Start a new runtime'],
+    'restart': ['次の言語を設計', 'Design another language'],
     'helpBody': [
       'WASD / 矢印キー / HJKLで移動します。Hは左、Jは下、Kは上、Lは右。最も近いタスクを自動攻撃します。\n\nタスクを倒すと ◆（経験値）を落とします。近づいて回収し、レベルアップ時に3択から機能を選びましょう。\n\n言語機能は攻撃方法や振る舞いを変え、基盤強化は基本性能を上げます。カードで今回の強化とトレードオフを確認できます。\n\nメモリ（HP）が0になると終了。5分生き残ればクリアです。ESC / Pで一時停止できます。',
       'Move with WASD, arrow keys, or HJKL (H left, J down, K up, L right). Your runtime attacks the nearest task automatically.\n\nDefeated tasks drop ◆ experience. Move close to collect it, then choose one of three upgrades at each level.\n\nFeatures change your attacks and behavior; infrastructure improves your stats. Each card shows its upgrade and tradeoff.\n\nSurvive five minutes to finish your language. Running out of memory (HP) ends the run. Press ESC / P to pause.',

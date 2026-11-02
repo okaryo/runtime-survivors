@@ -23,7 +23,11 @@ SDKを更新する際は、`pubspec.yaml` の指定とローカルのFlutterを�
 | パス | 役割 |
 | --- | --- |
 | `lib/main.dart` | アプリの起動とロケール設定 |
-| `lib/game/run_state.dart` | 戦闘、スポーン、経験値、能力、ラン状態のシミュレーション |
+| `lib/game/run_state.dart` | 戦闘・能力の実行、経験値、ラン状態のシミュレーション |
+| `lib/game/build.dart` | 能力・設計方針の定義と、戦闘・カードで共有するステータス計算 |
+| `lib/game/combat_entities.dart` | 敵、弾、オブジェクト、軌道の衝突判定 |
+| `lib/game/spawn_director.dart` | 時間帯と出現コストによる編成管理 |
+| `lib/game/language_profile.dart` | 戦闘バランスから独立した言語傾向の判定 |
 | `lib/game/runtime_game.dart` | Flameの更新・描画・キーボード入力 |
 | `lib/game/character_painter.dart` | キャラクターの図形描画 |
 | `lib/ui/` | HUD、能力選択、開始・一時停止・結果・設定・図鑑 |
@@ -65,7 +69,7 @@ Pythonの標準ライブラリだけで `assets/audio/runtime_loop.wav` を生�
 flutter test tool/generate_upgrade_icons.dart
 ```
 
-ベクター描画のソースから `assets/icons/upgrades/` に8種類の256×256 PNGを生成します。カード・サイドバー・図鑑は共通の `UpgradeIcon` ウィジェットで同じアセットを参照します。
+ベクター描画のソースから `assets/icons/upgrades/` に12種類の256×256 PNGを生成します。カード・サイドバー・図鑑は共通の `UpgradeIcon` ウィジェットで同じアセットを参照します。
 
 ## CIとGitHub Pages
 

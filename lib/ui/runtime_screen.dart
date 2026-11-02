@@ -2,17 +2,20 @@ import 'dart:math';
 
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../audio/game_audio.dart';
 import '../audio/sound_cue.dart';
 import '../game/run_state.dart';
 import '../game/runtime_game.dart';
+import '../game/language_profile.dart';
 import '../l10n/game_text.dart';
 import '../settings.dart';
 import 'theme.dart';
 import 'encyclopedia_panel.dart';
 import 'upgrade_choices.dart';
 import 'upgrade_icon.dart';
+import 'policy_picker.dart';
 
 class RuntimeScreen extends StatefulWidget {
   const RuntimeScreen({super.key, required this.settings});
@@ -25,6 +28,7 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
   final run = RunState();
   late final game = RuntimeGame(run);
   final focus = FocusNode();
+  TypingPolicy selectedPolicy = TypingPolicy.staticTyping;
   final _choiceFocus = FocusNode();
   final _gameWidgetKey = GlobalKey();
   void restoreFocus() {
@@ -65,7 +69,7 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
     audio.unlock();
     setState(() => _encyclopediaOpen = false);
     game.inputBlocked = _modalOpen;
-    run.start();
+    run.start(policy: selectedPolicy);
     game.refresh();
     restoreFocus();
   }
@@ -124,73 +128,92 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
       muted: widget.settings.muted,
       volume: widget.settings.volume,
     );
-    return Scaffold(
-      body: ValueListenableBuilder<int>(
-        valueListenable: game.revision,
-        builder: (context, _, _) => LayoutBuilder(
-          builder: (context, constraints) {
-            final beside = constraints.maxWidth >= 1180;
-            final compact = constraints.maxWidth < 720;
-            final arenaHeight = max(
-              320.0,
-              min(740.0, constraints.maxHeight - 290),
-            );
-            return SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(
-                compact ? 16 : 30,
-                22,
-                compact ? 16 : 30,
-                20,
-              ),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1600),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      header(compact),
-                      const SizedBox(height: 22),
-                      stats(compact),
-                      const SizedBox(height: 18),
-                      if (beside)
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(child: arena(arenaHeight)),
-                            const SizedBox(width: 20),
-                            SizedBox(width: 300, child: designPanel()),
-                          ],
-                        )
-                      else ...[
-                        arena(arenaHeight),
-                        const SizedBox(height: 16),
-                        designPanel(),
+    return ValueListenableBuilder<int>(
+      valueListenable: game.revision,
+      builder: (context, _, _) => CallbackShortcuts(
+        bindings: run.phase == RunPhase.ready
+            ? {
+                const SingleActivator(LogicalKeyboardKey.digit1): () {
+                  if (run.phase == RunPhase.ready) {
+                    setState(() => selectedPolicy = TypingPolicy.staticTyping);
+                  }
+                },
+                const SingleActivator(LogicalKeyboardKey.digit2): () {
+                  if (run.phase == RunPhase.ready) {
+                    setState(() => selectedPolicy = TypingPolicy.dynamicTyping);
+                  }
+                },
+                const SingleActivator(LogicalKeyboardKey.enter): () {
+                  if (run.phase == RunPhase.ready) start();
+                },
+              }
+            : const {},
+        child: Scaffold(
+          body: LayoutBuilder(
+            builder: (context, constraints) {
+              final beside = constraints.maxWidth >= 1180;
+              final compact = constraints.maxWidth < 720;
+              final arenaHeight = max(
+                320.0,
+                min(740.0, constraints.maxHeight - 290),
+              );
+              return SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(
+                  compact ? 16 : 30,
+                  22,
+                  compact ? 16 : 30,
+                  20,
+                ),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1600),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        header(compact),
+                        const SizedBox(height: 22),
+                        stats(compact),
+                        const SizedBox(height: 18),
+                        if (beside)
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(child: arena(arenaHeight)),
+                              const SizedBox(width: 20),
+                              SizedBox(width: 300, child: designPanel()),
+                            ],
+                          )
+                        else ...[
+                          arena(arenaHeight),
+                          const SizedBox(height: 16),
+                          designPanel(),
+                        ],
+                        const SizedBox(height: 14),
+                        Text(
+                          text('controls'),
+                          style: const TextStyle(fontSize: 12, color: muted),
+                        ),
+                        const SizedBox(height: 18),
+                        EncyclopediaPanel(
+                          text: text,
+                          discoveries: widget.settings.discoveries,
+                          expanded: _encyclopediaOpen,
+                          onToggle: () {
+                            if (!_encyclopediaOpen) pause();
+                            setState(
+                              () => _encyclopediaOpen = !_encyclopediaOpen,
+                            );
+                            game.inputBlocked = _encyclopediaOpen || _modalOpen;
+                            if (!_encyclopediaOpen) restoreFocus();
+                          },
+                        ),
                       ],
-                      const SizedBox(height: 14),
-                      Text(
-                        text('controls'),
-                        style: const TextStyle(fontSize: 12, color: muted),
-                      ),
-                      const SizedBox(height: 18),
-                      EncyclopediaPanel(
-                        text: text,
-                        discoveries: widget.settings.discoveries,
-                        expanded: _encyclopediaOpen,
-                        onToggle: () {
-                          if (!_encyclopediaOpen) pause();
-                          setState(
-                            () => _encyclopediaOpen = !_encyclopediaOpen,
-                          );
-                          game.inputBlocked = _encyclopediaOpen || _modalOpen;
-                          if (!_encyclopediaOpen) restoreFocus();
-                        },
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
       ),
     );
@@ -600,6 +623,22 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
           }),
           style: const TextStyle(fontSize: 12, color: muted),
         ),
+        if (run.typingPolicy != null) ...[
+          const SizedBox(height: 10),
+          Text(
+            '${text('policyCurrent')}: ${text.policyName(run.typingPolicy!)}',
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+          ),
+          if (run.typingPolicy == TypingPolicy.dynamicTyping)
+            Text(
+              run.dynamicBoostActive
+                  ? text('dynamicActive', {'seconds': run.dynamicTimer.ceil()})
+                  : text('dynamicWaiting', {
+                      'seconds': run.dynamicCooldown.ceil(),
+                    }),
+              style: const TextStyle(fontSize: 12, height: 1.4, color: muted),
+            ),
+        ],
         const SizedBox(height: 20),
         for (final feature in [true, false]) ...[
           badge(
@@ -746,30 +785,48 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
         icon: Icon(icon, size: 20),
         label: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
       );
-  Widget welcome() => Column(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      darkLabel(text('welcomeLabel')),
-      const SizedBox(height: 20),
-      const Text(
-        'Hello, runtime.',
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          color: darkText,
-          fontSize: 40,
-          fontWeight: FontWeight.w800,
-          letterSpacing: -1.3,
-        ),
-      ),
-      const SizedBox(height: 18),
-      darkBody(text('welcomeBody')),
-      const SizedBox(height: 28),
-      action(text('start'), Icons.play_arrow, start),
-      const SizedBox(height: 24),
-      darkBody(text('controls')),
-      const SizedBox(height: 7),
-      darkBody(text('pickupHint')),
-    ],
+  Widget welcome() => LayoutBuilder(
+    builder: (context, constraints) {
+      final intro = Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            'Hello, runtime.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: darkText,
+              fontSize: 32,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 12),
+          darkBody(text('welcomeBody')),
+          const SizedBox(height: 20),
+          action(text('start'), Icons.play_arrow, start),
+          const SizedBox(height: 14),
+          darkBody(text('controls')),
+        ],
+      );
+      final policy = PolicyPicker(
+        selected: selectedPolicy,
+        text: text,
+        onChanged: (value) => setState(() => selectedPolicy = value),
+      );
+      if (constraints.maxWidth < 650) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [intro, const SizedBox(height: 24), policy],
+        );
+      }
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(child: intro),
+          const SizedBox(width: 28),
+          Expanded(child: policy),
+        ],
+      );
+    },
   );
   Widget paused() => Column(
     mainAxisSize: MainAxisSize.min,
@@ -785,37 +842,95 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
       darkBody(text(_encyclopediaOpen ? 'encyclopediaResume' : 'pauseKeys')),
     ],
   );
-  Widget result() => Column(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      darkLabel(text(run.phase == RunPhase.won ? 'wonLabel' : 'lostLabel')),
-      const SizedBox(height: 18),
-      title(text(run.phase == RunPhase.won ? 'wonTitle' : 'lostTitle')),
-      const SizedBox(height: 18),
-      darkBody(
-        '${text('uptime')} ${run.timeLabel}  /  ${run.kills} ${text('tasks')}  /  Lv.${run.level}',
-      ),
-      const SizedBox(height: 22),
-      if (run.upgrades.isEmpty) darkBody(text('emptyResult')),
-      Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        alignment: WrapAlignment.center,
+  Widget result() => LayoutBuilder(
+    builder: (context, constraints) {
+      final profile = LanguageProfile.analyze(run.typingPolicy, run.upgrades);
+      final summary = Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          for (final entry in run.upgrades.entries)
-            Chip(
-              backgroundColor: ink,
-              side: BorderSide.none,
-              label: Text(
-                '${text.title(entry.key)} Lv.${entry.value}',
-                style: const TextStyle(color: mint, fontSize: 13),
-              ),
+          darkLabel(text(run.phase == RunPhase.won ? 'wonLabel' : 'lostLabel')),
+          const SizedBox(height: 8),
+          Text(
+            text(run.phase == RunPhase.won ? 'wonTitle' : 'lostTitle'),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: darkText,
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
             ),
+          ),
+          const SizedBox(height: 18),
+          darkLabel(text('profile.label')),
+          const SizedBox(height: 8),
+          Text(
+            text.profileTitle(profile),
+            key: const Key('language-profile'),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: mint,
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            text.profileDescription(profile),
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: darkText, fontSize: 14, height: 1.5),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            text('profile.note'),
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: darkMuted, fontSize: 12, height: 1.4),
+          ),
         ],
-      ),
-      const SizedBox(height: 26),
-      action(text('restart'), Icons.refresh, start),
-    ],
+      );
+      final build = Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          darkLabel(text('resultBuild')),
+          const SizedBox(height: 10),
+          if (run.upgrades.isEmpty) darkBody(text('emptyResult')),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            alignment: WrapAlignment.center,
+            children: [
+              for (final entry in run.upgrades.entries)
+                Chip(
+                  backgroundColor: ink,
+                  side: BorderSide.none,
+                  avatar: UpgradeIcon(upgrade: entry.key, size: 22),
+                  label: Text(
+                    '${text.title(entry.key)} Lv.${entry.value}',
+                    style: const TextStyle(color: mint, fontSize: 12),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          action(text('restart'), Icons.refresh, () {
+            run.resetToSetup();
+            game.refresh();
+            restoreFocus();
+          }),
+        ],
+      );
+      if (constraints.maxWidth < 650) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [summary, const SizedBox(height: 24), build],
+        );
+      }
+      return Row(
+        children: [
+          Expanded(child: summary),
+          const SizedBox(width: 24),
+          Expanded(child: build),
+        ],
+      );
+    },
   );
 
   void help() => modal(

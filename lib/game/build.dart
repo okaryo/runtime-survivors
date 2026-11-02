@@ -1,5 +1,7 @@
 import 'dart:math';
 
+enum TypingPolicy { staticTyping, dynamicTyping }
+
 enum Upgrade {
   garbageCollection,
   concurrency,
@@ -16,6 +18,14 @@ enum Upgrade {
 }
 
 extension UpgradeInfo on Upgrade {
+  int? get maxRank => isFeature
+      ? 4
+      : switch (this) {
+          Upgrade.pipeline => 16,
+          Upgrade.bandwidth => 7,
+          _ => null,
+        };
+
   String get symbol => switch (this) {
     Upgrade.garbageCollection => 'GC',
     Upgrade.concurrency => '&&',
@@ -45,9 +55,14 @@ extension UpgradeInfo on Upgrade {
 /// Shared stat formulas for live combat and immutable upgrade snapshots.
 class BuildStats {
   BuildStats.live(this._ranks);
-  BuildStats.snapshot(Map<Upgrade, int> ranks)
-    : _ranks = Map.unmodifiable(ranks);
+  BuildStats.snapshot(
+    Map<Upgrade, int> ranks, {
+    this.policy,
+    this.dynamicBoost = false,
+  }) : _ranks = Map.unmodifiable(ranks);
   final Map<Upgrade, int> _ranks;
+  TypingPolicy? policy;
+  bool dynamicBoost = false;
   int rank(Upgrade upgrade) => _ranks[upgrade] ?? 0;
   double get maxHealth =>
       100 +
@@ -64,11 +79,13 @@ class BuildStats {
   double get attackDamage =>
       24.0 *
       pow(1.25, rank(Upgrade.compiler)) *
-      pow(0.88, rank(Upgrade.concurrency));
+      pow(0.88, rank(Upgrade.concurrency)) *
+      (policy == TypingPolicy.staticTyping ? 0.9 : 1.0);
   double get attackInterval => max(
     0.12,
     (0.62 + rank(Upgrade.garbageCollection) * 0.08) *
-        pow(0.9, rank(Upgrade.pipeline)),
+        pow(0.9, rank(Upgrade.pipeline)) /
+        (dynamicBoost ? 1.3 : 1.0),
   );
   double get projectileSpeed =>
       min(1600.0, 640.0 * pow(1.15, rank(Upgrade.bandwidth)));
