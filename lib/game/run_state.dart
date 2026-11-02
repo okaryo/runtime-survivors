@@ -2,20 +2,13 @@ import 'dart:math';
 
 import 'package:flame/components.dart';
 
+import '../audio/sound_cue.dart';
+
 enum RunPhase { ready, running, choosing, paused, won, lost }
 
 enum Upgrade { garbageCollection, concurrency, memory, clock, cache, compiler }
 
 extension UpgradeInfo on Upgrade {
-  String get title => switch (this) {
-    Upgrade.garbageCollection => 'Garbage Collection',
-    Upgrade.concurrency => 'Concurrency',
-    Upgrade.memory => 'Memory Expansion',
-    Upgrade.clock => 'Clock Speed',
-    Upgrade.cache => 'Cache Locality',
-    Upgrade.compiler => 'Compiler Optimization',
-  };
-
   String get symbol => switch (this) {
     Upgrade.garbageCollection => 'GC',
     Upgrade.concurrency => '&&',
@@ -26,21 +19,13 @@ extension UpgradeInfo on Upgrade {
   };
 
   bool get isFeature => index < 2;
+}
 
-  String get description => switch (this) {
-    Upgrade.garbageCollection => '3秒ごとに周囲のタスクをまとめて処理。ランクごとに範囲と威力が増加。',
-    Upgrade.concurrency => 'ランクごとに自動攻撃の対象が1体増加。近いタスクから並列に処理。',
-    Upgrade.memory => '最大メモリ +25。現在のメモリも35回復する。',
-    Upgrade.clock => '移動速度 +12%。押し寄せるタスクから距離を取る。',
-    Upgrade.cache => '経験値の回収範囲 +35、攻撃範囲 +20。',
-    Upgrade.compiler => '通常攻撃の威力 +25%。処理を効率化する。',
-  };
-
-  String get tradeoff => switch (this) {
-    Upgrade.garbageCollection => '通常攻撃の間隔 +0.08秒 / ランク',
-    Upgrade.concurrency => '通常攻撃の単発威力 ×0.88 / ランク',
-    _ => '基盤強化 · デメリットなし',
-  };
+class RunLog {
+  const RunLog(this.key, {this.args = const {}, this.upgrade});
+  final String key;
+  final Map<String, Object> args;
+  final Upgrade? upgrade;
 }
 
 class TaskEnemy {
@@ -93,7 +78,8 @@ class RunState {
   final List<Experience> experience = [];
   final List<RunEffect> effects = [];
   final Map<Upgrade, int> upgrades = {};
-  final List<String> events = ['ランタイムの起動を待っています。'];
+  final List<RunLog> events = [const RunLog('log.ready')];
+  final Set<SoundCue> cues = {};
   List<Upgrade> choices = [];
   double elapsed = 0;
   double health = 100;
@@ -144,13 +130,16 @@ class RunState {
     _gcTimer = 3;
     invulnerability = 0;
     events.clear();
-    log('ランタイム起動。最初のタスクを受信。');
+    log(const RunLog('log.start'));
+    cues
+      ..clear()
+      ..add(SoundCue.start);
     for (var i = 0; i < 6; i++) {
       _spawn(radius: 240 + random.nextDouble() * 100);
     }
   }
 
-  void log(String message) {
+  void log(RunLog message) {
     events.insert(0, message);
     if (events.length > 4) events.removeLast();
   }
@@ -180,7 +169,8 @@ class RunState {
         Upgrade.values.where((u) => !u.isFeature || rank(u) < 4).toList()
           ..shuffle(random);
     choices = available.take(3).toList();
-    log('レベル $level。言語の設計を拡張できます。');
+    log(RunLog('log.level', args: {'level': level}));
+    cues.add(SoundCue.levelUp);
   }
 
   void choose(Upgrade upgrade) {
@@ -188,7 +178,8 @@ class RunState {
     upgrades[upgrade] = rank(upgrade) + 1;
     if (upgrade == Upgrade.memory) health = min(maxHealth, health + 35);
     if (upgrade == Upgrade.garbageCollection) _gcTimer = min(_gcTimer, 0.6);
-    log('${upgrade.title} v${rank(upgrade)} を実装。');
+    log(RunLog('log.upgrade', args: {'rank': rank(upgrade)}, upgrade: upgrade));
+    cues.add(SoundCue.select);
     choices = [];
     phase = RunPhase.running;
     _checkLevel();
@@ -202,7 +193,8 @@ class RunState {
     if (elapsed >= duration) {
       phase = RunPhase.won;
       movement.setZero();
-      log('ビルド成功。あなたの言語が完成しました。');
+      log(const RunLog('log.won'));
+      cues.add(SoundCue.end);
       return;
     }
     if (movement.length2 > 0) {
@@ -224,10 +216,12 @@ class RunState {
           invulnerability <= 0) {
         health = max(0, health - (enemy.kind == 2 ? 15 : 9));
         invulnerability = 0.65;
+        cues.add(SoundCue.hit);
         if (health <= 0) {
           phase = RunPhase.lost;
           movement.setZero();
-          log('メモリ不足。ランタイムを終了しました。');
+          log(const RunLog('log.lost'));
+          cues.add(SoundCue.end);
           return;
         }
       }
@@ -269,6 +263,7 @@ class RunState {
       _gcTimer -= dt;
       if (_gcTimer <= 0) {
         effects.add(RunEffect(player.clone(), pulse: true, radius: gcRadius));
+        cues.add(SoundCue.pulse);
         for (final enemy in enemies.where(
           (e) => e.alive && e.position.distanceTo(player) <= gcRadius,
         )) {
@@ -295,7 +290,10 @@ class RunState {
       }
       return distance > spawnRadius * 3;
     });
-    if (earned > 0) addExperience(earned);
+    if (earned > 0) {
+      cues.add(SoundCue.pickup);
+      addExperience(earned);
+    }
     for (final effect in effects) {
       effect.life -= dt;
     }
@@ -322,6 +320,7 @@ class RunState {
     enemy.flash = 0.12;
     if (!enemy.alive) {
       kills++;
+      cues.add(SoundCue.kill);
       experience.add(
         Experience(enemy.position.clone(), enemy.kind == 2 ? 9 : 4),
       );

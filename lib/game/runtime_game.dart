@@ -6,16 +6,31 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import 'run_state.dart';
+import '../audio/sound_cue.dart';
+import '../l10n/game_text.dart';
 
 class RuntimeGame extends FlameGame with KeyboardEvents {
   RuntimeGame(this.run);
   final RunState run;
+  void Function(SoundCue)? onSound;
+  GameText text = const GameText('ja');
+  bool inputBlocked = false;
   final revision = ValueNotifier(0);
   double _uiTimer = 0;
   static const mint = Color(0xFF91E2CA);
   static const coral = Color(0xFFF28D77);
 
-  void refresh() => revision.value++;
+  void flushSounds() {
+    for (final cue in run.cues.toSet()) {
+      onSound?.call(cue);
+    }
+    run.cues.clear();
+  }
+
+  void refresh() {
+    flushSounds();
+    revision.value++;
+  }
 
   @override
   Color backgroundColor() => const Color(0xFF152425);
@@ -26,6 +41,7 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
     final before = run.phase;
     run.spawnRadius = sqrt(size.x * size.x + size.y * size.y) / 2 + 65;
     run.update(dt);
+    flushSounds();
     _uiTimer += dt;
     if ((_uiTimer >= 0.1 && run.phase == RunPhase.running) ||
         before != run.phase) {
@@ -39,6 +55,10 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
     KeyEvent event,
     Set<LogicalKeyboardKey> keysPressed,
   ) {
+    if (inputBlocked) {
+      run.movement.setZero();
+      return KeyEventResult.ignored;
+    }
     if (event is KeyDownEvent) {
       if (event.logicalKey == LogicalKeyboardKey.escape ||
           event.logicalKey == LogicalKeyboardKey.keyP) {
@@ -64,6 +84,10 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
       }
     }
     final movementKeys = {
+      LogicalKeyboardKey.keyH,
+      LogicalKeyboardKey.keyJ,
+      LogicalKeyboardKey.keyK,
+      LogicalKeyboardKey.keyL,
       LogicalKeyboardKey.keyW,
       LogicalKeyboardKey.keyA,
       LogicalKeyboardKey.keyS,
@@ -74,13 +98,37 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
       LogicalKeyboardKey.arrowRight,
     };
     if (run.phase == RunPhase.running) {
-      double axis(LogicalKeyboardKey a, LogicalKeyboardKey b) =>
-          keysPressed.contains(a) || keysPressed.contains(b) ? 1 : 0;
+      double axis(
+        LogicalKeyboardKey a,
+        LogicalKeyboardKey b,
+        LogicalKeyboardKey c,
+      ) =>
+          keysPressed.contains(a) ||
+              keysPressed.contains(b) ||
+              keysPressed.contains(c)
+          ? 1
+          : 0;
       run.movement.setValues(
-        axis(LogicalKeyboardKey.keyD, LogicalKeyboardKey.arrowRight) -
-            axis(LogicalKeyboardKey.keyA, LogicalKeyboardKey.arrowLeft),
-        axis(LogicalKeyboardKey.keyS, LogicalKeyboardKey.arrowDown) -
-            axis(LogicalKeyboardKey.keyW, LogicalKeyboardKey.arrowUp),
+        axis(
+              LogicalKeyboardKey.keyD,
+              LogicalKeyboardKey.arrowRight,
+              LogicalKeyboardKey.keyL,
+            ) -
+            axis(
+              LogicalKeyboardKey.keyA,
+              LogicalKeyboardKey.arrowLeft,
+              LogicalKeyboardKey.keyH,
+            ),
+        axis(
+              LogicalKeyboardKey.keyS,
+              LogicalKeyboardKey.arrowDown,
+              LogicalKeyboardKey.keyJ,
+            ) -
+            axis(
+              LogicalKeyboardKey.keyW,
+              LogicalKeyboardKey.arrowUp,
+              LogicalKeyboardKey.keyK,
+            ),
       );
     } else {
       run.movement.setZero();
@@ -250,14 +298,14 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
     canvas.restore();
     _text(
       canvas,
-      'HEAP / SECTOR ${((run.player.x + 10000) / 240).floor()}.${((run.player.y + 10000) / 240).floor()}',
+      '${text('heap')} / SECTOR ${((run.player.x + 10000) / 240).floor()}.${((run.player.y + 10000) / 240).floor()}',
       const Offset(20, 18),
       const Color(0xFF77918B),
       10,
     );
     _text(
       canvas,
-      '◆ XP     □ TASK     <> RUNTIME',
+      text('legend'),
       Offset(20, size.y - 30),
       const Color(0xFF77918B),
       10,

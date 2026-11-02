@@ -1,0 +1,837 @@
+import 'dart:math';
+
+import 'package:flame/game.dart';
+import 'package:flutter/material.dart';
+
+import '../audio/game_audio.dart';
+import '../audio/sound_cue.dart';
+import '../game/run_state.dart';
+import '../game/runtime_game.dart';
+import '../l10n/game_text.dart';
+import '../settings.dart';
+import 'theme.dart';
+import 'upgrade_card.dart';
+
+class RuntimeScreen extends StatefulWidget {
+  const RuntimeScreen({super.key, required this.settings});
+  final GameSettings settings;
+  @override
+  State<RuntimeScreen> createState() => _RuntimeScreenState();
+}
+
+class _RuntimeScreenState extends State<RuntimeScreen> {
+  final run = RunState();
+  late final game = RuntimeGame(run);
+  final focus = FocusNode();
+  final audio = GameAudio();
+  late final AppLifecycleListener lifecycle;
+  GameText get text => GameText(widget.settings.language);
+
+  @override
+  void initState() {
+    super.initState();
+    game.onSound = audio.play;
+    lifecycle = AppLifecycleListener(onInactive: pause, onHide: pause);
+  }
+
+  void pause() {
+    run.pause();
+    game.refresh();
+  }
+
+  void start() {
+    audio.unlock();
+    run.start();
+    game.refresh();
+    focus.requestFocus();
+  }
+
+  void resume() {
+    audio.unlock();
+    run.resume();
+    game.refresh();
+    focus.requestFocus();
+  }
+
+  void choose(Upgrade upgrade) {
+    audio.unlock();
+    run.choose(upgrade);
+    game.refresh();
+    focus.requestFocus();
+  }
+
+  @override
+  void dispose() {
+    lifecycle.dispose();
+    game.onSound = null;
+    audio.dispose();
+    focus.dispose();
+    super.dispose();
+  }
+
+  Future<void> modal(Widget Function(BuildContext) builder) async {
+    pause();
+    game.inputBlocked = true;
+    try {
+      await showDialog<void>(context: context, builder: builder);
+    } finally {
+      if (mounted) {
+        game.inputBlocked = false;
+        focus.requestFocus();
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    game.text = text;
+    audio.configure(
+      muted: widget.settings.muted,
+      volume: widget.settings.volume,
+    );
+    return Scaffold(
+      body: ValueListenableBuilder<int>(
+        valueListenable: game.revision,
+        builder: (context, _, _) => LayoutBuilder(
+          builder: (context, constraints) {
+            final wide = constraints.maxWidth >= 1180;
+            final compact = constraints.maxWidth < 720;
+            final arenaHeight = max(
+              470.0,
+              min(740.0, constraints.maxHeight - 310),
+            );
+            return SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                compact ? 16 : 30,
+                22,
+                compact ? 16 : 30,
+                20,
+              ),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1600),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      header(compact),
+                      const SizedBox(height: 22),
+                      stats(compact),
+                      const SizedBox(height: 18),
+                      if (wide)
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(child: arena(arenaHeight)),
+                            const SizedBox(width: 20),
+                            SizedBox(width: 300, child: designPanel()),
+                          ],
+                        )
+                      else ...[
+                        arena(arenaHeight),
+                        const SizedBox(height: 16),
+                        designPanel(),
+                      ],
+                      const SizedBox(height: 14),
+                      Text(
+                        text('controls'),
+                        style: const TextStyle(fontSize: 12, color: muted),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget header(bool compact) => Wrap(
+    alignment: WrapAlignment.spaceBetween,
+    crossAxisAlignment: WrapCrossAlignment.center,
+    spacing: 16,
+    runSpacing: 12,
+    children: [
+      Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: orange,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Text(
+              '>_',
+              style: TextStyle(
+                fontSize: 23,
+                fontWeight: FontWeight.w800,
+                color: paper,
+              ),
+            ),
+          ),
+          const SizedBox(width: 13),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Runtime Survivors',
+                  style: TextStyle(
+                    fontSize: compact ? 23 : 28,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.8,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  text('tagline'),
+                  style: const TextStyle(fontSize: 12, color: muted),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextButton.icon(
+            key: const Key('language-toggle'),
+            onPressed: () =>
+                widget.settings.update(language: text.isJapanese ? 'en' : 'ja'),
+            icon: const Icon(Icons.translate, size: 18),
+            label: Text(text.isJapanese ? 'English' : '日本語'),
+          ),
+          IconButton(
+            key: const Key('mute-toggle'),
+            tooltip: text(widget.settings.muted ? 'soundOn' : 'soundOff'),
+            onPressed: () {
+              audio.unlock();
+              widget.settings.update(muted: !widget.settings.muted);
+              if (!widget.settings.muted) audio.play(SoundCue.select);
+            },
+            icon: Icon(
+              widget.settings.muted
+                  ? Icons.volume_off_outlined
+                  : Icons.volume_up_outlined,
+              size: 22,
+            ),
+          ),
+          IconButton(
+            tooltip: text('settings'),
+            onPressed: settingsDialog,
+            icon: const Icon(Icons.tune, size: 22),
+          ),
+          IconButton(
+            tooltip: text('help'),
+            onPressed: help,
+            icon: const Icon(Icons.help_outline, size: 22),
+          ),
+        ],
+      ),
+    ],
+  );
+
+  Widget stats(bool compact) {
+    final cards = [
+      stat(
+        text('memory'),
+        '${run.health.ceil()}',
+        '/ ${run.maxHealth.toInt()} MB',
+        Icons.memory,
+        run.health / run.maxHealth,
+        orange,
+      ),
+      stat(
+        text('uptime'),
+        run.timeLabel,
+        '/ 05:00',
+        Icons.timer_outlined,
+        run.elapsed / RunState.duration,
+        ink,
+      ),
+      stat(
+        text('tasks'),
+        '${run.kills}',
+        text('completed'),
+        Icons.done_all,
+        null,
+        ink,
+      ),
+      stat(
+        text('level'),
+        run.level.toString().padLeft(2, '0'),
+        '${run.xp} / ${run.nextLevelXp} XP',
+        Icons.auto_awesome_outlined,
+        run.xp / run.nextLevelXp,
+        infraColor,
+      ),
+    ];
+    if (compact) {
+      return Column(
+        children: [
+          for (var row = 0; row < 2; row++)
+            Padding(
+              padding: EdgeInsets.only(top: row == 0 ? 0 : 10),
+              child: Row(
+                children: [
+                  Expanded(child: cards[row * 2]),
+                  const SizedBox(width: 10),
+                  Expanded(child: cards[row * 2 + 1]),
+                ],
+              ),
+            ),
+        ],
+      );
+    }
+    return Row(
+      children: [
+        for (var i = 0; i < 4; i++) ...[
+          if (i > 0) const SizedBox(width: 12),
+          Expanded(child: cards[i]),
+        ],
+      ],
+    );
+  }
+
+  Widget stat(
+    String label,
+    String value,
+    String suffix,
+    IconData icon,
+    double? progress,
+    Color color,
+  ) => Container(
+    height: 101,
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    decoration: BoxDecoration(
+      color: const Color(0xFFFAFAF5),
+      border: Border.all(color: line),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 16, color: muted),
+            const SizedBox(width: 7),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(fontSize: 12, color: muted),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 7),
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 27,
+                  height: 1,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'monospace',
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  suffix,
+                  style: const TextStyle(fontSize: 12, color: muted),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (progress != null)
+          LinearProgressIndicator(
+            value: progress.clamp(0, 1),
+            minHeight: 4,
+            color: color,
+            backgroundColor: line,
+            borderRadius: BorderRadius.circular(2),
+          ),
+      ],
+    ),
+  );
+
+  Widget arena(double height) => Container(
+    decoration: BoxDecoration(
+      border: Border.all(color: line),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    clipBehavior: Clip.antiAlias,
+    child: Column(
+      children: [
+        Container(
+          height: 46,
+          color: const Color(0xFFE9EDE2),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Row(
+            children: [
+              const Icon(Icons.terminal, size: 18),
+              const SizedBox(width: 8),
+              const Text('runtime://local', style: TextStyle(fontSize: 12)),
+              const Spacer(),
+              Flexible(
+                child: Text(
+                  text(switch (run.phase) {
+                    RunPhase.ready => 'standby',
+                    RunPhase.running => 'running',
+                    RunPhase.choosing => 'choosing',
+                    RunPhase.paused => 'paused',
+                    _ => 'terminated',
+                  }),
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12, color: muted),
+                ),
+              ),
+              IconButton(
+                tooltip: text(
+                  run.phase == RunPhase.paused ? 'resume' : 'pause',
+                ),
+                onPressed: run.phase == RunPhase.running
+                    ? pause
+                    : run.phase == RunPhase.paused
+                    ? resume
+                    : null,
+                icon: Icon(
+                  run.phase == RunPhase.paused ? Icons.play_arrow : Icons.pause,
+                  size: 20,
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(
+          height: height,
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: ClipRect(
+                  child: GameWidget(game: game, focusNode: focus),
+                ),
+              ),
+              if (run.phase != RunPhase.running)
+                Positioned.fill(child: overlay()),
+              if (run.phase == RunPhase.running && run.elapsed < 7)
+                Positioned(
+                  left: 16,
+                  right: 16,
+                  top: 50,
+                  child: IgnorePointer(
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 9,
+                        ),
+                        decoration: BoxDecoration(
+                          color: ink,
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                        child: Text(
+                          text('moveHint'),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: mint, fontSize: 13),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+
+  Widget designPanel() => Container(
+    padding: const EdgeInsets.all(20),
+    decoration: BoxDecoration(
+      color: const Color(0xFFE9EDE2),
+      border: Border.all(color: line),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.account_tree_outlined, size: 19),
+            const SizedBox(width: 8),
+            Text(
+              text('design'),
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          text('designHint'),
+          style: const TextStyle(fontSize: 12, color: muted),
+        ),
+        const SizedBox(height: 20),
+        for (final feature in [true, false]) ...[
+          badge(
+            text(feature ? 'feature' : 'infra'),
+            color: feature ? featureColor : infraColor,
+            icon: feature ? Icons.auto_awesome : Icons.memory,
+          ),
+          const SizedBox(height: 7),
+          Text(
+            text(feature ? 'featureHint' : 'infraHint'),
+            style: const TextStyle(fontSize: 12, color: muted),
+          ),
+          const SizedBox(height: 10),
+          if (!run.upgrades.keys.any((u) => u.isFeature == feature))
+            Text(
+              text(feature ? 'emptyFeatures' : 'emptyInfra'),
+              style: const TextStyle(fontSize: 13, color: muted),
+            ),
+          for (final entry in run.upgrades.entries.where(
+            (e) => e.key.isFeature == feature,
+          ))
+            Tooltip(
+              message:
+                  '${text.description(entry.key)}\n${text.tradeoff(entry.key)}',
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 9),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 37,
+                      child: Text(
+                        entry.key.symbol,
+                        style: TextStyle(
+                          fontSize: 17,
+                          color: feature ? featureColor : infraColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        text.title(entry.key),
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Lv.${entry.value}',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          const SizedBox(height: 20),
+        ],
+        const Divider(color: line),
+        const SizedBox(height: 10),
+        sectionLabel(text('metrics')),
+        const SizedBox(height: 8),
+        metric(text('targets'), '${run.targetCount}'),
+        metric(text('damage'), run.attackDamage.toStringAsFixed(1)),
+        metric(text('interval'), '${run.attackInterval.toStringAsFixed(2)} s'),
+        const SizedBox(height: 20),
+        sectionLabel(text('log')),
+        const SizedBox(height: 10),
+        for (final event in run.events.take(3))
+          Padding(
+            padding: const EdgeInsets.only(bottom: 9),
+            child: Text(
+              '› ${text.event(event)}',
+              style: const TextStyle(fontSize: 12, height: 1.6, color: muted),
+            ),
+          ),
+      ],
+    ),
+  );
+  Widget metric(String label, String value) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 12, color: muted),
+          ),
+        ),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+        ),
+      ],
+    ),
+  );
+
+  Widget overlay() => ColoredBox(
+    color: const Color(0xFF102022).withValues(alpha: 0.93),
+    child: LayoutBuilder(
+      builder: (context, constraints) => Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 900),
+            child: switch (run.phase) {
+              RunPhase.ready => welcome(),
+              RunPhase.choosing => choices(constraints.maxWidth >= 760),
+              RunPhase.paused => paused(),
+              _ => result(),
+            },
+          ),
+        ),
+      ),
+    ),
+  );
+  Widget darkLabel(String value) => Text(
+    value,
+    textAlign: TextAlign.center,
+    style: const TextStyle(color: mint, fontSize: 13, letterSpacing: 1),
+  );
+  Widget darkBody(String value) => Text(
+    value,
+    textAlign: TextAlign.center,
+    style: const TextStyle(color: darkMuted, fontSize: 14, height: 1.8),
+  );
+  Widget title(String value) => Text(
+    value,
+    textAlign: TextAlign.center,
+    style: const TextStyle(
+      color: darkText,
+      fontSize: 30,
+      fontWeight: FontWeight.w800,
+    ),
+  );
+  Widget action(String label, IconData icon, VoidCallback onPressed) =>
+      FilledButton.icon(
+        onPressed: onPressed,
+        style: FilledButton.styleFrom(
+          backgroundColor: mint,
+          foregroundColor: ink,
+        ),
+        icon: Icon(icon, size: 20),
+        label: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+      );
+  Widget welcome() => Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      darkLabel(text('welcomeLabel')),
+      const SizedBox(height: 20),
+      const Text(
+        'Hello, runtime.',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: darkText,
+          fontSize: 40,
+          fontWeight: FontWeight.w800,
+          letterSpacing: -1.3,
+        ),
+      ),
+      const SizedBox(height: 18),
+      darkBody(text('welcomeBody')),
+      const SizedBox(height: 28),
+      action(text('start'), Icons.play_arrow, start),
+      const SizedBox(height: 24),
+      darkBody(text('controls')),
+      const SizedBox(height: 7),
+      darkBody(text('pickupHint')),
+    ],
+  );
+  Widget choices(bool horizontal) => Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      darkLabel('${text('level')} ${run.level}'),
+      const SizedBox(height: 10),
+      title(text('choicesTitle')),
+      const SizedBox(height: 8),
+      darkBody(text('choicesHint')),
+      const SizedBox(height: 22),
+      if (horizontal)
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (var i = 0; i < run.choices.length; i++) ...[
+                if (i > 0) const SizedBox(width: 12),
+                Expanded(child: upgradeCard(i)),
+              ],
+            ],
+          ),
+        )
+      else
+        Column(
+          children: [
+            for (var i = 0; i < run.choices.length; i++)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: upgradeCard(i),
+              ),
+          ],
+        ),
+      const SizedBox(height: 16),
+      darkBody(text('choicesKeys')),
+    ],
+  );
+  Widget upgradeCard(int index) => UpgradeCard(
+    upgrade: run.choices[index],
+    index: index,
+    run: run,
+    text: text,
+    onChoose: () => choose(run.choices[index]),
+  );
+  Widget paused() => Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      darkLabel(text('paused')),
+      const SizedBox(height: 18),
+      title(text('pauseTitle')),
+      const SizedBox(height: 12),
+      darkBody(text('pauseBody')),
+      const SizedBox(height: 25),
+      action(text('resume'), Icons.play_arrow, resume),
+      const SizedBox(height: 18),
+      darkBody(text('pauseKeys')),
+    ],
+  );
+  Widget result() => Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      darkLabel(text(run.phase == RunPhase.won ? 'wonLabel' : 'lostLabel')),
+      const SizedBox(height: 18),
+      title(text(run.phase == RunPhase.won ? 'wonTitle' : 'lostTitle')),
+      const SizedBox(height: 18),
+      darkBody(
+        '${text('uptime')} ${run.timeLabel}  /  ${run.kills} ${text('tasks')}  /  Lv.${run.level}',
+      ),
+      const SizedBox(height: 22),
+      if (run.upgrades.isEmpty) darkBody(text('emptyResult')),
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        alignment: WrapAlignment.center,
+        children: [
+          for (final entry in run.upgrades.entries)
+            Chip(
+              backgroundColor: ink,
+              side: BorderSide.none,
+              label: Text(
+                '${text.title(entry.key)} Lv.${entry.value}',
+                style: const TextStyle(color: mint, fontSize: 13),
+              ),
+            ),
+        ],
+      ),
+      const SizedBox(height: 26),
+      action(text('restart'), Icons.refresh, start),
+    ],
+  );
+
+  void help() => modal(
+    (context) => AlertDialog(
+      title: Text(text('help')),
+      content: SizedBox(
+        width: 480,
+        child: SingleChildScrollView(
+          child: Text(
+            text('helpBody'),
+            style: const TextStyle(fontSize: 15, height: 1.8),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(text('close')),
+        ),
+      ],
+    ),
+  );
+
+  void settingsDialog() => modal(
+    (context) => ListenableBuilder(
+      listenable: widget.settings,
+      builder: (context, _) => AlertDialog(
+        title: Text(text('settings')),
+        content: SizedBox(
+          width: 400,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                sectionLabel(text('language')),
+                const SizedBox(height: 10),
+                SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(value: 'ja', label: Text('日本語')),
+                    ButtonSegment(value: 'en', label: Text('English')),
+                  ],
+                  selected: {widget.settings.language},
+                  onSelectionChanged: (value) =>
+                      widget.settings.update(language: value.first),
+                ),
+                const SizedBox(height: 20),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(text('mute')),
+                  value: widget.settings.muted,
+                  onChanged: (value) {
+                    audio.unlock();
+                    widget.settings.update(muted: value);
+                  },
+                ),
+                Text(
+                  '${text('volume')} ${(widget.settings.volume * 100).round()}%',
+                ),
+                Slider(
+                  value: widget.settings.volume,
+                  divisions: 20,
+                  label: '${(widget.settings.volume * 100).round()}%',
+                  onChanged: (value) {
+                    audio.unlock();
+                    widget.settings.update(volume: value);
+                  },
+                ),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    audio.unlock();
+                    audio.play(SoundCue.levelUp);
+                  },
+                  icon: const Icon(Icons.music_note_outlined),
+                  label: Text(text('soundTest')),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  text('savedLocally'),
+                  style: const TextStyle(
+                    color: muted,
+                    fontSize: 12,
+                    height: 1.6,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(text('close')),
+          ),
+        ],
+      ),
+    ),
+  );
+}

@@ -12,6 +12,10 @@ dependencies:
     sdk: flutter
   flame: ^1.38.2
   cupertino_icons: ^2.0.0
+  web: ^1.1.2
+  shared_preferences: ^2.5.6
+  flutter_localizations:
+    sdk: flutter
 
 dev_dependencies:
   flutter_test:

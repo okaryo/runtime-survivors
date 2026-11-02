@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:runtime_survivors/main.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
   testWidgets('start, keyboard pause and resume work without layout errors', (
     tester,
   ) async {
@@ -16,13 +18,13 @@ void main() {
     expect(find.text('Hello, runtime.'), findsOneWidget);
     await tester.tap(find.text('ランタイムを起動'));
     await tester.pump(const Duration(milliseconds: 100));
-    expect(find.text('● RUNNING'), findsOneWidget);
+    expect(find.text('稼働中'), findsOneWidget);
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pump();
     expect(find.text('ひと息、つこう。'), findsOneWidget);
     await tester.tap(find.text('処理を再開'));
     await tester.pump();
-    expect(find.text('● RUNNING'), findsOneWidget);
+    expect(find.text('稼働中'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });
