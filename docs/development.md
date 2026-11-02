@@ -18,18 +18,6 @@ flutter run -d chrome
 
 SDKを更新する際は、`pubspec.yaml` の指定とローカルのFlutterを揃えてください。
 
-### FVM（任意）
-
-FVMを使う場合は、`pubspec.yaml` に指定されたバージョンをローカルに設定します。
-
-```sh
-fvm use 3.47.8
-fvm flutter pub get --enforce-lockfile
-fvm flutter run -d chrome
-```
-
-作成される `.fvmrc` とSDKキャッシュの `.fvm/` はGit管理対象外です。以降の `flutter` / `dart` コマンドは `fvm flutter` / `fvm dart` に読み替えて実行できます。
-
 ## コード構成
 
 | パス | 役割 |

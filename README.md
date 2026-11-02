@@ -23,7 +23,7 @@ Flutter + Flameで開発しているPCブラウザ向けゲームです。キー
 
 ## ローカルで遊ぶ
 
-Flutter **3.47.8** / Dart **3.13.7** を使用します。Flutterのバージョン指定は `pubspec.yaml` の `environment.flutter` にあります。FVMの利用は任意です（[設定方法](docs/development.md#fvm任意)）。
+Flutter **3.47.8** / Dart **3.13.7** を使用します。Flutterのバージョン指定は `pubspec.yaml` の `environment.flutter` にあります。
 
 ```sh
 flutter pub get --enforce-lockfile
