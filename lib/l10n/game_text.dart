@@ -236,20 +236,23 @@ class GameText {
       '設定と発見記録は、このブラウザに保存します。',
       'Settings and discoveries are saved in this browser.',
     ],
-    'codex': ['ランタイム図鑑', 'Runtime codex'],
-    'codexHint': [
+    'encyclopedia': ['ランタイム図鑑', 'Runtime encyclopedia'],
+    'encyclopediaHint': [
       '遭遇したタスクと、取得した能力の記録。',
       'A record of encountered tasks and acquired upgrades.',
     ],
-    'codexResume': [
+    'encyclopediaResume': [
       '図鑑を閉じるか、再開ボタンを押してください。',
-      'Close the codex or use the Resume button.',
+      'Close the encyclopedia or use the Resume button.',
     ],
-    'codexSelect': [
+    'encyclopediaSelect': [
       '図鑑を閉じるか、カードをクリックしてください。',
-      'Close the codex or click an upgrade card.',
+      'Close the encyclopedia or click an upgrade card.',
     ],
-    'codexPaused': ['図鑑を開いている間は一時停止します。', 'Opening the codex pauses the run.'],
+    'encyclopediaPaused': [
+      '図鑑を開いている間は一時停止します。',
+      'Opening the encyclopedia pauses the run.',
+    ],
     'undiscovered': ['未発見', 'Undiscovered'],
     'unlockEnemy': [
       '遭遇すると情報が開きます。',

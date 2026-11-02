@@ -10,7 +10,7 @@ import '../game/runtime_game.dart';
 import '../l10n/game_text.dart';
 import '../settings.dart';
 import 'theme.dart';
-import 'codex_panel.dart';
+import 'encyclopedia_panel.dart';
 import 'upgrade_choices.dart';
 import 'upgrade_icon.dart';
 
@@ -37,7 +37,7 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
 
   final audio = GameAudio();
   late final AppLifecycleListener lifecycle;
-  bool _codexOpen = false;
+  bool _encyclopediaOpen = false;
   bool _modalOpen = false;
   GameText get text => GameText(widget.settings.language);
 
@@ -63,7 +63,7 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
   void start() {
     audio.restartMusic();
     audio.unlock();
-    setState(() => _codexOpen = false);
+    setState(() => _encyclopediaOpen = false);
     game.inputBlocked = _modalOpen;
     run.start();
     game.refresh();
@@ -72,7 +72,7 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
 
   void resume() {
     if (_modalOpen) return;
-    if (_codexOpen) setState(() => _codexOpen = false);
+    if (_encyclopediaOpen) setState(() => _encyclopediaOpen = false);
     game.inputBlocked = false;
     audio.unlock();
     run.resume();
@@ -82,7 +82,7 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
 
   void choose(Upgrade upgrade) {
     if (_modalOpen) return;
-    if (_codexOpen) setState(() => _codexOpen = false);
+    if (_encyclopediaOpen) setState(() => _encyclopediaOpen = false);
     game.inputBlocked = false;
     audio.unlock();
     run.choose(upgrade);
@@ -111,7 +111,7 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
     } finally {
       if (mounted) {
         _modalOpen = false;
-        game.inputBlocked = _codexOpen;
+        game.inputBlocked = _encyclopediaOpen;
         restoreFocus();
       }
     }
@@ -172,15 +172,17 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
                         style: const TextStyle(fontSize: 12, color: muted),
                       ),
                       const SizedBox(height: 18),
-                      CodexPanel(
+                      EncyclopediaPanel(
                         text: text,
                         discoveries: widget.settings.discoveries,
-                        expanded: _codexOpen,
+                        expanded: _encyclopediaOpen,
                         onToggle: () {
-                          if (!_codexOpen) pause();
-                          setState(() => _codexOpen = !_codexOpen);
-                          game.inputBlocked = _codexOpen || _modalOpen;
-                          if (!_codexOpen) restoreFocus();
+                          if (!_encyclopediaOpen) pause();
+                          setState(
+                            () => _encyclopediaOpen = !_encyclopediaOpen,
+                          );
+                          game.inputBlocked = _encyclopediaOpen || _modalOpen;
+                          if (!_encyclopediaOpen) restoreFocus();
                         },
                       ),
                     ],
@@ -765,7 +767,7 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
       const SizedBox(height: 25),
       action(text('resume'), Icons.play_arrow, resume),
       const SizedBox(height: 18),
-      darkBody(text(_codexOpen ? 'codexResume' : 'pauseKeys')),
+      darkBody(text(_encyclopediaOpen ? 'encyclopediaResume' : 'pauseKeys')),
     ],
   );
   Widget result() => Column(

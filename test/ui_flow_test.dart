@@ -14,7 +14,7 @@ import 'support/runtime_fonts.dart';
 void main() {
   setUpAll(loadRuntimeFonts);
   testWidgets(
-    'language switch preserves run; cards select and codex pauses safely',
+    'language switch preserves run; cards select and encyclopedia pauses safely',
     (tester) async {
       tester.view.physicalSize = const Size(1440, 1100);
       tester.view.devicePixelRatio = 1;
@@ -51,8 +51,8 @@ void main() {
       await tester.pump();
       expect(game.run.phase, RunPhase.running);
       expect(settings.discoveries, contains('upgrade.${selected.name}'));
-      await tester.ensureVisible(find.byKey(const Key('codex-toggle')));
-      await tester.tap(find.byKey(const Key('codex-toggle')));
+      await tester.ensureVisible(find.byKey(const Key('encyclopedia-toggle')));
+      await tester.tap(find.byKey(const Key('encyclopedia-toggle')));
       await tester.pump();
       expect(game.run.phase, RunPhase.paused);
       expect(game.inputBlocked, isTrue);
@@ -62,8 +62,8 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.keyP);
       await tester.pump();
       expect(game.run.phase, RunPhase.paused);
-      await tester.ensureVisible(find.byKey(const Key('codex-toggle')));
-      await tester.tap(find.byKey(const Key('codex-toggle')));
+      await tester.ensureVisible(find.byKey(const Key('encyclopedia-toggle')));
+      await tester.tap(find.byKey(const Key('encyclopedia-toggle')));
       await tester.pump();
       expect(game.inputBlocked, isFalse);
       expect(game.run.phase, RunPhase.paused);

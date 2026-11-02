@@ -6,8 +6,8 @@ import '../l10n/game_text.dart';
 import 'theme.dart';
 import 'upgrade_icon.dart';
 
-class CodexPanel extends StatelessWidget {
-  const CodexPanel({
+class EncyclopediaPanel extends StatelessWidget {
+  const EncyclopediaPanel({
     super.key,
     required this.text,
     required this.discoveries,
@@ -31,7 +31,7 @@ class CodexPanel extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         InkWell(
-          key: const Key('codex-toggle'),
+          key: const Key('encyclopedia-toggle'),
           onTap: onToggle,
           child: Padding(
             padding: const EdgeInsets.all(18),
@@ -44,7 +44,7 @@ class CodexPanel extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        text('codex'),
+                        text('encyclopedia'),
                         style: const TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 16,
@@ -52,7 +52,9 @@ class CodexPanel extends StatelessWidget {
                       ),
                       const SizedBox(height: 5),
                       Text(
-                        expanded ? text('codexPaused') : text('codexHint'),
+                        expanded
+                            ? text('encyclopediaPaused')
+                            : text('encyclopediaHint'),
                         style: const TextStyle(color: muted, fontSize: 12),
                       ),
                     ],
