@@ -24,9 +24,9 @@ SDKを更新する際は、`pubspec.yaml` の指定とローカルのFlutterを�
 | --- | --- |
 | `lib/main.dart` | アプリの起動とロケール設定 |
 | `lib/game/run_state.dart` | 戦闘・能力の実行、経験値、ラン状態のシミュレーション |
-| `lib/game/build.dart` | 能力・設計方針の定義と、戦闘・カードで共有するステータス計算 |
+| `lib/game/build.dart` | 能力とトレードオフの定義と、戦闘・カードで共有するステータス計算 |
 | `lib/game/ability_runtime.dart` | 設置攻撃・入力キャッシュ・JIT解析・回復予算のラン内状態 |
-| `lib/game/combat_rules.dart` | 方向防御と範囲・側背面攻撃の共通判定 |
+| `lib/game/deadlock_encounter.dart` | ロックノード・障壁・解除時間・再構成の管理 |
 | `lib/game/combat_entities.dart` | 敵、弾、オブジェクト、軌道の衝突判定 |
 | `lib/game/spawn_director.dart` | 時間帯と出現コストによる編成管理 |
 | `lib/game/language_profile.dart` | 戦闘バランスから独立した言語傾向の判定 |
@@ -55,9 +55,9 @@ flutter build web --release --base-href /runtime-survivors/ --no-web-resources-c
 
 UIの表示テストではFlutter SDKに同梱されたRobotoと、キーキャップで使う同梱のRoboto Monoを読み込み、PCブラウザの英文に近い文字幅でレイアウトを検証します。音声のネイティブテストでは無音のバックエンドを使用します。
 
-5分間の統合テストでは両設計方針に加え、範囲・設置・回復、OOP・防壁・JIT、同時攻撃・入力再利用・貫通の組み合わせを実行します。生存時間全体を検証するため、このテストではメモリを補充します。難易度評価や実プレイの代替ではありません。
+5分間の統合テストでは範囲・設置・回復、OOP・連鎖・JIT、同時攻撃・入力再利用・貫通の組み合わせを実行します。生存時間全体を検証するため、このテストではメモリを補充します。難易度評価や実プレイの代替ではありません。
 
-新しい敵のIDは列挙型の末尾に追加し、既存の発見記録との互換性を維持します。出現時期・比率・上限・コストは `SpawnDirector.rules`、Infraの前提とランク上限は `UpgradeInfo`、言語判定の重みは `language_profile.dart` にあります。
+新しい敵のIDは列挙型の末尾に追加し、既存の発見記録との互換性を維持します。出現時期・比率・上限・コストは `SpawnDirector.rules`、出現・図鑑対象の切り替えは `EnemyAvailability`、Infraのランク上限は `UpgradeInfo`、言語判定の重みは `language_profile.dart` にあります。
 
 ## アセットの生成
 
@@ -79,7 +79,7 @@ Pythonの標準ライブラリだけで `assets/audio/runtime_loop.wav` を生�
 flutter test tool/generate_upgrade_icons.dart
 ```
 
-ベクター描画のソースから `assets/icons/upgrades/` に19種類の256×256 PNGを生成します（現役18種類と統合済みの命令パイプライン）。カード・サイドバー・図鑑は共通の `UpgradeIcon` ウィジェットで同じアセットを参照します。
+ベクター描画のソースから `assets/icons/upgrades/` に19種類の256×256 PNGを生成します（現役16種類と、取得候補から外したNull Safety・補助プロセッサ・命令パイプライン）。カード・サイドバー・図鑑は共通の `UpgradeIcon` ウィジェットで同じアセットを参照します。
 
 ## CIとGitHub Pages
 
