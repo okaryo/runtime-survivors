@@ -16,7 +16,7 @@ void main() {
   testWidgets(
     'language switch preserves run; encyclopedia is always visible without blocking keys',
     (tester) async {
-      tester.view.physicalSize = const Size(1440, 1100);
+      tester.view.physicalSize = const Size(1280, 640);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
@@ -28,6 +28,10 @@ void main() {
         findsNWidgets(RunState.featureSlots + RunState.infraSlots),
       );
       expect(find.byKey(const Key('encyclopedia-heading')), findsOneWidget);
+      expect(
+        tester.getRect(find.byKey(const Key('empty-infra-3'))).bottom,
+        lessThanOrEqualTo(640),
+      );
       await tester.tap(find.text('ランタイムを起動'));
       await tester.pump();
       final game = tester
@@ -75,6 +79,13 @@ void main() {
       expect(find.text(const GameText('en')('enemy.0.title')), findsOneWidget);
       expect(find.text(const GameText('en')('enemy.3.title')), findsNothing);
       expect(find.text('???'), findsWidgets);
+      expect(
+        find.text(const GameText('en')('enemy.0.matchup')),
+        findsOneWidget,
+      );
+      expect(find.text(const GameText('en')('enemy.3.matchup')), findsNothing);
+      expect(find.text(const GameText('en').matchup(selected)), findsOneWidget);
+      expect(find.textContaining('Tradeoff:'), findsNothing);
       await tester.sendKeyEvent(LogicalKeyboardKey.keyP);
       await tester.pump();
       expect(game.run.phase, RunPhase.paused);

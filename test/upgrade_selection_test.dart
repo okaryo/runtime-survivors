@@ -52,6 +52,22 @@ void main() {
           findsOneWidget,
         );
       }
+      for (final upgrade in game.run.choices) {
+        final keyRect = tester.getRect(
+          find.byKey(Key('choice-key-${upgrade.name}')),
+        );
+        final badgeRect = tester.getRect(
+          find.byKey(Key('rank-badge-${upgrade.name}')),
+        );
+        expect(keyRect.left, greaterThan(badgeRect.right));
+        final hint = tester
+            .widget<Text>(find.byKey(Key('matchup-${upgrade.name}')))
+            .textSpan!
+            .toPlainText();
+        expect(hint, contains(text.matchup(upgrade)));
+      }
+      expect(find.text('New'), findsNWidgets(2));
+      expect(find.text('Lv.1 → 2'), findsOneWidget);
       String change(String key) =>
           tester.widget<Text>(find.byKey(Key(key))).textSpan!.toPlainText();
       expect(change('change-memory-0'), 'メモリ 35/100 → 70/125');

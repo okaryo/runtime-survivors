@@ -33,6 +33,9 @@ void main() {
             .game!;
         game.run.addExperience(game.run.nextLevelXp);
         for (final choices in [
+          [Upgrade.oop, Upgrade.functional, Upgrade.garbageCollection],
+          [Upgrade.concurrency, Upgrade.memory, Upgrade.cache],
+          [Upgrade.compiler, Upgrade.nullSafety, Upgrade.pipeline],
           [Upgrade.nullSafety, Upgrade.patternMatching, Upgrade.pipeline],
           [Upgrade.lazyEvaluation, Upgrade.memoization, Upgrade.jitCompilation],
           [Upgrade.ownership, Upgrade.spatialIndex, Upgrade.coprocessor],
@@ -89,7 +92,12 @@ void main() {
           Upgrade.oop: 3,
           Upgrade.functional: 1,
           Upgrade.patternMatching: 1,
-          for (final upgrade in Upgrade.values.where((u) => !u.isFeature))
+          for (final upgrade in [
+            Upgrade.memory,
+            Upgrade.clock,
+            Upgrade.cache,
+            Upgrade.compiler,
+          ])
             upgrade: 2,
         });
         tester.view.physicalSize = const Size(1280, 640);

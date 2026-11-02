@@ -27,3 +27,8 @@ flutter:
   assets:
     - assets/audio/runtime_loop.wav
     - assets/icons/upgrades/
+    - assets/fonts/roboto_mono/OFL.txt
+  fonts:
+    - family: RobotoMono
+      fonts:
+        - asset: assets/fonts/roboto_mono/RobotoMono.ttf

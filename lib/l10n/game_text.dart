@@ -34,6 +34,7 @@ class GameText {
   String title(Upgrade upgrade) => call('${upgrade.name}.title');
   String description(Upgrade upgrade) => call('${upgrade.name}.description');
   String tradeoff(Upgrade upgrade) => call('${upgrade.name}.tradeoff');
+  String matchup(Upgrade upgrade) => call('${upgrade.name}.matchup');
   String category(Upgrade upgrade) =>
       call(upgrade.isFeature ? 'feature' : 'infra');
   List<UpgradeComparison> comparisons(UpgradePreview preview) {
@@ -262,6 +263,85 @@ class GameText {
   });
 
   static const copy = <String, List<String>>{
+    'hud.memory': ['メモリ', 'mem'],
+    'hud.uptime': ['稼働', 'uptime'],
+    'hud.tasks': ['処理', 'tasks'],
+    'matchup': ['使いどころ', 'Best use'],
+    'enemyMatchup': ['対処のヒント', 'How to respond'],
+    'garbageCollection.matchup': [
+      '密集・正面装甲への範囲攻撃',
+      'Crowds; bypasses frontal armor',
+    ],
+    'concurrency.matchup': ['分散した複数の敵', 'Several spread-out enemies'],
+    'oop.matchup': ['側背面からの攻撃', 'Attacks from the sides and rear'],
+    'functional.matchup': [
+      '召喚雑魚・群れの奥の敵',
+      'Summoned crowds; enemies behind them',
+    ],
+    'nullSafety.matchup': [
+      '射撃対策。接触・爆発は防がない',
+      'Blocks shots, not contact or blasts',
+    ],
+    'patternMatching.matchup': ['密集・群れの奥の敵', 'Crowds; enemies behind them'],
+    'lazyEvaluation.matchup': ['追跡してくる敵の足止め', 'Slows pursuing enemies'],
+    'memoization.matchup': [
+      '同じ高耐久の敵への継続攻撃',
+      'Sustained fire on a durable target',
+    ],
+    'jitCompilation.matchup': [
+      '単体・高耐久の敵への集中',
+      'Focus on a single durable enemy',
+    ],
+    'ownership.matchup': [
+      '近距離の撃破。召喚雑魚は対象外',
+      'Nearby kills; excludes summoned tasks',
+    ],
+    'memory.matchup': [
+      'OOP・Null Safetyのメモリ負担',
+      'Memory costs of OOP and Null Safety',
+    ],
+    'clock.matchup': ['射線・爆発からの回避', 'Dodge shot lanes and blasts'],
+    'cache.matchup': ['散った経験値の回収', 'Collect scattered experience'],
+    'compiler.matchup': ['通常攻撃・連鎖の火力', 'Base shots and their chains'],
+    'pipeline.matchup': ['並行処理・連鎖の起点', 'More concurrent volleys and chains'],
+    'bandwidth.matchup': ['動く敵に弾を届かせる', 'Deliver shots to moving enemies'],
+    'spatialIndex.matchup': ['GC・遅延評価の範囲', 'GC and Lazy Evaluation areas'],
+    'coprocessor.matchup': ['OOPの独立攻撃', 'Independent OOP attacks'],
+    'memoryProtection.matchup': [
+      '連続被弾からの立て直し',
+      'Recover from consecutive hits',
+    ],
+    'enemy.0.matchup': [
+      '通常攻撃で処理。接近されたら移動',
+      'Use base shots; move when approached',
+    ],
+    'enemy.1.matchup': ['減速や同時攻撃で接近を抑える', 'Slow it or use concurrent attacks'],
+    'enemy.2.matchup': ['集中・再攻撃で継続的に削る', 'Sustained focus and repeated shots'],
+    'enemy.3.matchup': [
+      '突進予告の横へ回避。減速は最大20%',
+      'Dodge sideways; slow capped at 20%',
+    ],
+    'enemy.4.matchup': [
+      '射線を避けて接近。Null Safetyで敵弾を防ぐ',
+      'Sidestep and approach; shield its shots',
+    ],
+    'enemy.5.matchup': [
+      '範囲・連鎖で雑魚を処理し本体を狙う',
+      'Clear children with area or chains, then target the parent',
+    ],
+    'enemy.6.matchup': [
+      '撃破後は爆発範囲から離れる。防壁は無効',
+      'Leave the blast area after a kill; shields do not block it',
+    ],
+    'enemy.7.matchup': [
+      '貫通・連鎖で群れの奥の本体を狙う',
+      'Reach it behind crowds with piercing or chains',
+    ],
+    'enemy.8.matchup': [
+      'GC・側背面攻撃で正面防御を回避',
+      'Bypass frontal armor with GC or flanking',
+    ],
+
     'lazyEvaluation.title': ['遅延評価', 'Lazy Evaluation'],
     'lazyEvaluation.description': [
       '5秒ごとに減速領域を設置。3.5秒持続し、領域内の敵の移動を遅くします。',
@@ -435,7 +515,7 @@ class GameText {
       '{policy}を採用。主に伸ばした機能：{features}。',
       '{policy}. Main investments: {features}.',
     ],
-    'newUpgrade': ['新規', 'NEW'],
+    'newUpgrade': ['New', 'New'],
     'featureBadge': ['言語機能', 'FEATURE'],
     'infraBadge': ['基盤強化', 'INFRA'],
     'choicesControls': ['1 / 2 / 3 で取得', '1 / 2 / 3 to acquire'],
@@ -484,11 +564,8 @@ class GameText {
       'WASD / HJKL / Arrows: move   ESC / P: pause',
     ],
     'design': ['言語の設計', 'Language design'],
-    'designHint': ['選んだ機能が、戦い方を変える。', 'Your choices shape the way you fight.'],
     'feature': ['言語機能 / FEATURE', 'LANGUAGE FEATURE'],
     'infra': ['基盤強化 / INFRA', 'INFRASTRUCTURE'],
-    'featureHint': ['攻撃方法や振る舞いを変える', 'Changes attacks and behavior'],
-    'infraHint': ['基本性能を引き上げる', 'Improves your base stats'],
     'emptyFeatures': ['機能はまだありません', 'No features yet'],
     'targets': ['同時攻撃数', 'Attack targets'],
     'damage': ['通常攻撃の威力', 'Base attack damage'],

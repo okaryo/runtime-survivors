@@ -49,32 +49,70 @@ class UpgradeCard extends StatelessWidget {
                   UpgradeIcon(upgrade: upgrade, size: 36),
                   const SizedBox(width: 7),
                   Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          text(
+                            upgrade.isFeature ? 'featureBadge' : 'infraBadge',
+                          ),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: color,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Container(
+                          key: Key('rank-badge-${upgrade.name}'),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: run.rank(upgrade) == 0
+                                ? color
+                                : color.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            run.rank(upgrade) == 0
+                                ? text('newUpgrade')
+                                : 'Lv.${run.rank(upgrade)} → ${run.rank(upgrade) + 1}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: run.rank(upgrade) == 0
+                                  ? Colors.white
+                                  : color,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    key: Key('choice-key-${upgrade.name}'),
+                    width: 30,
+                    height: 30,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: paper,
+                      border: Border.all(color: muted.withValues(alpha: 0.5)),
+                      borderRadius: BorderRadius.circular(5),
+                      boxShadow: const [
+                        BoxShadow(color: line, offset: Offset(0, 2)),
+                      ],
+                    ),
                     child: Text(
-                      text(upgrade.isFeature ? 'featureBadge' : 'infraBadge'),
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: color,
+                      '${index + 1}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontFamily: 'RobotoMono',
                         fontWeight: FontWeight.w800,
+                        color: ink,
                       ),
-                    ),
-                  ),
-                  Text(
-                    run.rank(upgrade) == 0
-                        ? text('newUpgrade')
-                        : 'Lv.${run.rank(upgrade)} → ${run.rank(upgrade) + 1}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: color,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    '[${index + 1}]',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: color,
                     ),
                   ),
                 ],
@@ -120,6 +158,20 @@ class UpgradeCard extends StatelessWidget {
                     ),
                   ),
                 ),
+              const SizedBox(height: 10),
+              Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: '${text('matchup')}: ',
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    TextSpan(text: text.matchup(upgrade)),
+                  ],
+                ),
+                key: Key('matchup-${upgrade.name}'),
+                style: const TextStyle(fontSize: 12, height: 1.4, color: muted),
+              ),
             ],
           ),
         ),

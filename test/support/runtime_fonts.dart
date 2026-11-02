@@ -16,4 +16,7 @@ Future<void> loadRuntimeFonts() async {
     );
   }
   await loader.load();
+  final mono = FontLoader('RobotoMono')
+    ..addFont(rootBundle.load('assets/fonts/roboto_mono/RobotoMono.ttf'));
+  await mono.load();
 }

@@ -347,7 +347,7 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
 
   Widget designPanel() => Container(
     key: const Key('design-panel'),
-    padding: const EdgeInsets.all(20),
+    padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
       color: const Color(0xFFE9EDE2),
       border: Border.all(color: line),
@@ -371,11 +371,6 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
             ),
           ],
         ),
-        const SizedBox(height: 6),
-        Text(
-          text('designHint'),
-          style: const TextStyle(fontSize: 12, color: muted),
-        ),
         if (run.typingPolicy != null) ...[
           const SizedBox(height: 10),
           Text(
@@ -392,19 +387,14 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
               style: const TextStyle(fontSize: 12, height: 1.4, color: muted),
             ),
         ],
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
         for (final feature in [true, false]) ...[
           badge(
             text(feature ? 'feature' : 'infra'),
             color: feature ? featureColor : infraColor,
             icon: feature ? Icons.auto_awesome : Icons.memory,
           ),
-          const SizedBox(height: 7),
-          Text(
-            text(feature ? 'featureHint' : 'infraHint'),
-            style: const TextStyle(fontSize: 12, color: muted),
-          ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           for (final entry in run.upgrades.entries.where(
             (e) => e.key.isFeature == feature,
           ))
@@ -418,7 +408,7 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
               Key('empty-${feature ? 'feature' : 'infra'}-$i'),
               text('emptyUpgradeSlot'),
             ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
         ],
         sectionLabel(text('log')),
         const SizedBox(height: 10),
@@ -437,9 +427,9 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
     message: '${text.description(upgrade)}\n${text.tradeoff(upgrade)}',
     child: Container(
       key: Key('acquired-${upgrade.name}'),
-      constraints: const BoxConstraints(minHeight: 38),
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      constraints: const BoxConstraints(minHeight: 34),
+      margin: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: paper,
         border: Border.all(color: line),
@@ -447,7 +437,7 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
       ),
       child: Row(
         children: [
-          UpgradeIcon(upgrade: upgrade, size: 28),
+          UpgradeIcon(upgrade: upgrade, size: 24),
           const SizedBox(width: 9),
           Expanded(
             child: Text(
@@ -464,9 +454,9 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
 
   Widget emptySlot(Key key, String label) => Container(
     key: key,
-    constraints: const BoxConstraints(minHeight: 38),
-    margin: const EdgeInsets.only(bottom: 6),
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+    constraints: const BoxConstraints(minHeight: 34),
+    margin: const EdgeInsets.only(bottom: 4),
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
     decoration: BoxDecoration(
       border: Border.all(color: line),
       borderRadius: BorderRadius.circular(6),
@@ -474,7 +464,7 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
     child: Row(
       children: [
         const SizedBox(
-          width: 28,
+          width: 24,
           child: Icon(Icons.add, size: 16, color: muted),
         ),
         const SizedBox(width: 9),

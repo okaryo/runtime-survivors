@@ -20,135 +20,152 @@ class RuntimeHud extends StatelessWidget {
   final VoidCallback onResume;
 
   @override
-  Widget build(BuildContext context) => Container(
-    key: const Key('runtime-hud'),
-    color: const Color(0xFF192F2B),
-    padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final columns = constraints.maxWidth < 500 ? 2 : 4;
-                  final width = constraints.maxWidth / columns;
-                  return Wrap(
-                    runSpacing: 10,
+  Widget build(BuildContext context) => DefaultTextStyle.merge(
+    style: const TextStyle(fontFamily: 'RobotoMono'),
+    child: Container(
+      key: const Key('runtime-hud'),
+      color: const Color(0xFF142521),
+      padding: const EdgeInsets.fromLTRB(16, 8, 12, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text.rich(
+                  TextSpan(
                     children: [
-                      SizedBox(
-                        width: width,
-                        child: reading(
-                          text('memory'),
-                          '${run.health.ceil()} / ${run.maxHealth.toInt()} MB',
-                          progress: run.health / run.maxHealth,
-                          key: const Key('memory-status'),
-                          color: run.health / run.maxHealth < 0.3
-                              ? const Color(0xFFFFBA8C)
-                              : mint,
-                        ),
+                      TextSpan(
+                        text: r'runtime@local:~$ ',
+                        style: TextStyle(color: mint),
                       ),
-                      SizedBox(
-                        width: width,
-                        child: reading(
-                          text('uptime'),
-                          '${run.timeLabel} / 05:00',
-                          progress: run.elapsed / RunState.duration,
-                        ),
-                      ),
-                      SizedBox(
-                        width: width,
-                        child: reading(text('tasks'), '${run.kills}'),
-                      ),
-                      SizedBox(
-                        width: width,
-                        child: reading(
-                          '${text('level')} ${run.level.toString().padLeft(2, '0')}',
-                          '${run.xp} / ${run.nextLevelXp} XP',
-                          progress: run.xp / run.nextLevelXp,
-                        ),
+                      TextSpan(
+                        text: 'status --live',
+                        style: TextStyle(color: darkText),
                       ),
                     ],
-                  );
-                },
+                  ),
+                  style: TextStyle(fontSize: 12),
+                ),
               ),
-            ),
-            IconButton(
-              tooltip: text(run.phase == RunPhase.paused ? 'resume' : 'pause'),
-              onPressed: run.phase == RunPhase.running
-                  ? onPause
-                  : run.phase == RunPhase.paused
-                  ? onResume
-                  : null,
-              color: mint,
-              disabledColor: darkMuted.withValues(alpha: 0.3),
-              icon: Icon(
-                run.phase == RunPhase.paused ? Icons.play_arrow : Icons.pause,
-                size: 20,
+              Text(
+                text(switch (run.phase) {
+                  RunPhase.ready => 'standby',
+                  RunPhase.running => 'running',
+                  RunPhase.choosing => 'choosing',
+                  RunPhase.paused => 'paused',
+                  _ => 'terminated',
+                }),
+                style: const TextStyle(color: mint, fontSize: 12),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 18,
-          runSpacing: 6,
-          children: [
-            SizedBox(
-              width: 108,
-              child: Row(
+              const SizedBox(width: 8),
+              IconButton(
+                style: IconButton.styleFrom(
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 28),
+                padding: EdgeInsets.zero,
+                tooltip: text(
+                  run.phase == RunPhase.paused ? 'resume' : 'pause',
+                ),
+                onPressed: run.phase == RunPhase.running
+                    ? onPause
+                    : run.phase == RunPhase.paused
+                    ? onResume
+                    : null,
+                color: mint,
+                disabledColor: darkMuted.withValues(alpha: 0.3),
+                icon: Icon(
+                  run.phase == RunPhase.paused ? Icons.play_arrow : Icons.pause,
+                  size: 18,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final columns = constraints.maxWidth < 500 ? 2 : 4;
+              final width = constraints.maxWidth / columns;
+              return Wrap(
+                runSpacing: 10,
                 children: [
-                  const Icon(Icons.circle, size: 6, color: mint),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      text(switch (run.phase) {
-                        RunPhase.ready => 'standby',
-                        RunPhase.running => 'running',
-                        RunPhase.choosing => 'choosing',
-                        RunPhase.paused => 'paused',
-                        _ => 'terminated',
-                      }),
-                      style: const TextStyle(color: mint, fontSize: 12),
+                  SizedBox(
+                    width: width,
+                    child: reading(
+                      text('hud.memory'),
+                      '${run.health.ceil()}/${run.maxHealth.toInt()} MB',
+                      progress: run.health / run.maxHealth,
+                      key: const Key('memory-status'),
+                      color: run.health / run.maxHealth < 0.3
+                          ? const Color(0xFFFFBA8C)
+                          : mint,
+                    ),
+                  ),
+                  SizedBox(
+                    width: width,
+                    child: reading(
+                      text('hud.uptime'),
+                      '${run.timeLabel}/05:00',
+                      progress: run.elapsed / RunState.duration,
+                    ),
+                  ),
+                  SizedBox(
+                    width: width,
+                    child: reading(text('hud.tasks'), '${run.kills}'),
+                  ),
+                  SizedBox(
+                    width: width,
+                    child: reading(
+                      'lv',
+                      '${run.level} xp=${run.xp}/${run.nextLevelXp}',
+                      progress: run.xp / run.nextLevelXp,
                     ),
                   ),
                 ],
+              );
+            },
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 18,
+            runSpacing: 6,
+            children: [
+              metric(text('targets'), '${run.targetCount}'),
+              metric(text('damage'), run.attackDamage.toStringAsFixed(1)),
+              metric(
+                text('interval'),
+                '${run.attackInterval.toStringAsFixed(2)}s',
               ),
-            ),
-            metric(text('targets'), '${run.targetCount}'),
-            metric(text('damage'), run.attackDamage.toStringAsFixed(1)),
-            metric(
-              text('interval'),
-              '${run.attackInterval.toStringAsFixed(2)} s',
-            ),
-            Text(
-              run.isRush
-                  ? '⚡ ${text('rush')}'
-                  : '${text('nextRush')} ${run.secondsToRush.ceil()}s',
-              style: TextStyle(
-                color: run.isRush ? const Color(0xFFFFBA8C) : darkMuted,
-                fontSize: 12,
+              Text(
+                run.isRush
+                    ? '! ${text('rush')}'
+                    : '${text('nextRush')}=${run.secondsToRush.ceil()}s',
+                style: TextStyle(
+                  color: run.isRush ? const Color(0xFFFFBA8C) : darkMuted,
+                  fontSize: 12,
+                ),
               ),
-            ),
-            if (run.rank(Upgrade.jitCompilation) > 0)
-              status(text('jitStatus', {'stacks': run.abilities.focusStacks})),
-            if (run.rank(Upgrade.memoization) > 0)
-              status(
-                text('echoStatus', {'count': run.abilities.echoes.length}),
-              ),
-            if (run.rank(Upgrade.nullSafety) > 0)
-              status(
-                run.shieldReady
-                    ? text('shieldReady')
-                    : text('shieldCharging', {
-                        'seconds': run.shieldTimer.ceil(),
-                      }),
-              ),
-          ],
-        ),
-      ],
+              if (run.rank(Upgrade.jitCompilation) > 0)
+                status(
+                  text('jitStatus', {'stacks': run.abilities.focusStacks}),
+                ),
+              if (run.rank(Upgrade.memoization) > 0)
+                status(
+                  text('echoStatus', {'count': run.abilities.echoes.length}),
+                ),
+              if (run.rank(Upgrade.nullSafety) > 0)
+                status(
+                  run.shieldReady
+                      ? text('shieldReady')
+                      : text('shieldCharging', {
+                          'seconds': run.shieldTimer.ceil(),
+                        }),
+                ),
+            ],
+          ),
+        ],
+      ),
     ),
   );
 
@@ -164,34 +181,40 @@ class RuntimeHud extends StatelessWidget {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(label, style: const TextStyle(color: darkMuted, fontSize: 11)),
-        const SizedBox(height: 3),
-        Text(
-          value,
-          style: TextStyle(
-            color: color,
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
+        Text.rich(
+          TextSpan(
+            text: '$label=',
+            style: const TextStyle(color: darkMuted, fontSize: 11),
+            children: [
+              TextSpan(
+                text: value,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 4),
         if (progress != null)
           LinearProgressIndicator(
             value: progress.clamp(0, 1),
-            minHeight: 3,
+            minHeight: 2,
             color: color,
             backgroundColor: const Color(0xFF3F5650),
             borderRadius: BorderRadius.circular(2),
           )
         else
-          const SizedBox(height: 3),
+          const SizedBox(height: 2),
       ],
     ),
   );
 
   Widget metric(String label, String value) => Text.rich(
     TextSpan(
-      text: '$label ',
+      text: '$label=',
       style: const TextStyle(color: darkMuted, fontSize: 12),
       children: [
         TextSpan(

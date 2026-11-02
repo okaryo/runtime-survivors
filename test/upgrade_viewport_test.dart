@@ -41,8 +41,28 @@ void main() {
       final game = tester
           .widget<GameWidget<RuntimeGame>>(find.byType(GameWidget<RuntimeGame>))
           .game!;
+      final features = scenario.$2 == 'en'
+          ? [
+              Upgrade.garbageCollection,
+              Upgrade.jitCompilation,
+              Upgrade.memoization,
+              Upgrade.nullSafety,
+            ]
+          : [
+              Upgrade.oop,
+              Upgrade.functional,
+              Upgrade.garbageCollection,
+              Upgrade.concurrency,
+            ];
+      final infra = [
+        Upgrade.memory,
+        Upgrade.cache,
+        Upgrade.pipeline,
+        Upgrade.bandwidth,
+      ];
       game.run.upgrades.addAll({
-        for (final upgrade in Upgrade.values) upgrade: 1,
+        for (final upgrade in features) upgrade: 3,
+        for (final upgrade in infra) upgrade: 2,
       });
       game.run.health = 35;
       game.refresh();
@@ -55,13 +75,12 @@ void main() {
         find.byKey(const Key('design-panel')),
       );
       final acquiredBefore = {
-        for (final upgrade in Upgrade.values)
+        for (final upgrade in game.run.upgrades.keys)
           upgrade: tester.getRect(find.byKey(Key('acquired-${upgrade.name}'))),
       };
       game.run.addExperience(game.run.nextLevelXp);
       game.run.choices = [
-        Upgrade.oop,
-        Upgrade.functional,
+        ...features.where((u) => u != Upgrade.garbageCollection).take(2),
         Upgrade.garbageCollection,
       ];
       game.refresh();
@@ -90,7 +109,11 @@ void main() {
       );
       expect(sidebarAfter.topLeft, sidebarBefore.topLeft);
       expect(sidebarAfter.width, sidebarBefore.width);
-      for (final upgrade in Upgrade.values) {
+      for (final upgrade in game.run.upgrades.keys) {
+        expect(
+          tester.getRect(find.byKey(Key('acquired-${upgrade.name}'))).bottom,
+          lessThanOrEqualTo(scenario.$1.height),
+        );
         expect(
           tester.getRect(find.byKey(Key('acquired-${upgrade.name}'))),
           acquiredBefore[upgrade],
@@ -117,7 +140,7 @@ void main() {
       }
       await tester.tap(find.byType(UpgradeCard).last);
       await tester.pump();
-      expect(game.run.rank(Upgrade.garbageCollection), 2);
+      expect(game.run.rank(Upgrade.garbageCollection), 4);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       settings.dispose();

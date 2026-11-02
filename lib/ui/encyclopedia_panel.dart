@@ -6,6 +6,13 @@ import '../l10n/game_text.dart';
 import 'theme.dart';
 import 'upgrade_icon.dart';
 
+typedef _EncyclopediaEntry = ({
+  Widget heading,
+  Widget body,
+  Widget details,
+  Widget matchup,
+});
+
 class EncyclopediaPanel extends StatelessWidget {
   const EncyclopediaPanel({
     super.key,
@@ -63,16 +70,21 @@ class EncyclopediaPanel extends StatelessWidget {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  sectionLabel(text('taskKinds')),
+                  badge(
+                    text('taskKinds'),
+                    color: const Color(0xFF3D6081),
+                    icon: Icons.hub_outlined,
+                  ),
                   const SizedBox(height: 12),
-                  rows(
+                  _rows(
                     [
                       for (var kind = 0; kind < EnemyType.values.length; kind++)
-                        entry(
+                        _entry(
                           known: discoveries.contains('enemy.$kind'),
                           title: text('enemy.$kind.title'),
                           description: text('enemy.$kind.description'),
                           details: text('enemy.$kind.type'),
+                          matchup: text('enemy.$kind.matchup'),
                           unknown: text('unlockEnemy'),
                           icon: SizedBox(
                             width: 42,
@@ -83,6 +95,7 @@ class EncyclopediaPanel extends StatelessWidget {
                     ],
                     narrow,
                     detailLabel: text('type'),
+                    matchupLabel: text('enemyMatchup'),
                   ),
                   const SizedBox(height: 22),
                   for (final feature in [true, false]) ...[
@@ -92,18 +105,18 @@ class EncyclopediaPanel extends StatelessWidget {
                       icon: feature ? Icons.auto_awesome : Icons.memory,
                     ),
                     const SizedBox(height: 12),
-                    rows([
+                    _rows([
                       for (final upgrade in Upgrade.values.where(
                         (u) => u.isFeature == feature,
                       ))
-                        entry(
+                        _entry(
                           known: discoveries.contains(
                             'upgrade.${upgrade.name}',
                           ),
                           title: text.title(upgrade),
                           description: text.description(upgrade),
-                          details:
-                              '${text('tradeoff')}: ${text.tradeoff(upgrade)}',
+                          details: text.tradeoff(upgrade),
+                          matchup: text.matchup(upgrade),
                           unknown: text('unlockUpgrade'),
                           icon: UpgradeIcon(upgrade: upgrade, size: 42),
                         ),
@@ -119,11 +132,12 @@ class EncyclopediaPanel extends StatelessWidget {
     ),
   );
 
-  ({Widget heading, Widget body, Widget details}) entry({
+  _EncyclopediaEntry _entry({
     required bool known,
     required String title,
     required String description,
     required String details,
+    required String matchup,
     required String unknown,
     required Widget icon,
   }) => (
@@ -151,16 +165,21 @@ class EncyclopediaPanel extends StatelessWidget {
       known ? description : unknown,
       style: const TextStyle(fontSize: 13, height: 1.7, color: muted),
     ),
+    matchup: Text(
+      known ? matchup : text('undiscovered'),
+      style: const TextStyle(fontSize: 13, height: 1.6, color: infraColor),
+    ),
     details: Text(
       known ? details : text('undiscovered'),
       style: const TextStyle(fontSize: 12, height: 1.6, color: muted),
     ),
   );
 
-  Widget rows(
-    List<({Widget heading, Widget body, Widget details})> entries,
+  Widget _rows(
+    List<_EncyclopediaEntry> entries,
     bool narrow, {
     String? detailLabel,
+    String? matchupLabel,
   }) {
     if (narrow) {
       return Column(
@@ -178,7 +197,13 @@ class EncyclopediaPanel extends StatelessWidget {
                   const SizedBox(height: 8),
                   entry.body,
                   const SizedBox(height: 6),
+                  sectionLabel(detailLabel ?? text('tradeoff')),
+                  const SizedBox(height: 4),
                   entry.details,
+                  const SizedBox(height: 8),
+                  sectionLabel(matchupLabel ?? text('matchup')),
+                  const SizedBox(height: 4),
+                  entry.matchup,
                 ],
               ),
             ),
@@ -187,9 +212,10 @@ class EncyclopediaPanel extends StatelessWidget {
     }
     return Table(
       columnWidths: const {
-        0: FixedColumnWidth(250),
-        1: FlexColumnWidth(),
-        2: FixedColumnWidth(240),
+        0: FixedColumnWidth(210),
+        1: FlexColumnWidth(2),
+        2: FlexColumnWidth(),
+        3: FlexColumnWidth(1.3),
       },
       defaultVerticalAlignment: TableCellVerticalAlignment.middle,
       border: const TableBorder(horizontalInside: BorderSide(color: line)),
@@ -200,6 +226,7 @@ class EncyclopediaPanel extends StatelessWidget {
               text('name'),
               text('behavior'),
               detailLabel ?? text('tradeoff'),
+              matchupLabel ?? text('matchup'),
             ])
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
@@ -210,7 +237,12 @@ class EncyclopediaPanel extends StatelessWidget {
         for (final entry in entries)
           TableRow(
             children: [
-              for (final cell in [entry.heading, entry.body, entry.details])
+              for (final cell in [
+                entry.heading,
+                entry.body,
+                entry.details,
+                entry.matchup,
+              ])
                 Padding(
                   padding: const EdgeInsets.fromLTRB(0, 12, 18, 12),
                   child: cell,
