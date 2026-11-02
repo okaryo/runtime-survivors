@@ -38,8 +38,8 @@ void main() {
       game.refresh();
       await tester.pump();
       expect(find.byType(UpgradeCard), findsNWidgets(3));
-      expect(find.text('LANGUAGE FEATURE'), findsAtLeastNWidgets(2));
-      expect(find.text('INFRASTRUCTURE'), findsAtLeastNWidgets(2));
+      expect(find.text('FEATURE'), findsWidgets);
+      expect(find.text('INFRA'), findsWidgets);
       final selected = tester
           .widget<UpgradeCard>(find.byType(UpgradeCard).first)
           .upgrade;

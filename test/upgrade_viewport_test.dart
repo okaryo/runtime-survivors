@@ -8,6 +8,7 @@ import 'package:runtime_survivors/game/runtime_game.dart';
 import 'package:runtime_survivors/l10n/game_text.dart';
 import 'package:runtime_survivors/ui/upgrade_card.dart';
 import 'package:runtime_survivors/ui/upgrade_choices.dart';
+import 'package:runtime_survivors/ui/selection_build.dart';
 
 void main() {
   for (final scenario in [
@@ -38,6 +39,10 @@ void main() {
       final game = tester
           .widget<GameWidget<RuntimeGame>>(find.byType(GameWidget<RuntimeGame>))
           .game!;
+      game.run.upgrades.addAll({
+        for (final upgrade in Upgrade.values) upgrade: 1,
+      });
+      game.run.health = 35;
       game.run.addExperience(game.run.nextLevelXp);
       game.run.choices = [
         Upgrade.oop,
@@ -51,7 +56,17 @@ void main() {
         find.descendant(of: panel, matching: find.byType(Scrollable)),
         findsNothing,
       );
-      expect(find.text(text('implement')).hitTestable(), findsNWidgets(3));
+      expect(find.byType(UpgradeCard).hitTestable(), findsNWidgets(3));
+      expect(find.byType(AcquiredUpgrade).hitTestable(), findsNWidgets(8));
+      final arenaRect = tester.getRect(find.byType(GameWidget<RuntimeGame>));
+      final panelRect = tester.getRect(panel);
+      expect(panelRect, arenaRect);
+      final hpRect = tester.getRect(find.byKey(const Key('memory-status')));
+      expect(hpRect.top, greaterThanOrEqualTo(0));
+      expect(hpRect.bottom, lessThanOrEqualTo(panelRect.top));
+      final buildRect = tester.getRect(find.byType(SelectionBuild));
+      expect(buildRect.top, greaterThanOrEqualTo(0));
+      expect(buildRect.bottom, lessThanOrEqualTo(scenario.$1.height));
       for (final card in find.byType(UpgradeCard).evaluate()) {
         final rect = tester.getRect(find.byWidget(card.widget));
         expect(rect.top, greaterThanOrEqualTo(0));
@@ -61,7 +76,7 @@ void main() {
       }
       await tester.tap(find.byType(UpgradeCard).last);
       await tester.pump();
-      expect(game.run.rank(Upgrade.garbageCollection), 1);
+      expect(game.run.rank(Upgrade.garbageCollection), 2);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       settings.dispose();

@@ -12,211 +12,169 @@ class UpgradeCard extends StatelessWidget {
     required this.run,
     required this.text,
     required this.onChoose,
-    this.dense = false,
-    this.compact = false,
+    this.onInspect,
+    this.focusNode,
+    this.inspected = false,
+    this.horizontal = false,
   });
   final Upgrade upgrade;
   final int index;
   final RunState run;
   final GameText text;
   final VoidCallback onChoose;
-  final bool dense;
-  final bool compact;
-
-  String get rankLabel => text('nextRank', {
-    'from': run.rank(upgrade),
-    'to': run.rank(upgrade) + 1,
-  });
-  Widget gap(double size) => SizedBox(height: dense ? size * 0.55 : size);
+  final VoidCallback? onInspect;
+  final FocusNode? focusNode;
+  final bool inspected;
+  final bool horizontal;
 
   @override
   Widget build(BuildContext context) {
-    final feature = upgrade.isFeature;
-    final color = feature ? featureColor : infraColor;
-    return Material(
-      color: feature ? const Color(0xFFFFF3E5) : const Color(0xFFEDF6F1),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(feature ? 14 : 4),
-        side: BorderSide(color: color.withValues(alpha: 0.6), width: 2),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onChoose,
-        child: Padding(
-          padding: EdgeInsets.all(
-            compact
-                ? 12
-                : dense
-                ? 14
-                : 18,
+    final color = upgrade.isFeature ? featureColor : infraColor;
+    final comparisons = text.comparisons(run.preview(upgrade));
+    final details = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final comparison in comparisons)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 3),
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: '${comparison.cost ? '⚠ ' : ''}${comparison.label} ',
+                  ),
+                  TextSpan(
+                    text: comparison.values,
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ],
+              ),
+              key: Key(
+                'preview-${upgrade.name}-${comparisons.indexOf(comparison)}',
+              ),
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.4,
+                color: comparison.cost ? featureColor : ink,
+              ),
+            ),
           ),
-          child: compact
-              ? compactBody(color)
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+        if (!comparisons.any((c) => c.cost))
+          Text(
+            '${text('tradeoff')}: ${text('noTradeoff')}',
+            style: const TextStyle(fontSize: 11, height: 1.4, color: muted),
+          ),
+      ],
+    );
+    final nameAndSummary = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          text.title(upgrade),
+          style: const TextStyle(
+            fontSize: 16,
+            height: 1.25,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          text.summary(upgrade),
+          style: const TextStyle(fontSize: 13, height: 1.45),
+        ),
+      ],
+    );
+    return Semantics(
+      button: true,
+      hint: text.description(upgrade),
+      child: Material(
+        color: upgrade.isFeature
+            ? const Color(0xFFFFF3E5)
+            : const Color(0xFFEDF6F1),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(upgrade.isFeature ? 12 : 4),
+          side: BorderSide(
+            color: inspected ? color : color.withValues(alpha: 0.45),
+            width: inspected ? 2.5 : 1.2,
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          focusNode: focusNode,
+          onTap: onChoose,
+          onHover: (hovering) {
+            if (hovering) onInspect?.call();
+          },
+          onFocusChange: (focused) {
+            if (focused) onInspect?.call();
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
                   children: [
-                    category(color),
-                    gap(17),
-                    Row(
-                      children: [
-                        Text(
-                          upgrade.symbol,
-                          style: TextStyle(
-                            fontSize: dense ? 23 : 27,
-                            color: color,
-                            fontWeight: FontWeight.w800,
-                          ),
+                    Icon(
+                      upgrade.isFeature ? Icons.auto_awesome : Icons.memory,
+                      size: 14,
+                      color: color,
+                    ),
+                    const SizedBox(width: 5),
+                    Expanded(
+                      child: Text(
+                        text(upgrade.isFeature ? 'featureBadge' : 'infraBadge'),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: color,
+                          fontWeight: FontWeight.w800,
                         ),
-                        const Spacer(),
-                        shortcut(color),
-                      ],
-                    ),
-                    gap(12),
-                    Text(
-                      text.title(upgrade),
-                      style: TextStyle(
-                        fontSize: dense ? 17 : 19,
-                        fontWeight: FontWeight.w800,
-                        height: 1.25,
                       ),
                     ),
-                    gap(5),
                     Text(
-                      rankLabel,
-                      style: const TextStyle(fontSize: 12, color: muted),
-                    ),
-                    gap(14),
-                    Text(
-                      text.description(upgrade),
+                      run.rank(upgrade) == 0
+                          ? text('newUpgrade')
+                          : 'Lv.${run.rank(upgrade)} → ${run.rank(upgrade) + 1}',
                       style: TextStyle(
-                        fontSize: dense ? 13 : 14,
-                        height: dense ? 1.45 : 1.6,
-                      ),
-                    ),
-                    gap(16),
-                    sectionLabel(text('change')),
-                    gap(6),
-                    Text(
-                      text.change(upgrade, run),
-                      style: TextStyle(
-                        fontSize: dense ? 13 : 14,
-                        height: 1.5,
+                        fontSize: 11,
                         color: color,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    gap(16),
-                    sectionLabel(text('tradeoff')),
-                    gap(6),
+                    const SizedBox(width: 6),
                     Text(
-                      text.tradeoff(upgrade),
-                      style: const TextStyle(fontSize: 12, height: 1.5),
+                      '[${index + 1}]',
+                      style: TextStyle(fontSize: 11, color: color),
                     ),
-                    gap(20),
-                    implement(color),
+                    const SizedBox(width: 6),
+                    Tooltip(
+                      triggerMode: TooltipTriggerMode.tap,
+                      message:
+                          '${text.description(upgrade)}\n${text.tradeoff(upgrade)}',
+                      child: Icon(Icons.info_outline, size: 14, color: color),
+                    ),
                   ],
                 ),
+                const SizedBox(height: 7),
+                if (horizontal)
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(flex: 5, child: nameAndSummary),
+                      const SizedBox(width: 12),
+                      Expanded(flex: 6, child: details),
+                    ],
+                  )
+                else ...[
+                  nameAndSummary,
+                  const SizedBox(height: 9),
+                  details,
+                ],
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
-
-  Widget shortcut(Color color) => Text(
-    '[${index + 1}]',
-    style: TextStyle(fontFamily: 'monospace', color: color, fontSize: 13),
-  );
-  Widget category(Color color) => badge(
-    text.category(upgrade),
-    color: color,
-    icon: upgrade.isFeature ? Icons.auto_awesome : Icons.memory,
-  );
-  Widget implement(Color color) => Row(
-    children: [
-      Text(
-        text('implement'),
-        style: TextStyle(
-          color: color,
-          fontSize: 13,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-      const Spacer(),
-      Icon(Icons.arrow_forward, color: color, size: 18),
-    ],
-  );
-
-  Widget compactBody(Color color) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      Row(
-        children: [
-          SizedBox(
-            width: 36,
-            child: Text(
-              upgrade.symbol,
-              style: TextStyle(
-                fontSize: 21,
-                color: color,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              text.title(upgrade),
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-            ),
-          ),
-          const SizedBox(width: 8),
-          shortcut(color),
-        ],
-      ),
-      const SizedBox(height: 6),
-      Wrap(
-        spacing: 10,
-        runSpacing: 5,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          category(color),
-          Text(rankLabel, style: const TextStyle(fontSize: 12, color: muted)),
-        ],
-      ),
-      const SizedBox(height: 8),
-      Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Text(
-              text.description(upgrade),
-              style: const TextStyle(fontSize: 12, height: 1.5),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  text.change(upgrade, run),
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 12,
-                    height: 1.5,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '${text('tradeoff')}: ${text.tradeoff(upgrade)}',
-                  style: const TextStyle(fontSize: 12, height: 1.5),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-      const SizedBox(height: 8),
-      implement(color),
-    ],
-  );
 }

@@ -12,6 +12,7 @@ import '../settings.dart';
 import 'theme.dart';
 import 'codex_panel.dart';
 import 'upgrade_choices.dart';
+import 'selection_build.dart';
 
 class RuntimeScreen extends StatefulWidget {
   const RuntimeScreen({super.key, required this.settings});
@@ -24,6 +25,34 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
   final run = RunState();
   late final game = RuntimeGame(run);
   final focus = FocusNode();
+  final _choiceFocus = FocusNode();
+  final _pageScroll = ScrollController();
+  final _gameWidgetKey = GlobalKey();
+  List<Upgrade>? _inspectionChoices;
+  Upgrade? _inspectedUpgrade;
+
+  Upgrade? get inspectedUpgrade {
+    if (run.phase != RunPhase.choosing || run.choices.isEmpty) return null;
+    if (!identical(_inspectionChoices, run.choices)) {
+      _inspectionChoices = run.choices;
+      _inspectedUpgrade = run.choices.first;
+    }
+    return _inspectedUpgrade;
+  }
+
+  void restoreFocus() {
+    // Wait for choice nodes and Web semantics to be attached after transitions.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _modalOpen) return;
+      (run.phase == RunPhase.choosing ? _choiceFocus : focus).requestFocus();
+    });
+  }
+
+  void inspect(Upgrade upgrade) {
+    if (run.phase != RunPhase.choosing || inspectedUpgrade == upgrade) return;
+    setState(() => _inspectedUpgrade = upgrade);
+  }
+
   final audio = GameAudio();
   late final AppLifecycleListener lifecycle;
   bool _codexOpen = false;
@@ -34,8 +63,13 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
   void initState() {
     super.initState();
     game.onSound = audio.play;
-    game.onPhaseChanged = (phase) =>
-        audio.setMusicPlaying(phase == RunPhase.running);
+    game.onPhaseChanged = (phase) {
+      audio.setMusicPlaying(phase == RunPhase.running);
+      if (phase == RunPhase.choosing) {
+        if (_pageScroll.hasClients) _pageScroll.jumpTo(0);
+        restoreFocus();
+      }
+    };
     game.onDiscover = widget.settings.discover;
     lifecycle = AppLifecycleListener(onInactive: pause, onHide: pause);
   }
@@ -52,7 +86,7 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
     game.inputBlocked = _modalOpen;
     run.start();
     game.refresh();
-    focus.requestFocus();
+    restoreFocus();
   }
 
   void resume() {
@@ -62,7 +96,7 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
     audio.unlock();
     run.resume();
     game.refresh();
-    focus.requestFocus();
+    restoreFocus();
   }
 
   void choose(Upgrade upgrade) {
@@ -72,7 +106,7 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
     audio.unlock();
     run.choose(upgrade);
     game.refresh();
-    focus.requestFocus();
+    restoreFocus();
   }
 
   @override
@@ -82,6 +116,8 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
     game.onPhaseChanged = null;
     game.onDiscover = null;
     audio.dispose();
+    _pageScroll.dispose();
+    _choiceFocus.dispose();
     focus.dispose();
     super.dispose();
   }
@@ -96,7 +132,7 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
       if (mounted) {
         _modalOpen = false;
         game.inputBlocked = _codexOpen;
-        focus.requestFocus();
+        restoreFocus();
       }
     }
   }
@@ -113,88 +149,178 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
         valueListenable: game.revision,
         builder: (context, _, _) => LayoutBuilder(
           builder: (context, constraints) {
-            final wide = constraints.maxWidth >= 1180;
+            final selecting = run.phase == RunPhase.choosing;
+            final beside = constraints.maxWidth >= (selecting ? 1000 : 1180);
+            final compactSelection = selecting && !beside;
             final compact = constraints.maxWidth < 720;
-            final arenaHeight = max(
-              320.0,
-              min(740.0, constraints.maxHeight - 310),
-            );
-            return Stack(
-              children: [
-                SingleChildScrollView(
-                  padding: EdgeInsets.fromLTRB(
-                    compact ? 16 : 30,
-                    22,
-                    compact ? 16 : 30,
-                    20,
-                  ),
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 1600),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          header(compact),
-                          const SizedBox(height: 22),
-                          stats(compact),
-                          const SizedBox(height: 18),
-                          if (wide)
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(child: arena(arenaHeight)),
-                                const SizedBox(width: 20),
-                                SizedBox(width: 300, child: designPanel()),
-                              ],
-                            )
-                          else ...[
-                            arena(arenaHeight),
-                            const SizedBox(height: 16),
-                            designPanel(),
-                          ],
-                          const SizedBox(height: 14),
-                          Text(
-                            text('controls'),
-                            style: const TextStyle(fontSize: 12, color: muted),
+            final arenaHeight = compactSelection
+                ? max(260.0, min(520.0, constraints.maxHeight - 300))
+                : max(320.0, min(740.0, constraints.maxHeight - 310));
+            return SingleChildScrollView(
+              controller: _pageScroll,
+              padding: EdgeInsets.fromLTRB(
+                compact ? 16 : 30,
+                compactSelection ? 12 : 22,
+                compact ? 16 : 30,
+                20,
+              ),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1600),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (compactSelection) ...[
+                        SizedBox(
+                          height: max(0, constraints.maxHeight - 24),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              selectionHeader(),
+                              const SizedBox(height: 8),
+                              selectionMemory(),
+                              const SizedBox(height: 8),
+                              SelectionBuild(
+                                run: run,
+                                text: text,
+                                inspected: inspectedUpgrade,
+                                inline: true,
+                              ),
+                              const SizedBox(height: 8),
+                              Expanded(
+                                child: LayoutBuilder(
+                                  builder: (context, available) =>
+                                      arena(max(0, available.maxHeight - 48)),
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 18),
-                          CodexPanel(
-                            text: text,
-                            discoveries: widget.settings.discoveries,
-                            expanded: _codexOpen,
-                            onToggle: () {
-                              if (!_codexOpen) pause();
-                              setState(() => _codexOpen = !_codexOpen);
-                              game.inputBlocked = _codexOpen || _modalOpen;
-                              if (!_codexOpen) focus.requestFocus();
-                            },
-                          ),
+                        ),
+                      ] else ...[
+                        header(compact),
+                        const SizedBox(height: 22),
+                        stats(compact),
+                        const SizedBox(height: 18),
+                        if (beside)
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(child: arena(arenaHeight)),
+                              const SizedBox(width: 20),
+                              SizedBox(
+                                width: constraints.maxWidth < 1180 ? 260 : 300,
+                                child: selecting
+                                    ? SelectionBuild(
+                                        run: run,
+                                        text: text,
+                                        inspected: inspectedUpgrade,
+                                      )
+                                    : designPanel(),
+                              ),
+                            ],
+                          )
+                        else ...[
+                          arena(arenaHeight),
+                          const SizedBox(height: 16),
+                          designPanel(),
                         ],
+                      ],
+                      const SizedBox(height: 14),
+                      Text(
+                        text('controls'),
+                        style: const TextStyle(fontSize: 12, color: muted),
                       ),
-                    ),
+                      const SizedBox(height: 18),
+                      CodexPanel(
+                        text: text,
+                        discoveries: widget.settings.discoveries,
+                        expanded: _codexOpen,
+                        onToggle: () {
+                          if (!_codexOpen) pause();
+                          setState(() => _codexOpen = !_codexOpen);
+                          game.inputBlocked = _codexOpen || _modalOpen;
+                          if (!_codexOpen) restoreFocus();
+                        },
+                      ),
+                    ],
                   ),
                 ),
-                if (run.phase == RunPhase.choosing)
-                  Positioned.fill(
-                    child: UpgradeChoices(
-                      run: run,
-                      text: text,
-                      onChoose: choose,
-                      onLanguageToggle: () {
-                        widget.settings.update(
-                          language: text.isJapanese ? 'en' : 'ja',
-                        );
-                        focus.requestFocus();
-                      },
-                    ),
-                  ),
-              ],
+              ),
             );
           },
         ),
       ),
     );
   }
+
+  Widget selectionHeader() => Row(
+    children: [
+      const Expanded(
+        child: Text(
+          'Runtime Survivors',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+      TextButton(
+        key: const Key('language-toggle'),
+        onPressed: () {
+          widget.settings.update(language: text.isJapanese ? 'en' : 'ja');
+          restoreFocus();
+        },
+        child: Text(text.isJapanese ? 'EN' : '日本語'),
+      ),
+      IconButton(
+        tooltip: text('settings'),
+        onPressed: settingsDialog,
+        icon: const Icon(Icons.tune, size: 20),
+      ),
+      IconButton(
+        tooltip: text('help'),
+        onPressed: help,
+        icon: const Icon(Icons.help_outline, size: 20),
+      ),
+    ],
+  );
+
+  Widget selectionMemory() => Container(
+    key: const Key('memory-status'),
+    padding: const EdgeInsets.all(10),
+    decoration: BoxDecoration(
+      color: const Color(0xFFFAFAF5),
+      border: Border.all(color: line),
+      borderRadius: BorderRadius.circular(7),
+    ),
+    child: Column(
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.memory, size: 18, color: orange),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                text('memory'),
+                style: const TextStyle(fontSize: 12, color: muted),
+              ),
+            ),
+            Text(
+              '${run.health.ceil()} / ${run.maxHealth.toInt()} HP',
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(width: 14),
+            Text('Lv.${run.level}', style: const TextStyle(fontSize: 12)),
+          ],
+        ),
+        const SizedBox(height: 6),
+        LinearProgressIndicator(
+          value: (run.health / run.maxHealth).clamp(0, 1),
+          color: orange,
+          backgroundColor: line,
+          minHeight: 4,
+        ),
+      ],
+    ),
+  );
 
   Widget header(bool compact) => Wrap(
     alignment: WrapAlignment.spaceBetween,
@@ -253,7 +379,7 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
             onPressed: () {
               run.movement.setZero();
               widget.settings.update(language: text.isJapanese ? 'en' : 'ja');
-              focus.requestFocus();
+              restoreFocus();
             },
             icon: const Icon(Icons.translate, size: 18),
             label: Text(text.isJapanese ? 'English' : '日本語'),
@@ -270,7 +396,7 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
               );
               if (!widget.settings.muted) audio.play(SoundCue.select);
               run.movement.setZero();
-              focus.requestFocus();
+              restoreFocus();
             },
             icon: Icon(
               widget.settings.muted
@@ -303,6 +429,7 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
         Icons.memory,
         run.health / run.maxHealth,
         orange,
+        key: const Key('memory-status'),
       ),
       stat(
         text('uptime'),
@@ -362,8 +489,10 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
     String suffix,
     IconData icon,
     double? progress,
-    Color color,
-  ) => Container(
+    Color color, {
+    Key? key,
+  }) => Container(
+    key: key,
     height: 101,
     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
     decoration: BoxDecoration(
@@ -478,7 +607,11 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
             children: [
               Positioned.fill(
                 child: ClipRect(
-                  child: GameWidget(game: game, focusNode: focus),
+                  child: GameWidget(
+                    key: _gameWidgetKey,
+                    game: game,
+                    focusNode: focus,
+                  ),
                 ),
               ),
               if (run.phase == RunPhase.running)
@@ -508,6 +641,17 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
                         ),
                       ),
                     ),
+                  ),
+                ),
+              if (run.phase == RunPhase.choosing)
+                Positioned.fill(
+                  child: UpgradeChoices(
+                    run: run,
+                    text: text,
+                    onChoose: choose,
+                    focusNode: _choiceFocus,
+                    onInspect: inspect,
+                    inspected: inspectedUpgrade,
                   ),
                 ),
               if (run.phase != RunPhase.running &&

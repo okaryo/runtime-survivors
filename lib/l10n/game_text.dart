@@ -18,42 +18,97 @@ class GameText {
   String tradeoff(Upgrade upgrade) => call('${upgrade.name}.tradeoff');
   String category(Upgrade upgrade) =>
       call(upgrade.isFeature ? 'feature' : 'infra');
-  String change(Upgrade upgrade, RunState run) {
-    final rank = run.rank(upgrade);
+  String shortTitle(Upgrade upgrade) => call('${upgrade.name}.short');
+  String summary(Upgrade upgrade) => call('${upgrade.name}.summary');
+  List<UpgradeComparison> comparisons(UpgradePreview preview) {
+    final before = preview.before;
+    final after = preview.after;
+    final upgrade = preview.upgrade;
+    final first = before.rank(upgrade) == 0;
+    String number(double value) => value == value.roundToDouble()
+        ? value.toInt().toString()
+        : value.toStringAsFixed(1);
+    UpgradeComparison metric(
+      String label,
+      Object from,
+      Object to, {
+      bool cost = false,
+    }) => UpgradeComparison(call(label), '$from', '$to', cost: cost);
+    UpgradeComparison hp({bool cost = false}) => metric(
+      'stat.hp',
+      '${number(preview.beforeHealth)}/${number(before.maxHealth)}',
+      '${number(preview.afterHealth)}/${number(after.maxHealth)}',
+      cost: cost,
+    );
     return switch (upgrade) {
-      Upgrade.garbageCollection => call('gc.change', {
-        'radius': 115 + (rank + 1) * 18,
-        'damage': 22 + (rank + 1) * 14,
-      }),
-      Upgrade.concurrency => call('concurrency.change', {
-        'from': run.targetCount,
-        'to': run.targetCount + 1,
-      }),
-      Upgrade.oop => call('oop.change', {
-        'count': rank + 1,
-        'damage': 16 + (rank + 1) * 4,
-        'hp': (run.maxHealth - 5).toInt(),
-      }),
-      Upgrade.functional => call('functional.change', {
-        'jumps': rank + 1,
-        'range': (run.attackRange - 15).toInt(),
-      }),
-      Upgrade.memory => call('memory.change', {
-        'from': run.maxHealth.toInt(),
-        'to': run.maxHealth.toInt() + 25,
-      }),
-      Upgrade.clock => call('clock.change', {
-        'from': run.speed.round(),
-        'to': (run.speed * 1.12).round(),
-      }),
-      Upgrade.cache => call('cache.change', {
-        'from': run.pickupRadius.toInt(),
-        'to': run.pickupRadius.toInt() + 35,
-      }),
-      Upgrade.compiler => call('compiler.change', {
-        'from': run.attackDamage.toStringAsFixed(1),
-        'to': (run.attackDamage * 1.25).toStringAsFixed(1),
-      }),
+      Upgrade.garbageCollection => [
+        metric(
+          'stat.pulseDamage',
+          first ? '—' : number(before.gcDamage),
+          number(after.gcDamage),
+        ),
+        metric(
+          'stat.radius',
+          first ? '—' : number(before.gcRadius),
+          number(after.gcRadius),
+        ),
+        metric(
+          'stat.interval',
+          '${before.attackInterval.toStringAsFixed(2)}s',
+          '${after.attackInterval.toStringAsFixed(2)}s',
+          cost: true,
+        ),
+      ],
+      Upgrade.concurrency => [
+        metric('stat.targets', before.targetCount, after.targetCount),
+        metric(
+          'stat.damage',
+          before.attackDamage.toStringAsFixed(1),
+          after.attackDamage.toStringAsFixed(1),
+          cost: true,
+        ),
+      ],
+      Upgrade.oop => [
+        metric('stat.objects', before.rank(upgrade), after.rank(upgrade)),
+        metric(
+          'stat.objectDamage',
+          first ? '—' : number(before.objectDamage),
+          number(after.objectDamage),
+        ),
+        hp(cost: true),
+      ],
+      Upgrade.functional => [
+        metric('stat.jumps', before.rank(upgrade), after.rank(upgrade)),
+        metric(
+          'stat.range',
+          number(before.attackRange),
+          number(after.attackRange),
+          cost: true,
+        ),
+      ],
+      Upgrade.memory => [hp()],
+      Upgrade.clock => [
+        metric('stat.speed', before.speed.round(), after.speed.round()),
+      ],
+      Upgrade.cache => [
+        metric(
+          'stat.pickup',
+          number(before.pickupRadius),
+          number(after.pickupRadius),
+        ),
+        metric(
+          'stat.range',
+          number(before.attackRange),
+          number(after.attackRange),
+        ),
+      ],
+      Upgrade.compiler => [
+        metric(
+          'stat.damage',
+          before.attackDamage.toStringAsFixed(1),
+          after.attackDamage.toStringAsFixed(1),
+        ),
+      ],
     };
   }
 
@@ -63,6 +118,55 @@ class GameText {
   });
 
   static const copy = <String, List<String>>{
+    'currentBuild': ['現在のビルド', 'Current build'],
+    'inspectHint': ['カードにカーソルを合わせて比較', 'Hover or focus a card to compare'],
+    'newUpgrade': ['新規', 'NEW'],
+    'featureBadge': ['言語機能', 'FEATURE'],
+    'infraBadge': ['基盤強化', 'INFRA'],
+    'choicesControls': [
+      '1 / 2 / 3 またはクリック · ⚠ トレードオフ',
+      'Click or 1 / 2 / 3 · ⚠ Tradeoff',
+    ],
+    'stat.hp': ['HP', 'HP'],
+    'stat.pulseDamage': ['範囲攻撃の威力', 'Pulse damage'],
+    'stat.radius': ['範囲', 'Radius'],
+    'stat.interval': ['攻撃間隔', 'Interval'],
+    'stat.targets': ['同時攻撃数', 'Targets'],
+    'stat.damage': ['通常攻撃の威力', 'Base damage'],
+    'stat.objects': ['オブジェクト数', 'Objects'],
+    'stat.objectDamage': ['各オブジェクトの威力', 'Object damage'],
+    'stat.jumps': ['連鎖回数', 'Chain jumps'],
+    'stat.range': ['索敵範囲', 'Target range'],
+    'stat.speed': ['移動速度', 'Move speed'],
+    'stat.pickup': ['経験値の回収範囲', 'Pickup radius'],
+    'garbageCollection.short': ['GC', 'GC'],
+    'garbageCollection.summary': [
+      '3秒ごとに周囲をまとめて攻撃。',
+      'Area pulse every 3 seconds.',
+    ],
+    'concurrency.short': ['並行処理', 'Concurrency'],
+    'concurrency.summary': [
+      '近くの複数のタスクを同時攻撃。',
+      'Attacks multiple nearby tasks.',
+    ],
+    'oop.short': ['オブジェクト指向', 'OOP'],
+    'oop.summary': ['周囲のオブジェクトが自律攻撃。', 'Orbiting objects attack on their own.'],
+    'functional.short': ['関数型', 'Functional'],
+    'functional.summary': [
+      '通常攻撃が連鎖。1回ごとに威力70%。',
+      'Base attacks chain at 70% damage per jump.',
+    ],
+    'memory.short': ['メモリ', 'Memory'],
+    'memory.summary': ['最大HPを増やし、HPを回復。', 'Adds max HP and restores memory.'],
+    'clock.short': ['クロック', 'Clock'],
+    'clock.summary': ['移動速度を上げる。', 'Moves your runtime faster.'],
+    'cache.short': ['キャッシュ', 'Cache'],
+    'cache.summary': ['経験値回収と索敵の範囲を拡大。', 'Expands pickup and targeting range.'],
+    'compiler.short': ['最適化', 'Compiler'],
+    'compiler.summary': [
+      '通常攻撃と、その連鎖の威力を強化。',
+      'Boosts base attacks and their chains.',
+    ],
     'tagline': [
       'タスクを処理し、自分だけの言語を設計しよう。',
       'Survive the tasks. Design your language.',
@@ -222,10 +326,6 @@ class GameText {
       '通常攻撃の間隔 +0.08秒 / ランク',
       'Base attack interval +0.08 s per rank',
     ],
-    'gc.change': [
-      '範囲 {radius} / 威力 {damage}',
-      'Radius {radius} / damage {damage}',
-    ],
     'concurrency.title': ['並行処理', 'Concurrency'],
     'concurrency.description': [
       '近くの複数のタスクに、同時に攻撃します。',
@@ -235,20 +335,12 @@ class GameText {
       '通常攻撃の単発威力 ×0.88 / ランク',
       'Base damage per shot ×0.88 per rank',
     ],
-    'concurrency.change': [
-      '同時攻撃数 {from} → {to}',
-      'Attack targets {from} → {to}',
-    ],
     'oop.title': ['オブジェクト指向', 'Object-Oriented Programming'],
     'oop.description': [
       '周囲を回るオブジェクトが、それぞれ独立して攻撃します。0.9秒ごとに近くのタスクを狙います。',
       'Orbiting objects independently attack nearby tasks every 0.9 seconds.',
     ],
     'oop.tradeoff': ['最大メモリ −5 HP / ランク', 'Maximum memory −5 HP per rank'],
-    'oop.change': [
-      'オブジェクト {count}体 / 威力 {damage} / 最大HP {hp}',
-      'Objects: {count} / damage {damage} / max HP {hp}',
-    ],
     'functional.title': ['関数型プログラミング', 'Functional Programming'],
     'functional.description': [
       '通常攻撃が命中すると、近くの別のタスクへ連鎖。連鎖ごとに威力が70%になります。',
@@ -257,10 +349,6 @@ class GameText {
     'functional.tradeoff': [
       '通常攻撃の索敵範囲 −15 / ランク',
       'Base attack targeting range −15 per rank',
-    ],
-    'functional.change': [
-      '最大 {jumps}回連鎖 / 索敵範囲 {range}',
-      'Chain jumps: {jumps} / targeting range {range}',
     ],
     'enemy.0.type': ['通常タスク', 'Standard task'],
     'enemy.1.type': ['高速タスク', 'Fast task'],
@@ -292,39 +380,38 @@ class GameText {
       'Expands your memory capacity and restores current HP.',
     ],
     'memory.tradeoff': ['なし', 'None'],
-    'memory.change': [
-      '最大HP {from} → {to} / HPを35回復',
-      'Max HP {from} → {to} / restores 35 HP',
-    ],
     'clock.title': ['クロックアップ', 'Clock Speed'],
     'clock.description': [
       '移動速度を上げ、タスクを避けやすくします。',
       'Moves your runtime faster to help dodge tasks.',
     ],
     'clock.tradeoff': ['なし', 'None'],
-    'clock.change': [
-      '移動速度 {from} → {to}（+12%）',
-      'Movement speed {from} → {to} (+12%)',
-    ],
     'cache.title': ['キャッシュ強化', 'Cache Locality'],
     'cache.description': [
       '経験値を遠くから回収でき、攻撃範囲も広がります。',
       'Collects experience from farther away and extends attack range.',
     ],
     'cache.tradeoff': ['なし', 'None'],
-    'cache.change': [
-      '回収範囲 {from} → {to} / 攻撃範囲 +20',
-      'Pickup radius {from} → {to} / attack range +20',
-    ],
     'compiler.title': ['コンパイラ最適化', 'Compiler Optimization'],
     'compiler.description': [
       '通常攻撃1発あたりの威力を上げます。',
       'Increases the damage of every base attack.',
     ],
     'compiler.tradeoff': ['なし', 'None'],
-    'compiler.change': [
-      '通常攻撃の威力 {from} → {to}（+25%）',
-      'Base damage {from} → {to} (+25%)',
-    ],
   };
+}
+
+/// A displayed stat change, marked explicitly when it is a tradeoff.
+class UpgradeComparison {
+  const UpgradeComparison(
+    this.label,
+    this.before,
+    this.after, {
+    this.cost = false,
+  });
+  final String label;
+  final String before;
+  final String after;
+  final bool cost;
+  String get values => '$before → $after';
 }

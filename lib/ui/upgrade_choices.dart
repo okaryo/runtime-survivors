@@ -1,142 +1,129 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../game/run_state.dart';
 import '../l10n/game_text.dart';
 import 'theme.dart';
 import 'upgrade_card.dart';
 
-/// Uses the viewport rather than the smaller arena. Every choice stays visible.
+/// Only the arena is covered. HP and the acquired build remain available.
 class UpgradeChoices extends StatelessWidget {
   const UpgradeChoices({
     super.key,
     required this.run,
     required this.text,
     required this.onChoose,
-    required this.onLanguageToggle,
+    required this.onInspect,
+    required this.inspected,
+    this.focusNode,
   });
   final RunState run;
   final GameText text;
   final ValueChanged<Upgrade> onChoose;
-  final VoidCallback onLanguageToggle;
+  final ValueChanged<Upgrade> onInspect;
+  final Upgrade? inspected;
+  final FocusNode? focusNode;
 
   @override
-  Widget build(BuildContext context) => BlockSemantics(
-    child: ColoredBox(
-      key: const Key('upgrade-choices'),
-      color: const Color(0xFF102022).withValues(alpha: 0.98),
-      child: SafeArea(
+  Widget build(BuildContext context) => FocusTraversalGroup(
+    child: Focus(
+      skipTraversal: true,
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent) {
+          final index = [
+            LogicalKeyboardKey.digit1,
+            LogicalKeyboardKey.digit2,
+            LogicalKeyboardKey.digit3,
+          ].indexOf(event.logicalKey);
+          if (index >= 0 && index < run.choices.length) {
+            onChoose(run.choices[index]);
+            return KeyEventResult.handled;
+          }
+        }
+        return KeyEventResult.ignored;
+      },
+      child: ColoredBox(
+        key: const Key('upgrade-choices'),
+        color: const Color(0xFF102022).withValues(alpha: 0.94),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(10),
           child: LayoutBuilder(
-            builder: (context, constraints) {
-              final narrow = constraints.maxWidth < 760;
-              final dense = constraints.maxHeight < 760;
-              // Only extreme viewports/text scaling need downscaling; no nested scroll.
-              return Center(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: SizedBox(
-                    width: min(1120, constraints.maxWidth),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Row(
+            builder: (context, constraints) => Center(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: SizedBox(
+                  width: constraints.maxWidth,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              text('choicesTitle'),
+                              style: const TextStyle(
+                                color: darkText,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            'Lv.${run.level}',
+                            style: const TextStyle(color: mint, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 9),
+                      if (constraints.maxWidth < 620)
+                        Column(
                           children: [
-                            Expanded(
-                              child: Text(
-                                '${text('level')} ${run.level}',
-                                style: const TextStyle(
-                                  color: mint,
-                                  fontSize: 13,
+                            for (var i = 0; i < run.choices.length; i++)
+                              Padding(
+                                padding: EdgeInsets.only(
+                                  bottom: i == run.choices.length - 1 ? 0 : 6,
                                 ),
+                                child: card(i, horizontal: true),
                               ),
-                            ),
-                            TextButton.icon(
-                              key: const Key('choice-language-toggle'),
-                              onPressed: onLanguageToggle,
-                              icon: const Icon(Icons.translate, size: 17),
-                              label: Text(text.isJapanese ? 'English' : '日本語'),
-                              style: TextButton.styleFrom(
-                                foregroundColor: mint,
-                              ),
-                            ),
                           ],
-                        ),
-                        Text(
-                          text('choicesTitle'),
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: darkText,
-                            fontSize: dense ? 25 : 30,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 7),
-                        Text(
-                          text('choicesHint'),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: darkMuted,
-                            fontSize: 13,
-                          ),
-                        ),
-                        SizedBox(height: dense ? 14 : 22),
-                        if (narrow)
-                          Column(
+                        )
+                      else
+                        IntrinsicHeight(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              for (var i = 0; i < run.choices.length; i++)
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 8),
-                                  child: card(i, dense: true, compact: true),
-                                ),
-                            ],
-                          )
-                        else
-                          IntrinsicHeight(
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                for (
-                                  var i = 0;
-                                  i < run.choices.length;
-                                  i++
-                                ) ...[
-                                  if (i > 0) const SizedBox(width: 12),
-                                  Expanded(child: card(i, dense: dense)),
-                                ],
+                              for (var i = 0; i < run.choices.length; i++) ...[
+                                if (i > 0) const SizedBox(width: 8),
+                                Expanded(child: card(i)),
                               ],
-                            ),
-                          ),
-                        SizedBox(height: dense ? 10 : 16),
-                        Text(
-                          text('choicesKeys'),
-                          style: const TextStyle(
-                            color: darkMuted,
-                            fontSize: 13,
+                            ],
                           ),
                         ),
-                      ],
-                    ),
+                      const SizedBox(height: 8),
+                      Text(
+                        text('choicesControls'),
+                        style: const TextStyle(color: darkMuted, fontSize: 11),
+                      ),
+                    ],
                   ),
                 ),
-              );
-            },
+              ),
+            ),
           ),
         ),
       ),
     ),
   );
 
-  Widget card(int index, {required bool dense, bool compact = false}) =>
-      UpgradeCard(
-        upgrade: run.choices[index],
-        index: index,
-        run: run,
-        text: text,
-        dense: dense,
-        compact: compact,
-        onChoose: () => onChoose(run.choices[index]),
-      );
+  Widget card(int index, {bool horizontal = false}) => UpgradeCard(
+    focusNode: index == 0 ? focusNode : null,
+    upgrade: run.choices[index],
+    index: index,
+    run: run,
+    text: text,
+    inspected: inspected == run.choices[index],
+    horizontal: horizontal,
+    onInspect: () => onInspect(run.choices[index]),
+    onChoose: () => onChoose(run.choices[index]),
+  );
 }
