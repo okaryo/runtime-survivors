@@ -32,7 +32,7 @@ void main() {
         grant(run, infra);
       }
       expect(run.infraCount, RunState.infraSlots);
-      for (var i = 0; i < 20; i++) {
+      for (var i = 0; i < 5; i++) {
         run.addExperience(run.nextLevelXp);
         expect(run.choices.length, 3);
         expect(run.choices.toSet().length, 3);
@@ -49,10 +49,12 @@ void main() {
         run.choices = [Upgrade.memory];
         run.choose(Upgrade.memory);
       }
-      expect(run.rank(Upgrade.memory), 21);
+      expect(run.rank(Upgrade.memory), 6);
+      expect(run.canUpgrade(Upgrade.memory), isFalse);
       run.resetToSetup();
       expect(run.infraCount, 0);
-      expect(run.canUpgrade(Upgrade.pipeline), isTrue);
+      expect(run.canUpgrade(Upgrade.pipeline), isFalse);
+      expect(run.canUpgrade(Upgrade.compiler), isTrue);
     },
   );
 
@@ -72,10 +74,10 @@ void main() {
       Upgrade.bandwidth,
       Upgrade.memoryProtection,
     ]) {
-      run.upgrades[infra] = infra.maxRank!;
+      run.upgrades[infra] = infra.maxRank;
     }
-    run.upgrades[Upgrade.spatialIndex] = Upgrade.spatialIndex.maxRank! - 1;
-    run.upgrades[Upgrade.bandwidth] = Upgrade.bandwidth.maxRank! - 1;
+    run.upgrades[Upgrade.spatialIndex] = Upgrade.spatialIndex.maxRank - 1;
+    run.upgrades[Upgrade.bandwidth] = Upgrade.bandwidth.maxRank - 1;
     run.addExperience(run.nextLevelXp);
     expect(run.choices.toSet(), {Upgrade.spatialIndex, Upgrade.bandwidth});
     run.choose(Upgrade.spatialIndex);
@@ -87,7 +89,7 @@ void main() {
     run.addExperience(run.nextLevelXp + (run.nextLevelXp + 7) + 5);
     expect(run.level, oldLevel + 2);
     expect(run.xp, 5);
-    expect(run.health, run.maxHealth);
+    expect(run.health, 71);
     expect(run.phase, RunPhase.running);
     expect(run.choices, isEmpty);
   });
@@ -171,7 +173,7 @@ void main() {
   );
 
   test(
-    'concurrency attacks multiple distinct tasks with reduced shot damage',
+    'concurrency attacks multiple distinct tasks without reducing shot damage',
     () {
       final run = freshRun();
       grant(run, Upgrade.concurrency);
@@ -183,7 +185,7 @@ void main() {
       run.update(0.01);
       expect(run.instructions.length, 2);
       expect(run.instructions.map((s) => s.target).toSet().length, 2);
-      expect(run.attackDamage, closeTo(24 * 0.88, 0.001));
+      expect(run.attackDamage, 24);
     },
   );
 
@@ -200,7 +202,7 @@ void main() {
     expect(other.health, lessThan(1000));
     expect(far.health, 1000);
     expect(run.effects.any((e) => e.pulse), isTrue);
-    expect(run.attackInterval, greaterThan(0.62));
+    expect(run.attackInterval, 0.62);
   });
 
   test(
@@ -216,7 +218,7 @@ void main() {
       run.choices = [Upgrade.memory];
       run.health = 30;
       run.choose(Upgrade.memory);
-      expect(run.maxHealth, 73); // OOP and Null Safety reserve memory.
+      expect(run.maxHealth, 125);
       expect(run.health, 65);
     },
   );

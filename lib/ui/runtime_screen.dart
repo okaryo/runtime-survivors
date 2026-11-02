@@ -92,6 +92,14 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
     restoreFocus();
   }
 
+  void choosePolicy(PolicyUpgrade upgrade) {
+    if (_modalOpen) return;
+    audio.unlock();
+    run.choosePolicy(upgrade);
+    game.refresh();
+    restoreFocus();
+  }
+
   @override
   void dispose() {
     lifecycle.dispose();
@@ -332,6 +340,7 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
                   run: run,
                   text: text,
                   onChoose: choose,
+                  onChoosePolicy: choosePolicy,
                   focusNode: _choiceFocus,
                   safeInsets: safeInsets,
                 ),
@@ -389,15 +398,19 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
             '${text('policyCurrent')}: ${text.policyName(run.typingPolicy!)}',
             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
           ),
-          if (run.typingPolicy == TypingPolicy.dynamicTyping)
-            Text(
-              run.dynamicBoostActive
-                  ? text('dynamicActive', {'seconds': run.dynamicTimer.ceil()})
-                  : text('dynamicWaiting', {
-                      'seconds': run.dynamicCooldown.ceil(),
-                    }),
-              style: const TextStyle(fontSize: 12, height: 1.4, color: muted),
-            ),
+          Text(
+            text('policySummary.${run.typingPolicy!.name}', {
+              'count': run.typingPolicy == TypingPolicy.staticTyping
+                  ? run.scanTargets
+                  : run.policyCoverage,
+              'bonus': (run.policyBonus * 100).round(),
+            }),
+            style: const TextStyle(fontSize: 12, height: 1.4, color: muted),
+          ),
+          Text(
+            'Lv.${run.policyRank}',
+            style: const TextStyle(fontSize: 12, color: muted),
+          ),
         ],
         const SizedBox(height: 12),
         for (final feature in [true, false]) ...[
@@ -421,6 +434,22 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
               text(feature ? 'emptyUpgradeSlot' : 'emptyInfraSlot'),
             ),
           const SizedBox(height: 12),
+        ],
+        if (run.rank(Upgrade.jitCompilation) > 0) ...[
+          Text(
+            text(run.abilities.jitOptimized ? 'jitReady' : 'jitAnalyzing', {
+              'count': run.abilities.jitExecutions,
+            }),
+            style: const TextStyle(fontSize: 12, color: muted),
+          ),
+          const SizedBox(height: 6),
+        ],
+        if (run.rank(Upgrade.memoization) > 0) ...[
+          Text(
+            text('memoStatus', {'count': run.abilities.cachedInputs.length}),
+            style: const TextStyle(fontSize: 12, color: muted),
+          ),
+          const SizedBox(height: 6),
         ],
         sectionLabel(text('log')),
         const SizedBox(height: 10),
@@ -458,7 +487,10 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
             ),
           ),
           const SizedBox(width: 8),
-          Text('Lv.$rank', style: const TextStyle(fontSize: 12)),
+          Text(
+            'Lv.$rank/${upgrade.maxRank}',
+            style: const TextStyle(fontSize: 12),
+          ),
         ],
       ),
     ),

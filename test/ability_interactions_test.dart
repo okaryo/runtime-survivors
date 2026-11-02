@@ -11,82 +11,102 @@ RunState prepared() => RunState(random: Random(8))
   ..start()
   ..enemies.clear();
 void main() {
-  test('slow fields stay at their placement point and apply the strongest slow, with an elite floor', () {
+  test('deferred traps wait for nearby work, burst once, then slow survivors and freeze on pause', () {
     final run = prepared()..upgrades[Upgrade.lazyEvaluation] = 1;
-    final enemy = TaskEnemy(Vector2(90, 0), health: 99999);
-    final elite = TaskEnemy(Vector2(90, 0), kind: 3, health: 99999);
-    run.enemies.addAll([enemy, elite]);
     run.update(0.01);
+    final field = run.abilities.fields.single;
+    expect(field.triggered, isFalse);
+    final enemy = TaskEnemy(Vector2(60, 0), health: 1000);
+    final elite = TaskEnemy(Vector2(-60, 0), kind: 3, health: 1000);
+    run.enemies.addAll([enemy, elite]);
+    tick(run, 0.36);
+    expect(field.triggered, isTrue);
+    expect(enemy.health, lessThanOrEqualTo(1000 - 46));
+    expect(elite.health, lessThanOrEqualTo(954));
+    final damagedHealth = elite.health;
     expect(enemy.movementMultiplier, closeTo(0.7, 0.0001));
     expect(elite.movementMultiplier, 0.8);
-    final field = run.abilities.fields.single;
-    run.abilities.fields.add(SlowField(Vector2.zero(), 110, 0.6));
-    run.update(0.01);
-    expect(enemy.movementMultiplier, 0.6);
-    run.player.setValues(-300, 0);
+    run.player.setValues(-800, 0);
     expect(field.position, Vector2.zero());
     run.pause();
     final remaining = field.remaining;
     tick(run, 8);
     expect(field.remaining, remaining);
     run.resume();
-    tick(run, 3.6);
+    tick(run, 1.6);
     expect(run.abilities.fields, isEmpty);
+    expect(elite.health, damagedHealth); // The trap cannot burst twice.
   });
-  test(
-    'memoized volleys snapshot damage and echoes cannot generate more echoes',
-    () {
-      final run = prepared()..upgrades[Upgrade.memoization] = 1;
-      final target = TaskEnemy(Vector2(250, 0), health: 10000);
-      run.enemies.add(target);
-      run.update(0.01);
-      expect(
-        run.abilities.echoes.single.damage,
-        closeTo(24 * 0.9 * 0.65, 0.0001),
-      );
-      run.instructions.add(
-        Instruction(Vector2(240, 0), target, 1, kind: InstructionKind.echo),
-      );
-      tick(run, 0.3);
-      expect(run.abilities.echoes.length, 1);
-      run.upgrades[Upgrade.compiler] =
-          3; // The queued shot retains its original value.
-      expect(run.abilities.echoes.single.damage, closeTo(14.04, 0.0001));
-      run.pause();
-      final remaining = run.abilities.echoes.single.remaining;
-      tick(run, 2);
-      expect(run.abilities.echoes.single.remaining, remaining);
-      run.resume();
-      tick(run, 0.38);
-      expect(
-        run.instructions.any((s) => s.kind == InstructionKind.echo),
-        isTrue,
-      );
-      expect(
-        run.abilities.echoes.length,
-        1,
-      ); // Only the second base volley is pending.
-    },
-  );
-  test('JIT grows on one primary target, ignores echoes, and resets on a switch or interruption', () {
-    final run = prepared()
-      ..upgrades[Upgrade.jitCompilation] = 1
-      ..upgrades[Upgrade.memoization] = 1;
-    final target = TaskEnemy(Vector2(250, 0), health: 99999);
-    run.enemies.add(target);
+  test('memoization stores operation plus input and reuses only matching completed results', () {
+    final run = prepared()..upgrades[Upgrade.memoization] = 1;
+    final completed = TaskEnemy(
+      Vector2(240, 0),
+      kind: 10,
+      inputVariant: 1,
+      health: 1,
+    );
+    run.enemies.add(completed);
+    run.instructions.add(Instruction(completed.position.clone(), completed, 1));
+    run.update(0.01);
+    expect(run.abilities.cachedInputs, {completed.inputSignature});
+    run.instructions.clear();
+    final matching = TaskEnemy(
+      Vector2(250, 0),
+      kind: 10,
+      inputVariant: 1,
+      health: 1000,
+    );
+    final different = TaskEnemy(
+      Vector2(200, 0),
+      kind: 10,
+      inputVariant: 2,
+      health: 1000,
+    );
+    run.enemies.addAll([matching, different]);
+    run.abilities.memoTimer = 0;
+    run.update(0.01);
+    final cached = run.instructions.singleWhere(
+      (s) => s.kind == InstructionKind.cached,
+    );
+    expect(cached.target, same(matching));
+    expect(cached.damage, 54);
+    expect(
+      run.abilities.cachedInputs.contains(different.inputSignature),
+      isFalse,
+    );
+    final timer = run.abilities.memoTimer;
+    run.pause();
+    tick(run, 2);
+    expect(run.abilities.memoTimer, timer);
+    run.start();
+    expect(run.abilities.cachedInputs, isEmpty);
+  });
+  test('JIT warms up across target changes and keeps optimization across idle periods', () {
+    final run = prepared()..upgrades[Upgrade.jitCompilation] = 1;
+    run.enemies.add(TaskEnemy(Vector2(250, 0), health: 99999));
     tick(run, 1.3);
-    expect(run.abilities.focusStacks, 2);
-    final other = TaskEnemy(Vector2(70, 0), health: 99999);
-    run.enemies.add(other);
-    tick(run, 0.62);
-    expect(run.abilities.focusTarget, same(other));
-    expect(run.abilities.focusStacks, 0);
+    expect(run.abilities.jitExecutions, 3);
+    run.enemies.clear();
+    run.enemies.add(TaskEnemy(Vector2(-250, 0), health: 99999));
+    tick(run, 1.3);
+    expect(run.abilities.jitExecutions, greaterThan(3));
+    tick(run, 2.2);
+    expect(run.abilities.jitOptimized, isTrue);
+    expect(run.attackInterval, closeTo(0.62 / 1.4, 0.0001));
+    final preview = run.preview(Upgrade.compiler);
+    expect(preview.before.attackInterval, run.attackInterval);
+    expect(
+      preview.after.attackInterval,
+      closeTo(run.attackInterval * 0.92, 0.0001),
+    );
     run.enemies.clear();
     tick(run, 2.1);
-    expect(run.abilities.focusStacks, 0);
-    expect(run.abilities.focusTarget, isNull);
+    expect(run.abilities.jitOptimized, isTrue);
+    run.start();
+    expect(run.abilities.jitExecutions, 0);
+    expect(run.attackInterval, 0.62);
   });
-  test('Ownership healing has a shared budget, excludes summons, and cannot duplicate kill rewards', () {
+  test('Ownership adds an attack and healing has a shared budget excluding summons', () {
     final run = prepared()
       ..upgrades[Upgrade.ownership] = 1
       ..health = 50;
@@ -94,51 +114,50 @@ void main() {
       run.enemies.add(TaskEnemy(Vector2(70 + i * 5, 0), health: 1));
     }
     run.enemies.add(TaskEnemy(Vector2(90, 0), health: 1, summoned: true));
-    run.projectiles.add(
-      LinearProjectile(
-        Vector2(-150, 0),
-        Vector2(6000, 0),
-        damage: 999,
-        hostile: false,
-        radius: 10,
-      ),
-    );
     run.update(0.05);
     expect(run.health, 56);
     expect(run.kills, 7);
-    expect(run.pickupRadius, 58);
+    expect(run.pickupRadius, 66);
     run.update(0.01);
     expect(run.kills, 7);
     run.resetToSetup();
     expect(run.abilities.fields, isEmpty);
-    expect(run.abilities.echoes, isEmpty);
-    expect(run.abilities.focusTarget, isNull);
+    expect(run.abilities.cachedInputs, isEmpty);
   });
-  test(
-    'new infrastructure acts on its named systems and respects prerequisites',
-    () {
-      final stats = BuildStats.snapshot({
-        Upgrade.spatialIndex: 1,
-        Upgrade.coprocessor: 1,
-        Upgrade.memoryProtection: 1,
-      });
-      expect(stats.gcRadius, closeTo(115 * 1.15, 0.0001));
-      expect(stats.slowRadius, closeTo(90 * 1.15, 0.0001));
-      expect(stats.objectInterval, closeTo(0.81, 0.0001));
-      expect(stats.hitInvulnerability, closeTo(0.75, 0.0001));
-      final run = prepared();
-      for (var i = 0; i < 40; i++) {
-        run.phase = RunPhase.running;
-        run.xp = 0;
-        run.addExperience(run.nextLevelXp);
-        expect(run.choices.contains(Upgrade.spatialIndex), isFalse);
-        expect(run.choices.contains(Upgrade.coprocessor), isFalse);
-      }
-      final budget = AbilityRuntime();
-      expect(budget.claimHealing(10, 6), 6);
-      expect(budget.claimHealing(10, 6), 0);
-      budget.advance(1.1);
-      expect(budget.claimHealing(10, 6), 6);
-    },
-  );
+  test('all infrastructure caps at six and compiler speeds every attack family without altering recharge', () {
+    final before = BuildStats.snapshot({Upgrade.oop: 1, Upgrade.nullSafety: 1});
+    final after = BuildStats.snapshot({
+      Upgrade.oop: 1,
+      Upgrade.nullSafety: 1,
+      Upgrade.compiler: 1,
+    });
+    for (final pair in [
+      (before.attackInterval, after.attackInterval),
+      (before.objectInterval, after.objectInterval),
+      (before.gcInterval, after.gcInterval),
+      (before.patternInterval, after.patternInterval),
+      (before.lazyInterval, after.lazyInterval),
+      (before.memoInterval, after.memoInterval),
+      (before.nullInterval, after.nullInterval),
+      (before.ownershipInterval, after.ownershipInterval),
+    ]) {
+      expect(pair.$2, closeTo(pair.$1 * 0.92, 0.0001));
+    }
+    expect(after.shieldCooldown, before.shieldCooldown);
+    expect(after.attackDamage, before.attackDamage);
+    for (final infra in Upgrade.values.where((u) => !u.isFeature)) {
+      expect(infra.maxRank, 6);
+      final run = prepared()..upgrades[infra] = 6;
+      expect(run.canUpgrade(infra), isFalse);
+    }
+    final run = prepared();
+    expect(run.canUpgrade(Upgrade.pipeline), isFalse);
+    expect(run.canUpgrade(Upgrade.spatialIndex), isFalse);
+    expect(run.canUpgrade(Upgrade.coprocessor), isFalse);
+    final budget = AbilityRuntime();
+    expect(budget.claimHealing(10, 6), 6);
+    expect(budget.claimHealing(10, 6), 0);
+    budget.advance(1.1);
+    expect(budget.claimHealing(10, 6), 6);
+  });
 }

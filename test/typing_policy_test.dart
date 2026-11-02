@@ -33,54 +33,101 @@ void main() {
       'JavaScript',
     );
   });
-  test('static policy extends enemy warnings and applies only the advertised damage cost', () {
+  test('static pre-checks empower only the first hit and do not change enemy warnings', () {
     final run = RunState(random: Random(2))
       ..start(policy: TypingPolicy.staticTyping)
       ..enemies.clear();
-    final rpc = TaskEnemy(Vector2(200, 0), kind: 4, health: 9999)
+    final target = TaskEnemy(Vector2(250, 0), kind: 4, health: 1000)
       ..attackCooldown = 0;
-    run.enemies.add(rpc);
+    run.enemies.add(target);
     run.update(0.01);
-    expect(rpc.telegraphRemaining, closeTo(1.35, 0.0001));
-    expect(run.attackDamage, closeTo(21.6, 0.0001));
-    expect(run.gcDamage, BuildStats.snapshot({}).gcDamage);
-    expect(run.objectDamage, 16);
+    expect(target.checked, isTrue);
+    expect(target.telegraphRemaining, closeTo(0.65, 0.0001));
+    expect(run.attackDamage, 24);
+    run.instructions.clear();
+    for (var hit = 0; hit < 2; hit++) {
+      run.instructions.add(Instruction(target.position.clone(), target, 10));
+      run.update(0.01);
+    }
+    expect(target.health, 975); // 15 opening damage, then 10.
+    expect(target.checked, isFalse);
+    tick(run, 0.1);
+    expect(target.firstHitConsumed, isTrue);
     final preview = run.preview(Upgrade.compiler);
-    expect(preview.before.attackDamage, closeTo(21.6, 0.0001));
-    expect(preview.after.attackDamage, closeTo(27, 0.0001));
+    expect(
+      preview.after.attackInterval,
+      closeTo(run.attackInterval * 0.92, 0.0001),
+    );
   });
-  test('dynamic policy boosts on enemy type switches, obeys cooldown, and freezes when paused', () {
+  test('dynamic checks on impact and empower subsequent hits, with optional propagation', () {
     final run = RunState(random: Random(2))
       ..start(policy: TypingPolicy.dynamicTyping)
       ..enemies.clear();
-    final first = TaskEnemy(Vector2(80, 0), health: 99999);
-    run.enemies.add(first);
+    final target = TaskEnemy(Vector2(250, 0), health: 1000);
+    run.enemies.add(target);
     run.update(0.01);
-    expect(run.dynamicBoostActive, isFalse);
-    first.position.x = 290;
-    final second = TaskEnemy(Vector2(80, 0), kind: 1, health: 99999);
-    run.enemies.add(second);
-    tick(run, 0.65);
-    expect(run.dynamicBoostActive, isTrue);
-    expect(run.attackInterval, closeTo(0.62 / 1.3, 0.0001));
-    final preview = run.preview(Upgrade.pipeline);
-    expect(preview.before.attackInterval, run.attackInterval);
-    expect(
-      preview.after.attackInterval,
-      closeTo(run.attackInterval * 0.9, 0.0001),
-    );
-    final timer = run.dynamicTimer;
+    expect(target.checked, isFalse);
+    run.instructions.clear();
+    run.instructions.add(Instruction(target.position.clone(), target, 10));
+    run.update(0.01);
+    expect(target.checked, isTrue);
+    expect(target.health, 990);
+    run.instructions.add(Instruction(target.position.clone(), target, 10));
+    run.update(0.01);
+    expect(target.health, 977);
     run.pause();
-    tick(run, 5);
-    expect(run.dynamicTimer, timer);
-    run.resume();
-    run.enemies.clear();
-    tick(run, 3.1);
-    expect(run.dynamicBoostActive, isFalse);
-    expect(run.dynamicCooldown, greaterThan(0));
-    run.start(policy: TypingPolicy.staticTyping);
-    expect(run.dynamicCooldown, 0);
-    expect(run.dynamicBoostActive, isFalse);
+    final elapsed = run.elapsed;
+    tick(run, 2);
+    expect(run.elapsed, elapsed);
+    run.start(policy: TypingPolicy.dynamicTyping);
+    expect(run.policyRank, 1);
+    expect(run.policyChoicePending, isFalse);
+  });
+  test('policy milestones grant a bonus decision without consuming the regular choice or slots', () {
+    final run = RunState()..start(policy: TypingPolicy.staticTyping);
+    for (final milestone in [5, 10, 15]) {
+      run.level = milestone - 1;
+      run.addExperience(run.nextLevelXp);
+      expect(run.policyChoicePending, isTrue);
+      final choices = run.choices.toList();
+      run.choose(choices.first);
+      expect(run.upgrades, isEmpty);
+      final elapsed = run.elapsed;
+      tick(run, 2);
+      expect(run.elapsed, elapsed);
+      run.choosePolicy(PolicyUpgrade.coverage);
+      expect(run.policyChoicePending, isFalse);
+      expect(run.phase, RunPhase.choosing);
+      expect(run.choices, choices);
+      run.phase = RunPhase.running;
+    }
+    expect(run.policyRank, 4);
+    expect(run.scanTargets, 8);
+    expect(run.featureCount, 0);
+    expect(run.infraCount, 0);
+    run.start();
+    expect(run.policyRank, 1);
+  });
+  test('dynamic coverage spreads checks and potency increases the shared damage bonus', () {
+    final run = RunState()
+      ..start(policy: TypingPolicy.dynamicTyping)
+      ..enemies.clear();
+    run.level = 4;
+    run.addExperience(run.nextLevelXp);
+    run.choosePolicy(PolicyUpgrade.coverage);
+    run.choose(run.choices.first);
+    run.upgrades.clear();
+    final a = TaskEnemy(Vector2(250, 0), health: 1000);
+    final b = TaskEnemy(Vector2(270, 0), health: 1000);
+    run.enemies.addAll([a, b]);
+    run.instructions.add(Instruction(a.position.clone(), a, 1));
+    run.update(0.01);
+    expect(a.checked, isTrue);
+    expect(b.checked, isTrue);
+    run.level = 9;
+    run.addExperience(run.nextLevelXp);
+    run.choosePolicy(PolicyUpgrade.potency);
+    expect(run.policyBonus, closeTo(0.45, 0.0001));
   });
   test('language profiles depend on policy and invested ranks, not combat damage or outcome', () {
     final go = {

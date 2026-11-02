@@ -21,7 +21,7 @@ void main() {
       run.update(0.01);
       final aim = rpc.chargeDirection.clone();
       run.player.y = 100;
-      tick(run, 0.95);
+      tick(run, 0.7);
       expect(run.projectiles, isNotEmpty);
       expect(run.projectiles.first.velocity.normalized(), aim);
       expect(rpc.attackCooldown, greaterThan(0));

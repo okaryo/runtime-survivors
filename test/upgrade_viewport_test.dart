@@ -57,7 +57,7 @@ void main() {
       final infra = [
         Upgrade.memory,
         Upgrade.cache,
-        Upgrade.pipeline,
+        Upgrade.compiler,
         Upgrade.bandwidth,
       ];
       game.run.upgrades.addAll({

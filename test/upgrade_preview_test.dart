@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:runtime_survivors/game/run_state.dart';
 
 void main() {
-  for (final upgrade in Upgrade.values) {
+  for (final upgrade in Upgrade.values.where((u) => u.isAvailable)) {
     test('preview for $upgrade is read-only and matches acquisition', () {
       final run = RunState()..start();
       run.upgrades.addAll({
@@ -64,12 +64,12 @@ void main() {
     expect(run.preview(Upgrade.memory).afterHealth, 70);
   });
 
-  test('OOP previews HP clamping when memory is reserved', () {
+  test('OOP preserves memory in its preview', () {
     final run = RunState()..start();
-    expect(run.preview(Upgrade.oop).afterHealth, 95);
+    expect(run.preview(Upgrade.oop).afterHealth, 100);
     run.health = 35;
     final prediction = run.preview(Upgrade.oop);
     expect(prediction.afterHealth, 35);
-    expect(prediction.after.maxHealth, 95);
+    expect(prediction.after.maxHealth, 100);
   });
 }

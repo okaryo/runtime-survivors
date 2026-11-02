@@ -10,6 +10,8 @@ enum EnemyType {
   bufferOverflow,
   scheduler,
   armoredAllocation,
+  nullReference,
+  duplicateRequest,
 }
 
 class TaskEnemy {
@@ -19,9 +21,14 @@ class TaskEnemy {
     this.health = 22,
     this.summoned = false,
     this.owner,
+    this.inputVariant = 0,
   }) : maxHealth = health;
   final Vector2 position;
   final int kind;
+  final int inputVariant;
+  int get inputSignature => kind * 3 + inputVariant;
+  bool checked = false;
+  bool firstHitConsumed = false;
   final bool summoned;
   final TaskEnemy? owner;
   EnemyType get type => EnemyType.values[kind];
@@ -57,7 +64,7 @@ class TaskEnemy {
   };
 }
 
-enum InstructionKind { base, object, chain, echo }
+enum InstructionKind { base, object, chain, cached }
 
 class Instruction {
   Instruction(
@@ -96,10 +103,14 @@ class RunEffect {
     this.pulse = false,
     this.radius = 22,
     this.healing = false,
+    this.optimized = false,
+    this.dynamicCheck = false,
   });
   final Vector2 position;
   final bool pulse;
   final bool healing;
+  final bool optimized;
+  final bool dynamicCheck;
   final double radius;
   double life = 0.5;
 }
@@ -113,11 +124,13 @@ class LinearProjectile {
     this.hostile = true,
     this.life = 4,
     this.radius = 6,
+    this.nullReference = false,
   });
   final Vector2 position;
   final Vector2 velocity;
   final double damage;
   final bool hostile;
+  final bool nullReference;
   final double radius;
   double life;
   final Set<TaskEnemy> hit = {};

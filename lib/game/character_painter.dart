@@ -14,6 +14,8 @@ class CharacterPainter {
     Color(0xFFFFB66E),
     Color(0xFF9CCDE0),
     Color(0xFFB5BBD0),
+    Color(0xFFE9A0ED),
+    Color(0xFFA6D7CB),
   ];
   static void draw(
     Canvas canvas, {
@@ -96,6 +98,21 @@ class CharacterPainter {
           ..color = color
           ..strokeWidth = 3,
       );
+    } else if (kind == 9) {
+      // A hollow reference, visibly distinct from an ordinary ranged task.
+      canvas.drawCircle(Offset.zero, r + 2, fill);
+      canvas.drawCircle(Offset.zero, r + 2, outline);
+      canvas.drawLine(Offset(-r, r), Offset(r, -r), outline);
+      canvas.drawCircle(Offset(0, -r - 5), 3, fill);
+    } else if (kind == 10) {
+      for (final shift in [5.0, 0.0]) {
+        final paper = RRect.fromRectAndRadius(
+          Rect.fromLTRB(-r + shift, -r - shift, r + shift, r - shift),
+          const Radius.circular(3),
+        );
+        canvas.drawRRect(paper, fill);
+        canvas.drawRRect(paper, outline);
+      }
     } else if (kind >= 6) {
       final body = RRect.fromRectAndRadius(
         Rect.fromLTRB(-r, -r, r, r),

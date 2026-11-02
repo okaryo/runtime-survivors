@@ -84,7 +84,7 @@ class EncyclopediaPanel extends StatelessWidget {
                           known: discoveries.contains('enemy.$kind'),
                           title: text('enemy.$kind.title'),
                           description: text('enemy.$kind.description'),
-                          details: text('enemy.$kind.type'),
+                          details: '',
                           affinity: _featureList(EnemyType.values[kind]),
                           unknown: text('unlockEnemy'),
                           icon: SizedBox(
@@ -95,7 +95,6 @@ class EncyclopediaPanel extends StatelessWidget {
                         ),
                     ],
                     narrow,
-                    detailLabel: text('type'),
                     affinityLabel: text('enemyAffinity'),
                   ),
                   const SizedBox(height: 22),
@@ -108,7 +107,7 @@ class EncyclopediaPanel extends StatelessWidget {
                     const SizedBox(height: 12),
                     _rows([
                       for (final upgrade in Upgrade.values.where(
-                        (u) => u.isFeature == feature,
+                        (u) => u.isAvailable && u.isFeature == feature,
                       ))
                         _entry(
                           known: discoveries.contains(
@@ -217,7 +216,6 @@ class EncyclopediaPanel extends StatelessWidget {
   Widget _rows(
     List<_EncyclopediaEntry> entries,
     bool narrow, {
-    String? detailLabel,
     String? affinityLabel,
   }) {
     if (narrow) {
@@ -236,9 +234,11 @@ class EncyclopediaPanel extends StatelessWidget {
                   const SizedBox(height: 8),
                   entry.body,
                   const SizedBox(height: 6),
-                  sectionLabel(detailLabel ?? text('tradeoff')),
-                  const SizedBox(height: 4),
-                  entry.details,
+                  if (affinityLabel == null) ...[
+                    sectionLabel(text('tradeoff')),
+                    const SizedBox(height: 4),
+                    entry.details,
+                  ],
                   if (affinityLabel != null) ...[
                     const SizedBox(height: 8),
                     sectionLabel(affinityLabel),
@@ -261,8 +261,7 @@ class EncyclopediaPanel extends StatelessWidget {
           : const {
               0: FixedColumnWidth(210),
               1: FlexColumnWidth(2),
-              2: FlexColumnWidth(),
-              3: FlexColumnWidth(1.3),
+              2: FlexColumnWidth(1.3),
             },
       defaultVerticalAlignment: TableCellVerticalAlignment.middle,
       border: const TableBorder(horizontalInside: BorderSide(color: line)),
@@ -272,8 +271,7 @@ class EncyclopediaPanel extends StatelessWidget {
             for (final label in [
               text('name'),
               text('behavior'),
-              detailLabel ?? text('tradeoff'),
-              ?affinityLabel,
+              affinityLabel ?? text('tradeoff'),
             ])
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
@@ -287,8 +285,7 @@ class EncyclopediaPanel extends StatelessWidget {
               for (final cell in [
                 entry.heading,
                 entry.body,
-                entry.details,
-                if (affinityLabel != null) entry.affinity!,
+                if (affinityLabel != null) entry.affinity! else entry.details,
               ])
                 Padding(
                   padding: const EdgeInsets.fromLTRB(0, 12, 18, 12),

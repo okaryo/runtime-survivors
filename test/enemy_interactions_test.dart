@@ -74,7 +74,7 @@ void main() {
         List.generate(
           200,
           (_) => director.choose(60, [], random),
-        ).every((k) => k < 6),
+        ).every((k) => k < 6 || k == 10),
         isTrue,
       );
       final late = List.generate(500, (_) => director.choose(220, [], random));
@@ -94,4 +94,28 @@ void main() {
       }
     },
   );
+  test('duplicate requests share an input and director reserves the whole pair budget', () {
+    final run = prepared()..elapsed = 30;
+    run.update(0.01);
+    final pair = run.enemies
+        .where((e) => e.type == EnemyType.duplicateRequest)
+        .toList();
+    expect(pair.length, 2);
+    expect(pair.first.inputSignature, pair.last.inputSignature);
+    const director = SpawnDirector();
+    expect(
+      SpawnDirector.rules.fold(
+        0,
+        (sum, rule) => sum + rule.cost * rule.batchSize,
+      ),
+      lessThanOrEqualTo(18),
+    );
+    final occupied = [
+      for (var i = 0; i < 3; i++) TaskEnemy(Vector2.zero(), kind: 4),
+      for (var i = 0; i < 2; i++) TaskEnemy(Vector2.zero(), kind: 5),
+    ]; // Cost 17 leaves no room for a two-task batch.
+    for (var seed = 0; seed < 100; seed++) {
+      expect(director.choose(220, occupied, Random(seed)), isNot(10));
+    }
+  });
 }

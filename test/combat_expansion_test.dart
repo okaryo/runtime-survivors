@@ -27,11 +27,11 @@ void main() {
     },
   );
 
-  test('OOP objects orbit, attack independently and reserve memory', () {
+  test('OOP objects orbit, attack independently without reducing memory', () {
     final run = prepared();
     grant(run, Upgrade.oop);
-    expect(run.maxHealth, 95);
-    expect(run.health, 95);
+    expect(run.maxHealth, 100);
+    expect(run.health, 100);
     final target = TaskEnemy(Vector2(200, 0), health: 1000);
     run.enemies.add(target);
     tick(run, 0.1);
@@ -61,7 +61,7 @@ void main() {
       expect(first.health, closeTo(1000 - run.attackDamage, 0.001));
       expect(second.health, closeTo(1000 - run.attackDamage * 0.7, 0.001));
       expect(far.health, 1000);
-      expect(run.attackRange, 285);
+      expect(run.attackRange, 300);
     },
   );
 

@@ -58,13 +58,13 @@ class RunState {
   double _gcTimer = 3;
   double _patternTimer = 0;
   double shieldTimer = 0;
-  double dynamicTimer = 0;
-  double dynamicCooldown = 0;
-  int? _lastTargetKind;
+  bool policyChoicePending = false;
+  int get policyCoverage => _stats.policyCoverage;
+  int get policyPotency => _stats.policyPotency;
+  int get policyRank => 1 + policyCoverage + policyPotency;
+  double get policyBonus => _stats.policyBonus;
+  int get scanTargets => _stats.scanTargets;
   TypingPolicy? get typingPolicy => _stats.policy;
-  bool get dynamicBoostActive => _stats.dynamicBoost;
-  double get telegraphBonus =>
-      typingPolicy == TypingPolicy.staticTyping ? 0.45 : 0;
   bool get shieldReady => rank(Upgrade.nullSafety) > 0 && shieldTimer <= 0;
   static const featureSlots = 4;
   static const infraSlots = 4;
@@ -108,10 +108,10 @@ class RunState {
 
   void _initialize(TypingPolicy? policy, RunPhase initialPhase) {
     _stats.policy = policy;
-    _stats.dynamicBoost = false;
-    dynamicTimer = 0;
-    dynamicCooldown = 0;
-    _lastTargetKind = null;
+    _stats.jitOptimized = false;
+    _stats.policyCoverage = 0;
+    _stats.policyPotency = 0;
+    policyChoicePending = false;
     phase = initialPhase;
     player.setZero();
     movement.setZero();
@@ -178,7 +178,8 @@ class RunState {
   }
 
   bool canUpgrade(Upgrade upgrade) =>
-      (upgrade.maxRank == null || rank(upgrade) < upgrade.maxRank!) &&
+      upgrade.isAvailable &&
+      rank(upgrade) < upgrade.maxRank &&
       (upgrade.requiresAny.isEmpty ||
           upgrade.requiresAny.any((required) => rank(required) > 0)) &&
       (rank(upgrade) > 0 ||
@@ -195,6 +196,7 @@ class RunState {
         xp -= nextLevelXp;
         level++;
         health = min(maxHealth, health + 35);
+        if (_offerPolicyUpgrade()) return;
       }
       log(const RunLog('log.maintenance'));
       cues.add(SoundCue.levelUp);
@@ -223,8 +225,37 @@ class RunState {
     } else {
       choices = available.take(3).toList();
     }
+    _offerPolicyUpgrade();
     log(RunLog('log.level', args: {'level': level}));
     cues.add(SoundCue.levelUp);
+  }
+
+  bool _offerPolicyUpgrade() {
+    if (typingPolicy == null || ![5, 10, 15].contains(level)) return false;
+    policyChoicePending = true;
+    phase = RunPhase.choosing;
+    movement.setZero();
+    cues.add(SoundCue.levelUp);
+    return true;
+  }
+
+  /// A bonus decision: the queued Feature/Infra choice is still awarded.
+  void choosePolicy(PolicyUpgrade upgrade) {
+    if (phase != RunPhase.choosing || !policyChoicePending) return;
+    switch (upgrade) {
+      case PolicyUpgrade.coverage:
+        _stats.policyCoverage++;
+      case PolicyUpgrade.potency:
+        _stats.policyPotency++;
+    }
+    policyChoicePending = false;
+    abilities.scanTimer = 0;
+    log(RunLog('log.policy', args: {'rank': policyRank}));
+    cues.add(SoundCue.select);
+    if (choices.isEmpty) {
+      phase = RunPhase.running;
+      _checkLevel();
+    }
   }
 
   /// Predicts an acquisition without mutating combat, RNG, ranks or HP.
@@ -232,12 +263,16 @@ class RunState {
     final before = BuildStats.snapshot(
       upgrades,
       policy: typingPolicy,
-      dynamicBoost: dynamicBoostActive,
+      policyCoverage: policyCoverage,
+      policyPotency: policyPotency,
+      jitOptimized: _stats.jitOptimized,
     );
     final after = BuildStats.snapshot(
       {...upgrades, upgrade: rank(upgrade) + 1},
       policy: typingPolicy,
-      dynamicBoost: dynamicBoostActive,
+      policyCoverage: policyCoverage,
+      policyPotency: policyPotency,
+      jitOptimized: _stats.jitOptimized,
     );
     return UpgradePreview(
       upgrade: upgrade,
@@ -252,7 +287,11 @@ class RunState {
   }
 
   void choose(Upgrade upgrade) {
-    if (phase != RunPhase.choosing || !choices.contains(upgrade)) return;
+    if (phase != RunPhase.choosing ||
+        policyChoicePending ||
+        !choices.contains(upgrade)) {
+      return;
+    }
     if (!canUpgrade(upgrade)) return;
     final prediction = preview(upgrade);
     upgrades[upgrade] = rank(upgrade) + 1;
@@ -287,9 +326,6 @@ class RunState {
     invulnerability = max(0, invulnerability - dt);
     shieldTimer = max(0, shieldTimer - dt);
     _updateAbilities(dt);
-    dynamicTimer = max(0, dynamicTimer - dt);
-    dynamicCooldown = max(0, dynamicCooldown - dt);
-    _stats.dynamicBoost = dynamicTimer > 0;
     if (elapsed >= _nextRush) {
       rushCount++;
       _rushUntil = elapsed + 9;
@@ -324,7 +360,9 @@ class RunState {
       if (delta.length2 > 0) enemy.facing.setFrom(delta.normalized());
       if (enemy.kind == 3) {
         _updateElite(enemy, delta, dt);
-      } else if (enemy.kind == 4 || enemy.kind == 5) {
+      } else if (enemy.kind == 4 ||
+          enemy.kind == 5 ||
+          enemy.type == EnemyType.nullReference) {
         _updateSpecialist(enemy, delta, dt, children);
       } else if (delta.length2 > 0 &&
           (enemy.type != EnemyType.scheduler || delta.length > 210)) {
@@ -334,14 +372,18 @@ class RunState {
       }
       if (enemy.position.distanceTo(player) < enemy.radius + 13 &&
           invulnerability <= 0) {
-        _damagePlayer(
-          enemy.kind == 3
-              ? 22
-              : enemy.kind == 2
-              ? 15
-              : 9,
-        );
-        if (phase == RunPhase.lost) return;
+        if (enemy.type == EnemyType.nullReference && shieldReady) {
+          _consumeNullShield();
+        } else {
+          _damagePlayer(
+            enemy.kind == 3
+                ? 22
+                : enemy.kind == 2
+                ? 15
+                : 9,
+          );
+          if (phase == RunPhase.lost) return;
+        }
       }
     }
     enemies.addAll(children);
@@ -361,35 +403,23 @@ class RunState {
                   .distanceToSquared(player)
                   .compareTo(b.position.distanceToSquared(player)),
             );
-      var focusBonus = 1.0;
-      if (targets.isNotEmpty) {
-        _observeTarget(targets.first.kind);
-        if (rank(Upgrade.jitCompilation) > 0) {
-          focusBonus = abilities.focusMultiplier(
-            targets.first,
-            _stats.jitPerStack,
-          );
+      if (targets.isNotEmpty && rank(Upgrade.jitCompilation) > 0) {
+        final wasOptimized = abilities.jitOptimized;
+        abilities.recordExecution();
+        _stats.jitOptimized = abilities.jitOptimized;
+        if (!wasOptimized && abilities.jitOptimized) {
+          effects.add(RunEffect(player.clone(), radius: 70, optimized: true));
+          cues.add(SoundCue.select);
+          log(const RunLog('log.optimized'));
         }
       }
       for (final target in targets.take(targetCount)) {
         if (instructions.length >= instructionLimit) break;
-        final damage =
-            attackDamage *
-            (identical(target, targets.first) ? focusBonus : 1.0);
-        if (rank(Upgrade.memoization) > 0 && abilities.echoes.length < 32) {
-          abilities.echoes.add(
-            PendingEcho(
-              target,
-              damage * _stats.echoRatio,
-              rank(Upgrade.functional),
-            ),
-          );
-        }
         instructions.add(
           Instruction(
             player.clone(),
             target,
-            damage,
+            attackDamage,
             jumps: rank(Upgrade.functional),
           ),
         );
@@ -425,7 +455,10 @@ class RunState {
         continue;
       }
       final delta = shot.target.position - shot.position;
-      if (delta.length <= projectileSpeed * dt + shot.target.radius) {
+      final shotSpeed = shot.kind == InstructionKind.cached
+          ? min(1600.0, projectileSpeed * 1.5)
+          : projectileSpeed;
+      if (delta.length <= shotSpeed * dt + shot.target.radius) {
         _damage(shot.target, shot.damage, origin: shot.position);
         if (shot.jumps > 0) {
           final candidates =
@@ -461,7 +494,7 @@ class RunState {
         }
         shot.life = 0;
       } else {
-        shot.position.add(delta.normalized() * projectileSpeed * dt);
+        shot.position.add(delta.normalized() * shotSpeed * dt);
       }
     }
     instructions.removeWhere((shot) => shot.life <= 0);
@@ -478,7 +511,7 @@ class RunState {
         )) {
           _damage(enemy, gcDamage);
         }
-        _gcTimer = 3;
+        _gcTimer = _stats.gcInterval;
       }
     }
     enemies.removeWhere((enemy) => !enemy.alive);
@@ -513,30 +546,138 @@ class RunState {
 
   void _updateAbilities(double dt) {
     abilities.advance(dt);
+    if (typingPolicy == TypingPolicy.staticTyping && abilities.scanTimer <= 0) {
+      final candidates =
+          enemies
+              .where(
+                (e) =>
+                    e.alive &&
+                    !e.firstHitConsumed &&
+                    !e.checked &&
+                    e.position.distanceTo(player) <= attackRange,
+              )
+              .toList()
+            ..sort(
+              (a, b) => a.position
+                  .distanceToSquared(player)
+                  .compareTo(b.position.distanceToSquared(player)),
+            );
+      for (final enemy in candidates.take(scanTargets)) {
+        enemy.checked = true;
+      }
+      abilities.scanTimer = 1;
+    }
     if (rank(Upgrade.lazyEvaluation) > 0 &&
         abilities.fieldTimer <= 0 &&
         abilities.fields.length < 3) {
       abilities.fields.add(
-        SlowField(player.clone(), _stats.slowRadius, _stats.slowMultiplier),
+        SlowField(
+          player.clone(),
+          _stats.slowRadius,
+          _stats.slowMultiplier,
+          damage: _stats.lazyDamage,
+        ),
       );
-      abilities.fieldTimer = 5;
+      abilities.fieldTimer = _stats.lazyInterval;
     }
-    for (final echo in abilities.echoes.where((e) => e.remaining <= 0)) {
-      if (echo.target.alive &&
-          echo.target.position.distanceTo(player) <= attackRange &&
-          instructions.length < instructionLimit) {
+    for (final field in abilities.fields) {
+      if (!field.triggered &&
+          field.arming <= 0 &&
+          enemies.any(
+            (e) =>
+                e.alive &&
+                e.position.distanceTo(field.position) <= field.radius * 0.65,
+          )) {
+        field.triggered = true;
+        field.remaining = 1.5;
+        effects.add(
+          RunEffect(field.position.clone(), pulse: true, radius: field.radius),
+        );
+        cues.add(SoundCue.pulse);
+        for (final enemy in enemies.where(
+          (e) =>
+              e.alive && e.position.distanceTo(field.position) <= field.radius,
+        )) {
+          _damage(enemy, field.damage);
+        }
+      }
+    }
+    if (rank(Upgrade.nullSafety) > 0 && abilities.nullTimer <= 0) {
+      _pulse(_stats.nullRadius, _stats.nullDamage, nullSafe: true);
+      projectiles.removeWhere(
+        (s) =>
+            s.hostile &&
+            s.nullReference &&
+            s.position.distanceTo(player) <= _stats.nullRadius,
+      );
+      abilities.nullTimer = _stats.nullInterval;
+    }
+    if (rank(Upgrade.ownership) > 0 && abilities.ownershipTimer <= 0) {
+      _pulse(_stats.ownershipRadius, _stats.ownershipDamage, healing: true);
+      abilities.ownershipTimer = _stats.ownershipInterval;
+    }
+    if (rank(Upgrade.memoization) > 0 && abilities.memoTimer <= 0) {
+      final candidates =
+          enemies
+              .where(
+                (e) => e.alive && e.position.distanceTo(player) <= attackRange,
+              )
+              .toList()
+            ..sort((a, b) {
+              final cacheOrder =
+                  (abilities.cachedInputs.contains(b.inputSignature) ? 1 : 0)
+                      .compareTo(
+                        abilities.cachedInputs.contains(a.inputSignature)
+                            ? 1
+                            : 0,
+                      );
+              return cacheOrder != 0
+                  ? cacheOrder
+                  : a.position
+                        .distanceToSquared(player)
+                        .compareTo(b.position.distanceToSquared(player));
+            });
+      if (candidates.isNotEmpty && instructions.length < instructionLimit) {
+        final target = candidates.first;
+        final cached = abilities.cachedInputs.contains(target.inputSignature);
         instructions.add(
           Instruction(
             player.clone(),
-            echo.target,
-            echo.damage,
-            kind: InstructionKind.echo,
-            jumps: echo.jumps,
+            target,
+            _stats.memoDamage * (cached ? 1.8 : 1),
+            kind: cached ? InstructionKind.cached : InstructionKind.object,
           ),
         );
+        abilities.memoTimer = _stats.memoInterval;
       }
     }
-    abilities.echoes.removeWhere((e) => e.remaining <= 0 || !e.target.alive);
+  }
+
+  void _pulse(
+    double radius,
+    double damage, {
+    bool nullSafe = false,
+    bool healing = false,
+  }) {
+    effects.add(
+      RunEffect(player.clone(), pulse: true, radius: radius, healing: healing),
+    );
+    for (final enemy in enemies.where(
+      (e) => e.alive && e.position.distanceTo(player) <= radius,
+    )) {
+      _damage(
+        enemy,
+        damage * (nullSafe && enemy.type == EnemyType.nullReference ? 1.5 : 1),
+      );
+    }
+  }
+
+  void _consumeNullShield() {
+    shieldTimer = _stats.shieldCooldown;
+    // Brief grace prevents the same contact from damaging on the next frame.
+    invulnerability = _stats.hitInvulnerability;
+    effects.add(RunEffect(player.clone(), pulse: true, radius: 35));
+    cues.add(SoundCue.pulse);
   }
 
   void _updateHazards(double dt) {
@@ -566,7 +707,7 @@ class RunState {
             (s) => s.position.distanceToSquared(enemy.position) <= 150 * 150,
           );
       var slow = 1.0;
-      for (final field in abilities.fields) {
+      for (final field in abilities.fields.where((f) => f.triggered)) {
         if (field.position.distanceToSquared(enemy.position) <=
             field.radius * field.radius) {
           slow = min(slow, field.multiplier);
@@ -617,19 +758,6 @@ class RunState {
     }
   }
 
-  void _observeTarget(int kind) {
-    if (typingPolicy == TypingPolicy.dynamicTyping &&
-        _lastTargetKind != null &&
-        _lastTargetKind != kind &&
-        dynamicCooldown <= 0) {
-      dynamicTimer = 3;
-      dynamicCooldown = 6;
-      _stats.dynamicBoost = true;
-      effects.add(RunEffect(player.clone(), radius: 40));
-    }
-    _lastTargetKind = kind;
-  }
-
   TaskEnemy? _nearestEnemy(Vector2 origin, double range) {
     TaskEnemy? result;
     var distance = range * range;
@@ -663,10 +791,8 @@ class RunState {
       shot.position.add(shot.velocity * dt);
       if (shot.hostile) {
         if (crossesCircle(from, shot.position, player, shot.radius + 13)) {
-          if (invulnerability <= 0 && shieldReady) {
-            shieldTimer = _stats.shieldCooldown;
-            effects.add(RunEffect(player.clone(), pulse: true, radius: 35));
-            cues.add(SoundCue.pulse);
+          if (invulnerability <= 0 && shieldReady && shot.nullReference) {
+            _consumeNullShield();
           } else {
             _damagePlayer(shot.damage);
           }
@@ -701,7 +827,7 @@ class RunState {
     double dt,
     List<TaskEnemy> children,
   ) {
-    final ranged = enemy.kind == 4;
+    final ranged = enemy.type != EnemyType.forkBomb;
     if (enemy.telegraphRemaining > 0) {
       enemy.telegraphRemaining = max(0, enemy.telegraphRemaining - dt);
       if (enemy.telegraphRemaining == 0) {
@@ -711,6 +837,7 @@ class RunState {
               enemy.position.clone(),
               enemy.chargeDirection * 180,
               damage: 11,
+              nullReference: enemy.type == EnemyType.nullReference,
             ),
           );
         } else if (!ranged) {
@@ -750,7 +877,7 @@ class RunState {
     enemy.attackCooldown -= dt * enemy.attackRate;
     if (enemy.attackCooldown <= 0 && delta.length > 1 && delta.length < 430) {
       enemy.chargeDirection.setFrom(delta.normalized());
-      enemy.telegraphRemaining = (ranged ? 0.9 : 1.2) + telegraphBonus;
+      enemy.telegraphRemaining = ranged ? 0.65 : 1.2;
     }
   }
 
@@ -773,7 +900,7 @@ class RunState {
       enemy.chargeCooldown -= dt * enemy.attackRate;
       if (enemy.chargeCooldown <= 0 && delta.length > 1 && delta.length < 450) {
         enemy.chargeDirection.setFrom(delta.normalized());
-        enemy.telegraphRemaining = 0.9 + telegraphBonus;
+        enemy.telegraphRemaining = 0.9;
       }
     }
   }
@@ -786,6 +913,7 @@ class RunState {
       TaskEnemy(
         player + Vector2(cos(angle), sin(angle)) * (radius ?? spawnRadius),
         kind: kind,
+        inputVariant: random.nextInt(3),
         health: kind == 3
             ? 240 + elapsed * 1.6
             : (22 + elapsed / 18) *
@@ -802,21 +930,72 @@ class RunState {
                       : 1),
       ),
     );
+    if (kind == EnemyType.duplicateRequest.index && enemies.length < 236) {
+      final original = enemies.last;
+      enemies.add(
+        TaskEnemy(
+          original.position + Vector2(28, 18),
+          kind: kind,
+          inputVariant: original.inputVariant,
+          health: original.maxHealth,
+        ),
+      );
+    }
     seenEnemies.add(kind);
     _introduced.add(kind);
   }
 
   void _damage(TaskEnemy enemy, double damage, {Vector2? origin}) {
     if (!enemy.alive) return;
+    var policyMultiplier = 1.0;
+    if (typingPolicy == TypingPolicy.staticTyping) {
+      if (enemy.checked && !enemy.firstHitConsumed) {
+        policyMultiplier += policyBonus;
+        enemy.checked = false;
+        effects.add(
+          RunEffect(enemy.position.clone(), radius: 24, optimized: true),
+        );
+      }
+      enemy.firstHitConsumed = true;
+    } else if (typingPolicy == TypingPolicy.dynamicTyping) {
+      if (enemy.checked) {
+        policyMultiplier += policyBonus;
+        effects.add(
+          RunEffect(enemy.position.clone(), radius: 20, dynamicCheck: true),
+        );
+      } else {
+        enemy.checked = true;
+        final neighbors =
+            enemies
+                .where(
+                  (e) =>
+                      e.alive &&
+                      !e.checked &&
+                      e.position.distanceTo(enemy.position) <= 100,
+                )
+                .toList()
+              ..sort(
+                (a, b) => a.position
+                    .distanceToSquared(enemy.position)
+                    .compareTo(b.position.distanceToSquared(enemy.position)),
+              );
+        for (final neighbor in neighbors.take(_stats.dynamicSpread)) {
+          neighbor.checked = true;
+        }
+      }
+    }
     enemy.health -= CombatRules.damage(
       enemy,
-      damage,
+      damage * policyMultiplier,
       origin: origin,
       area: origin == null,
     );
     enemy.flash = 0.12;
     if (!enemy.alive) {
       kills++;
+      if (rank(Upgrade.memoization) > 0) {
+        abilities.cachedInputs.add(enemy.inputSignature);
+      }
       if (rank(Upgrade.ownership) > 0 &&
           !enemy.summoned &&
           health < maxHealth &&
@@ -832,9 +1011,7 @@ class RunState {
         }
       }
       if (enemy.type == EnemyType.bufferOverflow && hazards.length < 24) {
-        hazards.add(
-          DangerZone(enemy.position.clone(), warning: 1.1 + telegraphBonus),
-        );
+        hazards.add(DangerZone(enemy.position.clone(), warning: 1.1));
       }
       cues.add(SoundCue.kill);
       experience.add(

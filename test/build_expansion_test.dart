@@ -10,38 +10,38 @@ RunState prepared() => RunState(random: Random(8))
   ..start()
   ..enemies.clear();
 void main() {
-  test(
-    'Null Safety blocks one projectile, recharges, and never blocks contact',
-    () {
-      final run = prepared();
-      grant(run, Upgrade.nullSafety);
-      expect(run.maxHealth, 92);
-      expect(run.shieldReady, isTrue);
-      run.projectiles.add(
-        LinearProjectile(Vector2(-25, 0), Vector2(1000, 0), damage: 11),
-      );
-      run.update(0.05);
-      expect(run.health, 92);
-      expect(run.shieldReady, isFalse);
-      run.projectiles.add(
-        LinearProjectile(Vector2(-25, 0), Vector2(1000, 0), damage: 11),
-      );
-      run.update(0.05);
-      expect(run.health, 81);
-      run.pause();
-      final remaining = run.shieldTimer;
-      tick(run, 10);
-      expect(run.shieldTimer, remaining);
-      run.resume();
-      run.enemies.clear();
-      run.invulnerability = 0;
-      run.shieldTimer = 0;
-      run.enemies.add(TaskEnemy(Vector2.zero(), health: 9999));
-      run.update(0.01);
-      expect(run.health, 72);
-      expect(run.shieldReady, isTrue);
-    },
-  );
+  test('Null Safety attacks ordinary tasks and guards null hits but not ordinary projectiles', () {
+    final run = prepared();
+    grant(run, Upgrade.nullSafety);
+    expect(run.maxHealth, 100);
+    final ordinary = TaskEnemy(Vector2(90, 0), health: 1000);
+    final nullTask = TaskEnemy(Vector2(-90, 0), kind: 9, health: 1000);
+    run.enemies.addAll([ordinary, nullTask]);
+    run.update(0.01);
+    expect(ordinary.health, 972);
+    expect(nullTask.health, 958);
+    run.projectiles.add(
+      LinearProjectile(
+        Vector2(-25, 0),
+        Vector2(1000, 0),
+        damage: 11,
+        nullReference: true,
+      ),
+    );
+    run.update(0.05);
+    expect(run.health, 100);
+    expect(run.shieldReady, isFalse);
+    run.invulnerability = 0;
+    run.projectiles.add(
+      LinearProjectile(Vector2(-25, 0), Vector2(1000, 0), damage: 11),
+    );
+    run.update(0.05);
+    expect(run.health, 89);
+    run.pause();
+    final remaining = run.shieldTimer;
+    tick(run, 10);
+    expect(run.shieldTimer, remaining);
+  });
   test('piercing shot hits lined-up tasks once each, without homing or chain recursion', () {
     final run = prepared();
     final a = TaskEnemy(Vector2(100, 0), health: 1000);
@@ -66,13 +66,13 @@ void main() {
       isEmpty,
     );
   });
-  test('pipeline affects base interval and bandwidth affects shared projectile speed', () {
+  test('compiler affects base interval and bandwidth affects shared projectile speed', () {
     final run = prepared();
-    grant(run, Upgrade.pipeline);
-    expect(run.attackInterval, closeTo(0.558, 0.0001));
+    grant(run, Upgrade.compiler);
+    expect(run.attackInterval, closeTo(0.5704, 0.0001));
     grant(run, Upgrade.bandwidth);
     expect(run.projectileSpeed, closeTo(736, 0.0001));
-    run.upgrades[Upgrade.pipeline] = 100;
+    run.upgrades[Upgrade.compiler] = 100;
     run.upgrades[Upgrade.bandwidth] = 100;
     expect(run.attackInterval, 0.12);
     expect(run.projectileSpeed, 1600);

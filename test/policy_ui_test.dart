@@ -35,8 +35,8 @@ void main() {
         for (final choices in [
           [Upgrade.oop, Upgrade.functional, Upgrade.garbageCollection],
           [Upgrade.concurrency, Upgrade.memory, Upgrade.cache],
-          [Upgrade.compiler, Upgrade.nullSafety, Upgrade.pipeline],
-          [Upgrade.nullSafety, Upgrade.patternMatching, Upgrade.pipeline],
+          [Upgrade.compiler, Upgrade.nullSafety, Upgrade.memory],
+          [Upgrade.nullSafety, Upgrade.patternMatching, Upgrade.compiler],
           [Upgrade.lazyEvaluation, Upgrade.memoization, Upgrade.jitCompilation],
           [Upgrade.ownership, Upgrade.spatialIndex, Upgrade.coprocessor],
           [Upgrade.memoryProtection, Upgrade.bandwidth, Upgrade.clock],
@@ -58,6 +58,91 @@ void main() {
         settings.dispose();
       },
     );
+  }
+  for (final language in ['ja', 'en']) {
+    for (final policy in TypingPolicy.values) {
+      testWidgets(
+        '$language $policy: bonus policy choice keeps HUD and queued upgrade, keyboard focus works',
+        (tester) async {
+          tester.view.physicalSize = const Size(1280, 640);
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.resetPhysicalSize);
+          addTearDown(tester.view.resetDevicePixelRatio);
+          final settings = GameSettings()..language = language;
+          await tester.pumpWidget(RuntimeSurvivorsApp(settings: settings));
+          await tester.pump(const Duration(milliseconds: 100));
+          await tester.sendKeyEvent(
+            policy == TypingPolicy.staticTyping
+                ? LogicalKeyboardKey.digit1
+                : LogicalKeyboardKey.digit2,
+          );
+          await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+          await tester.pump();
+          final game = tester
+              .widget<GameWidget<RuntimeGame>>(
+                find.byType(GameWidget<RuntimeGame>),
+              )
+              .game!;
+          game.run.level = 4;
+          game.run.health = 37;
+          final hud = tester.getRect(find.byKey(const Key('memory-status')));
+          game.run.addExperience(game.run.nextLevelXp);
+          game.run.choices = [Upgrade.memory, Upgrade.oop, Upgrade.compiler];
+          game.refresh();
+          await tester.pump();
+          await tester.pump();
+          expect(
+            find.byKey(const Key('policy-upgrade-choices')).hitTestable(),
+            findsOneWidget,
+          );
+          expect(tester.getRect(find.byKey(const Key('memory-status'))), hud);
+          expect(find.byType(UpgradeCard), findsNothing);
+          for (final upgrade in PolicyUpgrade.values) {
+            final rect = tester.getRect(
+              find.byKey(Key('policy-upgrade-${upgrade.name}')),
+            );
+            expect(rect.top, greaterThan(hud.bottom));
+            expect(
+              rect.bottom,
+              lessThan(
+                tester.getRect(find.byKey(const Key('experience-status'))).top,
+              ),
+            );
+          }
+          // First bonus choice by digit, then the queued regular choice by Tab/Enter.
+          await tester.sendKeyEvent(LogicalKeyboardKey.digit2);
+          await tester.pump();
+          await tester.pump();
+          expect(game.run.policyPotency, 1);
+          expect(game.run.health, 37);
+          expect(find.byType(UpgradeCard).hitTestable(), findsNWidgets(3));
+          await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+          await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+          await tester.pump();
+          expect(game.run.rank(Upgrade.oop), 1);
+          expect(game.run.phase, RunPhase.running);
+          // A later bonus uses Tab/Enter, and the following regular choice uses a digit.
+          game.run.level = 9;
+          game.run.addExperience(game.run.nextLevelXp);
+          game.run.choices = [Upgrade.memory, Upgrade.oop, Upgrade.compiler];
+          game.refresh();
+          await tester.pump();
+          await tester.pump();
+          await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+          await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+          await tester.pump();
+          await tester.pump();
+          expect(game.run.policyPotency, 2);
+          await tester.sendKeyEvent(LogicalKeyboardKey.digit1);
+          await tester.pump();
+          expect(game.run.rank(Upgrade.memory), 1);
+          expect(game.run.phase, RunPhase.running);
+          expect(tester.takeException(), isNull);
+          await tester.pumpWidget(const SizedBox());
+          settings.dispose();
+        },
+      );
+    }
   }
   for (final language in ['ja', 'en']) {
     testWidgets(

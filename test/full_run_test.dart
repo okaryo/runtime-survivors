@@ -34,7 +34,7 @@ void main() {
         final infrastructure = [
           [
             Upgrade.spatialIndex,
-            Upgrade.pipeline,
+            Upgrade.compiler,
             Upgrade.memory,
             Upgrade.clock,
           ],
@@ -42,21 +42,22 @@ void main() {
             Upgrade.coprocessor,
             Upgrade.memoryProtection,
             Upgrade.memory,
-            Upgrade.pipeline,
+            Upgrade.compiler,
           ],
           [
             Upgrade.bandwidth,
             Upgrade.compiler,
-            Upgrade.pipeline,
+            Upgrade.memoryProtection,
             Upgrade.clock,
           ],
         ];
-        run.upgrades.addAll({for (final infra in infrastructure[i]) infra: 2});
+        run.upgrades.addAll({for (final infra in infrastructure[i]) infra: 6});
         for (
           var frame = 0;
           frame < 6010 && run.phase != RunPhase.won;
           frame++
         ) {
+          if (run.policyChoicePending) run.choosePolicy(PolicyUpgrade.coverage);
           if (run.phase == RunPhase.choosing) run.choose(run.choices.first);
           run.health = run.maxHealth - 10;
           run.update(0.05);
@@ -66,16 +67,19 @@ void main() {
             run.instructions.length,
             lessThanOrEqualTo(RunState.instructionLimit),
           );
-          expect(run.abilities.echoes.length, lessThanOrEqualTo(32));
+          expect(
+            run.abilities.cachedInputs.length,
+            lessThanOrEqualTo(EnemyType.values.length * 3),
+          );
           expect(run.abilities.fields.length, lessThanOrEqualTo(3));
           expect(run.hazards.length, lessThanOrEqualTo(24));
           expect(run.health, lessThanOrEqualTo(run.maxHealth));
         }
         expect(run.phase, RunPhase.won);
         run.resetToSetup();
-        expect(run.abilities.echoes, isEmpty);
+        expect(run.abilities.cachedInputs, isEmpty);
         expect(run.abilities.fields, isEmpty);
-        expect(run.abilities.focusStacks, 0);
+        expect(run.abilities.jitExecutions, 0);
         expect(run.hazards, isEmpty);
       },
     );
@@ -90,6 +94,7 @@ void main() {
           frame < 6010 && run.phase != RunPhase.won;
           frame++
         ) {
+          if (run.policyChoicePending) run.choosePolicy(PolicyUpgrade.coverage);
           if (run.phase == RunPhase.choosing) run.choose(run.choices.first);
           // Exercise all wave boundaries without ending this simulation on damage.
           run.health = run.maxHealth;
@@ -102,16 +107,19 @@ void main() {
             run.instructions.length,
             lessThanOrEqualTo(RunState.instructionLimit),
           );
-          expect(run.abilities.echoes.length, lessThanOrEqualTo(32));
+          expect(
+            run.abilities.cachedInputs.length,
+            lessThanOrEqualTo(EnemyType.values.length * 3),
+          );
           expect(run.abilities.fields.length, lessThanOrEqualTo(3));
           expect(run.hazards.length, lessThanOrEqualTo(24));
         }
         expect(run.phase, RunPhase.won);
-        expect(run.seenEnemies, containsAll([4, 5, 6, 7, 8]));
+        expect(run.seenEnemies, containsAll([4, 5, 6, 7, 8, 9, 10]));
         expect(run.rushCount, 6);
         run.start(policy: policy);
         expect(run.projectiles, isEmpty);
-        expect(run.dynamicTimer, 0);
+        expect(run.policyRank, 1);
         expect(run.shieldTimer, 0);
         expect(run.upgrades, isEmpty);
         expect(run.health, 100);

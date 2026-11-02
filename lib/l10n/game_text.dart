@@ -57,33 +57,26 @@ class GameText {
       '${number(preview.afterHealth)}/${number(after.maxHealth)}',
       cost: cost,
     );
-    return switch (upgrade) {
+    UpgradeComparison value(String label, double oldValue, double newValue) =>
+        metric(label, first ? null : number(oldValue), number(newValue));
+    UpgradeComparison seconds(
+      String label,
+      double oldValue,
+      double newValue, {
+      bool added = true,
+    }) => metric(
+      label,
+      first && added ? null : '${oldValue.toStringAsFixed(2)}s',
+      '${newValue.toStringAsFixed(2)}s',
+    );
+    final List<UpgradeComparison> rows = switch (upgrade) {
       Upgrade.garbageCollection => [
-        metric(
-          'stat.pulseDamage',
-          first ? null : number(before.gcDamage),
-          number(after.gcDamage),
-        ),
-        metric(
-          'stat.radius',
-          first ? null : number(before.gcRadius),
-          number(after.gcRadius),
-        ),
-        metric(
-          'stat.interval',
-          '${before.attackInterval.toStringAsFixed(2)}s',
-          '${after.attackInterval.toStringAsFixed(2)}s',
-          cost: true,
-        ),
+        value('stat.pulseDamage', before.gcDamage, after.gcDamage),
+        value('stat.radius', before.gcRadius, after.gcRadius),
+        seconds('stat.abilityInterval', before.gcInterval, after.gcInterval),
       ],
       Upgrade.concurrency => [
         metric('stat.targets', before.targetCount, after.targetCount),
-        metric(
-          'stat.damage',
-          before.attackDamage.toStringAsFixed(1),
-          after.attackDamage.toStringAsFixed(1),
-          cost: true,
-        ),
       ],
       Upgrade.oop => [
         metric(
@@ -91,12 +84,12 @@ class GameText {
           first ? null : before.rank(upgrade),
           after.rank(upgrade),
         ),
-        metric(
-          'stat.objectDamage',
-          first ? null : number(before.objectDamage),
-          number(after.objectDamage),
+        value('stat.objectDamage', before.objectDamage, after.objectDamage),
+        seconds(
+          'stat.objectInterval',
+          before.objectInterval,
+          after.objectInterval,
         ),
-        hp(cost: true),
       ],
       Upgrade.functional => [
         metric(
@@ -104,40 +97,34 @@ class GameText {
           first ? null : before.rank(upgrade),
           after.rank(upgrade),
         ),
-        metric(
-          'stat.range',
-          number(before.attackRange),
-          number(after.attackRange),
-          cost: true,
-        ),
       ],
       Upgrade.nullSafety => [
-        metric(
-          'stat.shieldCooldown',
-          first ? null : '${before.shieldCooldown.toStringAsFixed(0)}s',
-          '${after.shieldCooldown.toStringAsFixed(0)}s',
+        value('stat.pulseDamage', before.nullDamage, after.nullDamage),
+        seconds(
+          'stat.abilityInterval',
+          before.nullInterval,
+          after.nullInterval,
         ),
-        hp(cost: true),
+        seconds(
+          'stat.shieldCooldown',
+          before.shieldCooldown,
+          after.shieldCooldown,
+        ),
       ],
       Upgrade.patternMatching => [
-        metric(
-          'stat.patternDamage',
-          first ? null : number(before.patternDamage),
-          number(after.patternDamage),
-        ),
-        metric(
+        value('stat.patternDamage', before.patternDamage, after.patternDamage),
+        value(
           'stat.patternWidth',
-          first ? null : number(before.patternRadius * 2),
-          number(after.patternRadius * 2),
+          before.patternRadius * 2,
+          after.patternRadius * 2,
+        ),
+        seconds(
+          'stat.abilityInterval',
+          before.patternInterval,
+          after.patternInterval,
         ),
       ],
-      Upgrade.pipeline => [
-        metric(
-          'stat.interval',
-          '${before.attackInterval.toStringAsFixed(2)}s',
-          '${after.attackInterval.toStringAsFixed(2)}s',
-        ),
-      ],
+      Upgrade.pipeline => [],
       Upgrade.bandwidth => [
         metric(
           'stat.projectileSpeed',
@@ -146,11 +133,8 @@ class GameText {
         ),
       ],
       Upgrade.lazyEvaluation => [
-        metric(
-          'stat.slowRadius',
-          first ? null : number(before.slowRadius),
-          number(after.slowRadius),
-        ),
+        value('stat.trapDamage', before.lazyDamage, after.lazyDamage),
+        value('stat.slowRadius', before.slowRadius, after.slowRadius),
         metric(
           'stat.slowAmount',
           first ? null : '${((1 - before.slowMultiplier) * 100).round()}%',
@@ -158,49 +142,31 @@ class GameText {
         ),
       ],
       Upgrade.memoization => [
-        metric(
-          'stat.echoRatio',
-          first ? null : '${(before.echoRatio * 100).round()}%',
-          '${(after.echoRatio * 100).round()}%',
+        value('stat.memoDamage', before.memoDamage, after.memoDamage),
+        value(
+          'stat.cacheDamage',
+          before.memoDamage * 1.8,
+          after.memoDamage * 1.8,
         ),
-        if (first)
-          metric(
-            'stat.damage',
-            number(before.attackDamage),
-            number(after.attackDamage),
-            cost: true,
-          ),
       ],
       Upgrade.jitCompilation => [
         metric(
-          'stat.focusBonus',
-          first ? null : '+${(before.jitPerStack * 600).round()}%',
-          '+${(after.jitPerStack * 600).round()}%',
+          'stat.jitSpeed',
+          first ? null : '×${(1 + before.jitSpeedBonus).toStringAsFixed(2)}',
+          '×${(1 + after.jitSpeedBonus).toStringAsFixed(2)}',
         ),
-        if (first)
-          metric(
-            'stat.damage',
-            number(before.attackDamage),
-            number(after.attackDamage),
-            cost: true,
-          ),
       ],
       Upgrade.ownership => [
-        metric(
-          'stat.healKill',
-          first ? null : number(before.ownershipHeal),
-          number(after.ownershipHeal),
+        value(
+          'stat.pulseDamage',
+          before.ownershipDamage,
+          after.ownershipDamage,
         ),
+        value('stat.healKill', before.ownershipHeal, after.ownershipHeal),
         metric(
           'stat.healCap',
           first ? null : '${number(before.ownershipCap)}/s',
           '${number(after.ownershipCap)}/s',
-        ),
-        metric(
-          'stat.pickup',
-          number(before.pickupRadius),
-          number(after.pickupRadius),
-          cost: true,
         ),
       ],
       Upgrade.spatialIndex => [
@@ -218,17 +184,19 @@ class GameText {
           ),
       ],
       Upgrade.coprocessor => [
-        metric(
+        seconds(
           'stat.objectInterval',
-          '${before.objectInterval.toStringAsFixed(2)}s',
-          '${after.objectInterval.toStringAsFixed(2)}s',
+          before.objectInterval,
+          after.objectInterval,
+          added: false,
         ),
       ],
       Upgrade.memoryProtection => [
-        metric(
+        seconds(
           'stat.invulnerability',
-          '${before.hitInvulnerability.toStringAsFixed(2)}s',
-          '${after.hitInvulnerability.toStringAsFixed(2)}s',
+          before.hitInvulnerability,
+          after.hitInvulnerability,
+          added: false,
         ),
       ],
       Upgrade.memory => [hp()],
@@ -249,12 +217,21 @@ class GameText {
       ],
       Upgrade.compiler => [
         metric(
-          'stat.damage',
-          before.attackDamage.toStringAsFixed(1),
-          after.attackDamage.toStringAsFixed(1),
+          'stat.cooldownScale',
+          '${(before.cooldownScale * 100).round()}%',
+          '${(after.cooldownScale * 100).round()}%',
+        ),
+        seconds(
+          'stat.interval',
+          before.attackInterval,
+          after.attackInterval,
+          added: false,
         ),
       ],
     };
+    return rows
+        .where((row) => row.before == null || row.before != row.after)
+        .toList();
   }
 
   String event(RunLog event) => call(event.key, {
@@ -263,6 +240,74 @@ class GameText {
   });
 
   static const copy = <String, List<String>>{
+    'enemy.9.title': ['Null参照', 'Null reference'],
+    'enemy.9.description': [
+      '中身のない参照からNull弾を放つ。Null Safetyなら強く処理でき、防壁でNull弾や接触を防げる。',
+      'An empty reference firing null shots. Null Safety hits it harder and guards against its shots and contact.',
+    ],
+    'enemy.10.title': ['重複リクエスト', 'Duplicate request'],
+    'enemy.10.description': [
+      '同じ入力の要求が対になって現れる。メモ化で一方の結果を保存すると、後続の処理が速くなる。',
+      'Arrives in pairs with identical input. Memoization stores one result to accelerate the next.',
+    ],
+    'stat.abilityInterval': ['発動間隔', 'Attack interval'],
+    'stat.trapDamage': ['設置攻撃の威力', 'Trap damage'],
+    'stat.memoDamage': ['初回入力の威力', 'New-input damage'],
+    'stat.cacheDamage': ['保存済み入力の威力', 'Cached-input damage'],
+    'stat.jitSpeed': ['最適化後の通常攻撃速度', 'Optimized base fire rate'],
+    'stat.cooldownScale': ['攻撃間隔の倍率', 'Attack interval scale'],
+    'jitAnalyzing': ['JIT 解析中 {count}/8', 'JIT analysis {count}/8'],
+    'jitReady': ['JIT 最適化済み', 'JIT optimized'],
+    'memoStatus': ['保存済み入力：{count}種類', 'Cached inputs: {count}'],
+    'policySummary.staticTyping': [
+      '事前検査 {count}体・初撃 +{bonus}%',
+      'Pre-check {count} tasks · opening hit +{bonus}%',
+    ],
+    'policySummary.dynamicTyping': [
+      '検査済みへの攻撃 +{bonus}%・伝播 {count}体',
+      'Checked hits +{bonus}% · spread to {count}',
+    ],
+    'policyUpgradeTitle': ['型付けを強化', 'Develop your typing policy'],
+    'policyUpgradeHint': [
+      '追加の設計選択です。この後、通常の能力も選べます。',
+      'A bonus design choice. Your regular upgrade follows.',
+    ],
+    'policyUpgradeControls': ['1 / 2 で選択', '1 / 2 to choose'],
+    'policyUpgrade.coverage': ['検査範囲を広げる', 'Expand checks'],
+    'policyUpgrade.potency': ['検査の効果を高める', 'Empower checks'],
+    'policyUpgrade.coverage.staticTyping': [
+      '事前に印を付ける対象数を増やします。',
+      'Marks more tasks before they are hit.',
+    ],
+    'policyUpgrade.coverage.dynamicTyping': [
+      '命中時の検査を近くの敵にも伝えます。',
+      'Spreads impact checks to nearby tasks.',
+    ],
+    'policyUpgrade.potency.description': [
+      '印の付いた敵へのダメージ加算を高めます。',
+      'Increases the damage bonus against marked tasks.',
+    ],
+    'policyUpgrade.coverage.value': [
+      '検査対象 {before} → {after}体',
+      'Checked tasks {before} → {after}',
+    ],
+    'policyUpgrade.spread.value': [
+      '伝播先 {before} → {after}体',
+      'Spread targets {before} → {after}',
+    ],
+    'policyUpgrade.potency.value': [
+      'ダメージ加算 +{before}% → +{after}%',
+      'Damage bonus +{before}% → +{after}%',
+    ],
+    'log.policy': [
+      '型付けの設計をLv.{rank}へ強化',
+      'Typing design upgraded to Lv.{rank}',
+    ],
+    'log.optimized': [
+      'JITの解析が完了。通常攻撃を高速化',
+      'JIT analysis complete. Rapid fire enabled',
+    ],
+
     'matchup': ['使いどころ', 'Best use'],
     'enemyAffinity': ['相性の良い言語機能', 'Compatible features'],
     'noSpecificAffinity': ['特になし', 'No specific affinity'],
@@ -281,30 +326,30 @@ class GameText {
       'Summoned crowds; enemies behind them',
     ],
     'nullSafety.matchup': [
-      '射撃対策。接触・爆発は防がない',
-      'Blocks shots, not contact or blasts',
+      '近距離の群れ・Null参照の処理',
+      'Nearby crowds; null references',
     ],
     'patternMatching.matchup': ['密集・群れの奥の敵', 'Crowds; enemies behind them'],
-    'lazyEvaluation.matchup': ['追跡してくる敵の足止め', 'Slows pursuing enemies'],
+    'lazyEvaluation.matchup': [
+      '追跡する群れを設置攻撃へ誘導',
+      'Lead pursuing crowds into traps',
+    ],
     'memoization.matchup': [
-      '同じ高耐久の敵への継続攻撃',
-      'Sustained fire on a durable target',
+      '同じ入力のタスクが繰り返す場面',
+      'Repeated tasks with the same input',
     ],
-    'jitCompilation.matchup': [
-      '単体・高耐久の敵への集中',
-      'Focus on a single durable enemy',
-    ],
+    'jitCompilation.matchup': ['攻撃を続ける長い戦闘', 'Sustained combat'],
     'ownership.matchup': [
-      '近距離の撃破。召喚雑魚は対象外',
-      'Nearby kills; excludes summoned tasks',
+      '近距離で攻撃しながらメモリ回収',
+      'Close-range attacks with memory recovery',
     ],
-    'memory.matchup': [
-      'OOP・Null Safetyのメモリ負担',
-      'Memory costs of OOP and Null Safety',
-    ],
+    'memory.matchup': ['生存力の確保とメモリ回復', 'Survivability and memory recovery'],
     'clock.matchup': ['射線・爆発からの回避', 'Dodge shot lanes and blasts'],
     'cache.matchup': ['散った経験値の回収', 'Collect scattered experience'],
-    'compiler.matchup': ['通常攻撃・連鎖の火力', 'Base shots and their chains'],
+    'compiler.matchup': [
+      '通常攻撃とFeatureの攻撃頻度',
+      'Base and feature attack frequency',
+    ],
     'pipeline.matchup': ['並行処理・連鎖の起点', 'More concurrent volleys and chains'],
     'bandwidth.matchup': ['動く敵に弾を届かせる', 'Deliver shots to moving enemies'],
     'spatialIndex.matchup': ['GC・遅延評価の範囲', 'GC and Lazy Evaluation areas'],
@@ -315,48 +360,48 @@ class GameText {
     ],
     'lazyEvaluation.title': ['遅延評価', 'Lazy Evaluation'],
     'lazyEvaluation.description': [
-      '5秒ごとに減速領域を設置。3.5秒持続し、領域内の敵の移動を遅くします。',
-      'Places a slowing field every 5s, lasting 3.5s. Slows enemies inside it.',
+      '必要になるまで処理を待機。設置した領域に敵が近づくと範囲攻撃が起動し、その後しばらく敵を減速します。',
+      'Defers work until needed. A placed trap bursts when tasks approach, then briefly slows survivors.',
     ],
     'lazyEvaluation.tradeoff': [
-      '直接ダメージなし。エリートへの減速は最大20%。',
-      'No direct damage. Elite slow is capped at 20%.',
+      '設置位置は動かず、敵が近づかなければ起動しない。',
+      'Traps stay in place and need nearby tasks to trigger.',
     ],
     'memoization.title': ['メモ化', 'Memoization'],
     'memoization.description': [
-      '通常攻撃を0.65秒後に再実行。対象が倒れると消失し、再攻撃の再記録はしません。',
-      'Repeats base shots after 0.65s. Lost if the target dies; echoes cannot record echoes.',
+      'タスクを処理して結果を保存。同じ入力のタスクには、結果を再利用する強力な高速弾を発射します。',
+      'Stores completed results. Fires stronger, faster cache shots at tasks with the same input.',
     ],
     'memoization.tradeoff': [
-      '通常攻撃の威力 −10%（初回のみ）',
-      'Base damage −10% on first acquisition',
+      '初めての入力にも通常の処理弾を撃つ。入力の印が同じなら結果を再利用。',
+      'New inputs still receive normal shots. Matching input marks reuse the result.',
     ],
     'jitCompilation.title': ['JITコンパイル', 'JIT Compilation'],
     'jitCompilation.description': [
-      '同じ主対象への通常攻撃を最大6回まで蓄積。対象変更や2秒の中断でリセット。',
-      'Builds power over six repeated volleys at one primary target. Resets on a switch or 2s gap.',
+      '通常攻撃の実行で解析が進み、完了すると連射が高速化。対象が変わっても最適化は維持されます。',
+      'Base volleys advance analysis, then unlock rapid fire. Optimization persists across target changes.',
     ],
     'jitCompilation.tradeoff': [
-      '通常攻撃の基礎威力 −15%（初回のみ）',
-      'Base damage −15% on first acquisition',
+      '取得直後は解析中。最適化後はラン終了まで有効。',
+      'Needs a warm-up. Once optimized, stays active for the rest of the run.',
     ],
     'ownership.title': ['所有権', 'Ownership'],
     'ownership.description': [
-      '距離105以内の撃破でメモリ回復。召喚雑魚は回復対象外。',
-      'Kills within 105 restore memory. Summoned tasks grant no healing.',
+      '近くのタスクを攻撃し、処理完了とともにメモリを回収。近距離の撃破でメモリが回復します。',
+      'Attacks nearby tasks and reclaims memory as their work ends. Nearby kills restore memory.',
     ],
     'ownership.tradeoff': [
-      '経験値の回収範囲 −8 / ランク。回復量に上限。',
-      'Pickup radius −8 per rank. Healing has a budget.',
+      '回復には時間あたりの上限があり、召喚雑魚からは回復しない。',
+      'Healing is rate-limited; summoned tasks grant no healing.',
     ],
     'spatialIndex.title': ['空間インデックス', 'Spatial Index'],
     'spatialIndex.description': [
-      'GCと新しく設置する減速領域の半径を拡大します。',
-      'Expands GC pulses and newly placed slowing fields.',
+      'GCと、新しく設置する遅延評価の攻撃範囲を広げます。',
+      'Expands GC pulses and newly placed Lazy Evaluation traps.',
     ],
     'spatialIndex.tradeoff': [
-      'なし。GCまたは遅延評価の取得後に出現。',
-      'None. Offered after GC or Lazy Evaluation.',
+      'GCまたは遅延評価の取得後に出現。',
+      'Offered after GC or Lazy Evaluation.',
     ],
     'coprocessor.title': ['補助プロセッサ', 'Coprocessor'],
     'coprocessor.description': [
@@ -373,58 +418,60 @@ class GameText {
       'なし。被弾そのものは防がない。',
       'None. Does not prevent the initial hit.',
     ],
-    'stat.slowRadius': ['減速領域の半径', 'Field radius'],
+    'stat.slowRadius': ['設置攻撃の半径', 'Trap radius'],
     'stat.slowAmount': ['移動の減速', 'Movement slow'],
-    'stat.echoRatio': ['再攻撃の威力比', 'Echo damage ratio'],
-    'stat.focusBonus': ['集中時の最大加算', 'Max focus bonus'],
     'stat.healKill': ['撃破時の回復', 'Healing per kill'],
     'stat.healCap': ['回復の上限', 'Healing budget'],
     'stat.objectInterval': ['オブジェクトの間隔', 'Object interval'],
     'stat.invulnerability': ['被弾後の無敵', 'Hit invulnerability'],
-    'jitStatus': ['JIT集中：{stacks} / 6', 'JIT focus: {stacks} / 6'],
-    'echoStatus': ['再攻撃待ち：{count}', 'Pending echoes: {count}'],
     'enemy.6.title': ['Buffer Overflow', 'Buffer Overflow'],
     'enemy.6.type': ['撃破後爆発タスク', 'Death-blast task'],
     'enemy.6.description': [
-      '撃破した場所に赤い円を予告し、1.1秒後に爆発。範囲75、ダメージ18。防壁は防げないため、倒したら円から離れよう。',
-      'Leaves a marked blast on death: radius 75, damage 18 after 1.1s. Shields do not block it. Move out after the kill.',
+      '処理後、その場所の赤い円が爆発する。倒したら円の外へ離れよう。',
+      'Leaves a marked blast after processing. Move outside the red circle.',
     ],
     'enemy.7.title': ['Scheduler', 'Scheduler'],
     'enemy.7.type': ['支援タスク', 'Support task'],
     'enemy.7.description': [
-      '半径150の味方の移動速度を25%、攻撃準備を15%加速。支援は重複せず、本体を倒すと解除。貫通や連鎖で奥を狙おう。',
-      'Boosts allies within 150: movement +25%, attack preparation +15%. Auras do not stack. Defeat it with piercing or chains.',
+      '周囲のタスクの移動と攻撃を加速。本体を処理すると支援が消える。貫通や連鎖で奥を狙おう。',
+      'Speeds up nearby tasks and attacks. Defeat it to remove support; piercing and chains reach past the crowd.',
     ],
     'enemy.8.title': ['装甲メモリ確保', 'Armored Allocation'],
     'enemy.8.type': ['正面防御タスク', 'Directional armor task'],
     'enemy.8.description': [
-      '正面からの弾のダメージを45%軽減。側面・背面やGCの範囲攻撃は軽減しない。OOPの回り込みや集中攻撃も有効。',
-      'Reduces frontal projectile damage by 45%. Flanking and GC area damage bypass the armor. Objects and focused attacks also help.',
+      '正面からの弾を軽減。側面・背面からの弾や範囲攻撃は防御を回避する。',
+      'Resists frontal shots. Flanking shots and area attacks bypass its armor.',
     ],
     'enemy.4.title': ['RPC要求', 'RPC request'],
     'enemy.4.type': ['射撃タスク', 'Ranged task'],
     'enemy.4.description': [
-      '青いアンテナのタスク。射線を予告してから固定方向へ弾を撃つ。横へ避けて近づこう。弾のダメージ11。',
-      'An antenna task that telegraphs a fixed-direction shot. Sidestep, then approach. Projectile damage: 11.',
+      '発射前に光り、固定方向へ弾を撃つ。弾を横へ避けながら近づこう。',
+      'Flashes before firing a fixed-direction shot. Sidestep the projectile, then approach.',
     ],
     'enemy.5.title': ['Fork Bomb', 'Fork Bomb'],
     'enemy.5.type': ['召喚タスク', 'Summoner task'],
     'enemy.5.description': [
-      '小型タスクを一度に3体、最大6体まで召喚。本体を倒すと追加召喚が止まる。召喚雑魚の経験値は1。',
-      'Summons three small tasks, up to six active children. Defeat the parent to stop spawning. Children grant 1 XP each.',
+      '小型タスクを繰り返し召喚。本体を処理すると追加召喚が止まる。密集した小型タスクはまとめて処理しよう。',
+      'Repeatedly spawns small tasks. Process the parent to stop spawning; clear the children together.',
     ],
     'nullSafety.title': ['Null Safety', 'Null Safety'],
     'nullSafety.description': [
-      '敵弾を1発防ぐ防壁。消費後に再充填します。接触は防げません。',
-      'Blocks one enemy projectile, then recharges. Does not block contact.',
+      '防壁から周囲へ攻撃。Null参照を強く処理し、Null弾を消去。再充填する防壁がNull由来の被弾を防ぎます。',
+      'A barrier attacks nearby tasks, hits null references harder and clears null shots. Its recharging guard blocks null hits.',
     ],
-    'nullSafety.tradeoff': ['最大メモリ −8 / ランク', 'Maximum memory −8 per rank'],
-    'patternMatching.title': ['パターンマッチング', 'Pattern Matching'],
+    'nullSafety.tradeoff': [
+      '通常弾・通常タスクの接触・爆発は防げない。',
+      'Does not block ordinary shots, ordinary contact or explosions.',
+    ],
+    'patternMatching.title': ['ベクトル化', 'Vectorization'],
     'patternMatching.description': [
-      '3.2秒ごとに直線の貫通弾を発射。発射後は追尾しません。',
-      'Fires a piercing shot every 3.2s. Its trajectory is fixed after firing.',
+      '複数データを一列にまとめて処理する直線貫通弾。群れを抜いて奥のタスクまで届きます。',
+      'Processes a row of data with a piercing shot, reaching tasks behind the crowd.',
     ],
-    'patternMatching.tradeoff': ['発射後の追尾なし', 'Does not home after firing'],
+    'patternMatching.tradeoff': [
+      '発射後の追尾なし。列を揃えると複数に命中。',
+      'Fixed trajectory. Line tasks up to hit several at once.',
+    ],
     'pipeline.title': ['命令パイプライン', 'Instruction Pipeline'],
     'pipeline.description': [
       '通常攻撃の間隔を短縮。連鎖や同時攻撃の起点を増やします。',
@@ -436,7 +483,7 @@ class GameText {
       '通常弾・オブジェクト弾・連鎖弾・貫通弾の速度を上げます。',
       'Speeds up base, object, chain, and piercing projectiles.',
     ],
-    'bandwidth.tradeoff': ['なし（弾速の上限1600）', 'None (maximum speed 1600)'],
+    'bandwidth.tradeoff': ['なし', 'None'],
     'stat.shieldCooldown': ['防壁の再充填', 'Shield recharge'],
     'stat.patternDamage': ['貫通攻撃の威力', 'Piercing damage'],
     'stat.patternWidth': ['貫通弾の幅', 'Shot width'],
@@ -457,31 +504,26 @@ class GameText {
     'policy.staticTyping.title': ['Static Typing', 'Static Typing'],
     'policy.dynamicTyping.title': ['Dynamic Typing', 'Dynamic Typing'],
     'policy.staticTyping.description': [
-      '事前に備える設計。射撃・突進・召喚の予告時間が0.45秒長くなります。',
-      'Plan ahead: ranged, charge, and summon telegraphs last 0.45s longer.',
+      '事前検査で周囲の敵に金色の印を付け、印のある敵への初撃を強化します。',
+      'Pre-checks nearby tasks with gold marks, empowering the first hit on each marked task.',
     ],
     'policy.staticTyping.cost': [
-      '通常攻撃の威力 −10%。GC・OOP・貫通攻撃は対象外。',
-      'Base attack damage −10%. GC, objects, and piercing damage are unaffected.',
+      '初撃に強い設計。途中の設計強化で検査対象数か効果を伸ばせます。',
+      'Strong opening hits. Later design upgrades improve coverage or power.',
     ],
     'policy.dynamicTyping.description': [
-      '異なる敵種へ通常攻撃の対象が変わると、3秒間、通常攻撃速度 ×1.3。',
-      'Switch the primary target to a different task type for ×1.3 base attack speed for 3s.',
+      '命中時に敵を検査して青い印を付け、その敵への後続の攻撃を強化します。',
+      'Checks tasks on impact with blue marks, empowering subsequent hits on them.',
     ],
     'policy.dynamicTyping.cost': [
-      '再発動まで6秒。同じ敵種だけでは発動しません。',
-      '6s cooldown. Fighting only one task type does not activate it.',
+      '継続処理に強い設計。途中の設計強化で検査の伝播か効果を伸ばせます。',
+      'Strong repeated hits. Later design upgrades improve propagation or power.',
     ],
     'policyKeys': [
       '1 / 2 で方針選択 · Enter で起動',
       '1 / 2 selects a policy · Enter starts the run',
     ],
     'policyCurrent': ['設計方針', 'Typing policy'],
-    'dynamicActive': ['適応加速：{seconds}秒', 'Adaptive boost: {seconds}s'],
-    'dynamicWaiting': [
-      '適応待機 · 再発動まで{seconds}秒',
-      'Adaptive standby · cooldown {seconds}s',
-    ],
     'resultBuild': ['取得した能力', 'Your build'],
     'profile.label': ['今回の言語プロフィール', 'Your language profile'],
     'profile.custom': ['独自設計の言語', 'An original language'],
@@ -571,7 +613,7 @@ class GameText {
     ],
     'nextRank': ['ランク {from} → {to}', 'Rank {from} → {to}'],
     'change': ['今回の強化', 'This upgrade'],
-    'tradeoff': ['トレードオフ', 'Tradeoff'],
+    'tradeoff': ['性質・制約', 'Notes'],
     'implement': ['実装する', 'Implement'],
     'noTradeoff': ['なし', 'None'],
     'pauseTitle': ['ひと息、つこう。', 'Take a breath.'],
@@ -634,12 +676,12 @@ class GameText {
     ],
     'garbageCollection.title': ['ガベージコレクション', 'Garbage Collection'],
     'garbageCollection.description': [
-      '3秒ごとに、周囲のタスクをまとめて処理します。',
-      'Sweeps nearby tasks with an area pulse every 3 seconds.',
+      '周囲をまとめて掃除する範囲攻撃。密集したタスクを一度に処理します。',
+      'Sweeps the surrounding area, processing crowded tasks together.',
     ],
     'garbageCollection.tradeoff': [
-      '通常攻撃の間隔 +0.08秒 / ランク',
-      'Base attack interval +0.08 s per rank',
+      '攻撃の合間があるため、近づくタイミングが重要。',
+      'Pulses have downtime; time your approach.',
     ],
     'concurrency.title': ['並行処理', 'Concurrency'],
     'concurrency.description': [
@@ -647,23 +689,23 @@ class GameText {
       'Attacks several nearby tasks at the same time.',
     ],
     'concurrency.tradeoff': [
-      '通常攻撃の単発威力 ×0.88 / ランク',
-      'Base damage per shot ×0.88 per rank',
+      '単体への攻撃数は増えない。',
+      'Does not add shots against a single target.',
     ],
     'oop.title': ['オブジェクト指向', 'Object-Oriented Programming'],
     'oop.description': [
-      '周囲を回るオブジェクトが、それぞれ独立して攻撃します。0.9秒ごとに近くのタスクを狙います。',
-      'Orbiting objects independently attack nearby tasks every 0.9 seconds.',
+      'オブジェクトに処理を委譲。周囲を回るオブジェクトが、それぞれ近くのタスクを攻撃します。',
+      'Delegates work to orbiting objects, each attacking nearby tasks independently.',
     ],
-    'oop.tradeoff': ['最大メモリ −5 / ランク', 'Maximum memory −5 per rank'],
+    'oop.tradeoff': ['各オブジェクトが独立して対象を選ぶ。', 'Objects choose their own targets.'],
     'functional.title': ['関数型プログラミング', 'Functional Programming'],
     'functional.description': [
-      '通常攻撃が命中すると、近くの別のタスクへ連鎖。連鎖ごとに威力が70%になります。',
-      'Base attacks chain to nearby tasks on hit. Each jump retains 70% of its incoming damage.',
+      '処理を次の処理へつなぐ連鎖攻撃。命中した通常弾が近くの別のタスクへ移ります。',
+      'Composes work into a chain. Base shots jump from a hit task to another nearby task.',
     ],
     'functional.tradeoff': [
-      '通常攻撃の索敵範囲 −15 / ランク',
-      'Base attack targeting range −15 per rank',
+      '連鎖するたびに威力が下がる。同じ連鎖は同じ敵を再処理しない。',
+      'Damage fades with each jump. A chain never revisits the same task.',
     ],
     'enemy.0.type': ['通常タスク', 'Standard task'],
     'enemy.1.type': ['高速タスク', 'Fast task'],
@@ -671,23 +713,23 @@ class GameText {
     'enemy.3.type': ['エリートタスク', 'Elite task'],
     'enemy.0.title': ['リクエスト', 'Request'],
     'enemy.0.description': [
-      '基本のタスク。ゆっくり追いかけてくる。接触ダメージ9。',
-      'A basic task that steadily follows you. Contact damage: 9.',
+      '基本の処理要求。ゆっくり追いかけてくる。',
+      'A basic request that steadily follows you.',
     ],
     'enemy.1.title': ['割り込み', 'Interrupt'],
     'enemy.1.description': [
-      '小さくすばしっこいタスク。集団で近づいてくる。接触ダメージ9。',
-      'A small, quick task that closes in fast. Contact damage: 9.',
+      '小さくすばしっこい処理要求。集団で近づいてくる。',
+      'A small, quick task that closes in as a crowd.',
     ],
     'enemy.2.title': ['メモリ確保', 'Allocation'],
     'enemy.2.description': [
-      '大きく頑丈なタスク。移動は遅いが耐久力は通常の3倍。接触ダメージ15。',
-      'A bulky task. Slow, with three times the usual health. Contact damage: 15.',
+      '大きく頑丈なタスク。移動は遅いが処理に時間がかかる。',
+      'A bulky, slow task that takes longer to process.',
     ],
     'enemy.3.title': ['デッドロック', 'Deadlock'],
     'enemy.3.description': [
-      'エリートタスク。光るラインで方向を予告してから突進する。予告が出たら横へ避けよう。接触ダメージ22。',
-      'An elite task that telegraphs its charge with a bright lane. Dodge sideways when it winds up. Contact damage: 22.',
+      '方向を予告してから突進するエリート。予告が出たら横へ避けよう。',
+      'An elite that marks its direction before charging. Dodge sideways when it winds up.',
     ],
     'memory.title': ['メモリ増設', 'Memory Expansion'],
     'memory.description': [
@@ -709,10 +751,13 @@ class GameText {
     'cache.tradeoff': ['なし', 'None'],
     'compiler.title': ['コンパイラ最適化', 'Compiler Optimization'],
     'compiler.description': [
-      '通常攻撃1発あたりの威力を上げます。',
-      'Increases the damage of every base attack.',
+      '処理を最適化し、通常攻撃とFeatureの攻撃間隔を短縮します。',
+      'Optimizes execution, shortening base and feature attack intervals.',
     ],
-    'compiler.tradeoff': ['なし', 'None'],
+    'compiler.tradeoff': [
+      '防壁の再充填と被弾後の無敵時間は対象外。',
+      'Does not change shield recharge or hit invulnerability.',
+    ],
   };
 }
 

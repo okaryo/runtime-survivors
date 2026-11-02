@@ -26,7 +26,7 @@ void main() {
         ..enemies.clear();
       for (var kind = 0; kind < EnemyType.values.length; kind++) {
         final enemy = TaskEnemy(
-          Vector2((kind % 3 - 1) * 220 + 110, (kind ~/ 3 - 1) * 170),
+          Vector2((kind % 4 - 1.5) * 210 + 70, (kind ~/ 4 - 1) * 160),
           kind: kind,
         );
         if (kind >= 3) {
@@ -39,6 +39,12 @@ void main() {
       run.projectiles.addAll([
         LinearProjectile(Vector2(-80, -30), Vector2(180, 0), damage: 11),
         LinearProjectile(
+          Vector2(-100, 25),
+          Vector2(180, 0),
+          damage: 11,
+          nullReference: true,
+        ),
+        LinearProjectile(
           Vector2(70, 30),
           Vector2(640, 0),
           damage: 42,
@@ -47,8 +53,21 @@ void main() {
       ]);
       run.hazards.add(DangerZone(Vector2(-220, 80))..remaining = 0.6);
       run.abilities.fields.add(SlowField(Vector2(-170, -60), 110, 0.7));
-      run.abilities.focusTarget = run.enemies.last;
-      run.abilities.focusStacks = 4;
+      run.abilities.fields.add(
+        SlowField(Vector2(180, 80), 110, 0.7)..triggered = true,
+      );
+      run.instructions.add(
+        Instruction(
+          Vector2(-10, -70),
+          run.enemies.last,
+          54,
+          kind: InstructionKind.cached,
+        ),
+      );
+      run.enemies.last.checked = true;
+      run.upgrades[Upgrade.jitCompilation] = 1;
+      run.upgrades[Upgrade.memoization] = 1;
+      run.abilities.jitExecutions = 8;
       run.enemies[1].supported = true;
       run.phase = RunPhase.paused;
       final key = GlobalKey();
