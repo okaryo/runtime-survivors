@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import 'run_state.dart';
+import 'character_painter.dart';
 import '../audio/sound_cue.dart';
 import '../l10n/game_text.dart';
 
@@ -15,6 +16,7 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
   void Function(SoundCue)? onSound;
   GameText text = const GameText('ja');
   bool inputBlocked = false;
+  void Function(Iterable<String>)? onDiscover;
   final revision = ValueNotifier(0);
   double _uiTimer = 0;
   static const mint = Color(0xFF91E2CA);
@@ -28,6 +30,10 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
   }
 
   void refresh() {
+    onDiscover?.call([
+      for (final kind in run.seenEnemies) 'enemy.$kind',
+      for (final upgrade in run.seenUpgrades) 'upgrade.${upgrade.name}',
+    ]);
     flushSounds();
     revision.value++;
   }
@@ -266,32 +272,13 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
             };
       canvas.save();
       canvas.translate(enemy.position.x, enemy.position.y);
-      if (enemy.kind == 1) canvas.rotate(pi / 4);
-      final box = RRect.fromRectAndRadius(
-        Rect.fromCircle(center: Offset.zero, radius: enemy.radius),
-        const Radius.circular(3),
-      );
-      canvas.drawRRect(box, Paint()..color = color.withValues(alpha: 0.12));
-      canvas.drawRRect(
-        box,
-        Paint()
-          ..color = color
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.5,
-      );
-      canvas.drawLine(
-        const Offset(-4, -3),
-        const Offset(4, -3),
-        Paint()
-          ..color = color
-          ..strokeWidth = 2,
-      );
-      canvas.drawLine(
-        const Offset(-4, 3),
-        const Offset(1, 3),
-        Paint()
-          ..color = color
-          ..strokeWidth = 2,
+      CharacterPainter.draw(
+        canvas,
+        kind: enemy.kind,
+        radius: enemy.radius,
+        flash: enemy.flash > 0,
+        alert: enemy.telegraphRemaining > 0 || enemy.chargeRemaining > 0,
+        time: run.elapsed + enemy.position.x * 0.01,
       );
       if (enemy.kind == 3) {
         canvas.drawRect(
@@ -354,43 +341,38 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
           ..style = PaintingStyle.stroke,
       );
     }
-    final playerColor = run.invulnerability > 0 ? coral : mint;
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromCenter(center: position, width: 30, height: 30),
-        const Radius.circular(9),
-      ),
-      Paint()..color = playerColor,
-    );
-    _text(
+    canvas.save();
+    canvas.translate(position.dx, position.dy);
+    CharacterPainter.draw(
       canvas,
-      '<>',
-      position - const Offset(10, 9),
-      const Color(0xFF152425),
-      15,
-      bold: true,
+      kind: 0,
+      radius: 16,
+      player: true,
+      flash: run.invulnerability > 0,
+      time: run.elapsed,
     );
+    canvas.restore();
     _text(
       canvas,
       'YOU',
-      position + const Offset(-10, 29),
-      mint.withValues(alpha: 0.65),
-      9,
+      position + const Offset(-10, 31),
+      mint.withValues(alpha: 0.9),
+      11,
     );
     canvas.restore();
     _text(
       canvas,
       '${text('heap')} / SECTOR ${((run.player.x + 10000) / 240).floor()}.${((run.player.y + 10000) / 240).floor()}',
       const Offset(20, 18),
-      const Color(0xFF77918B),
-      10,
+      const Color(0xFFA4BCB2),
+      11,
     );
     _text(
       canvas,
       text('legend'),
       Offset(20, size.y - 30),
-      const Color(0xFF77918B),
-      10,
+      const Color(0xFFA4BCB2),
+      11,
     );
     canvas.restore();
   }

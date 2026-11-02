@@ -26,7 +26,7 @@ class GameSettings extends ChangeNotifier {
       }
       discoveries.addAll(preferences.getStringList('discoveries') ?? []);
       notifyListeners();
-      if (_changes != changesAtStart) save();
+      save(); // Also persist discoveries made while the store was loading.
     } catch (_) {
       // A blocked/private browser store must not prevent playing.
     }

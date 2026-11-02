@@ -10,6 +10,7 @@ import '../game/runtime_game.dart';
 import '../l10n/game_text.dart';
 import '../settings.dart';
 import 'theme.dart';
+import 'codex_panel.dart';
 import 'upgrade_card.dart';
 
 class RuntimeScreen extends StatefulWidget {
@@ -25,12 +26,15 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
   final focus = FocusNode();
   final audio = GameAudio();
   late final AppLifecycleListener lifecycle;
+  bool _codexOpen = false;
+  bool _modalOpen = false;
   GameText get text => GameText(widget.settings.language);
 
   @override
   void initState() {
     super.initState();
     game.onSound = audio.play;
+    game.onDiscover = widget.settings.discover;
     lifecycle = AppLifecycleListener(onInactive: pause, onHide: pause);
   }
 
@@ -41,12 +45,17 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
 
   void start() {
     audio.unlock();
+    setState(() => _codexOpen = false);
+    game.inputBlocked = _modalOpen;
     run.start();
     game.refresh();
     focus.requestFocus();
   }
 
   void resume() {
+    if (_modalOpen) return;
+    if (_codexOpen) setState(() => _codexOpen = false);
+    game.inputBlocked = false;
     audio.unlock();
     run.resume();
     game.refresh();
@@ -54,6 +63,9 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
   }
 
   void choose(Upgrade upgrade) {
+    if (_modalOpen) return;
+    if (_codexOpen) setState(() => _codexOpen = false);
+    game.inputBlocked = false;
     audio.unlock();
     run.choose(upgrade);
     game.refresh();
@@ -64,6 +76,7 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
   void dispose() {
     lifecycle.dispose();
     game.onSound = null;
+    game.onDiscover = null;
     audio.dispose();
     focus.dispose();
     super.dispose();
@@ -71,12 +84,14 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
 
   Future<void> modal(Widget Function(BuildContext) builder) async {
     pause();
+    _modalOpen = true;
     game.inputBlocked = true;
     try {
       await showDialog<void>(context: context, builder: builder);
     } finally {
       if (mounted) {
-        game.inputBlocked = false;
+        _modalOpen = false;
+        game.inputBlocked = _codexOpen;
         focus.requestFocus();
       }
     }
@@ -135,6 +150,18 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
                       Text(
                         text('controls'),
                         style: const TextStyle(fontSize: 12, color: muted),
+                      ),
+                      const SizedBox(height: 18),
+                      CodexPanel(
+                        text: text,
+                        discoveries: widget.settings.discoveries,
+                        expanded: _codexOpen,
+                        onToggle: () {
+                          if (!_codexOpen) pause();
+                          setState(() => _codexOpen = !_codexOpen);
+                          game.inputBlocked = _codexOpen || _modalOpen;
+                          if (!_codexOpen) focus.requestFocus();
+                        },
                       ),
                     ],
                   ),
@@ -201,8 +228,11 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
         children: [
           TextButton.icon(
             key: const Key('language-toggle'),
-            onPressed: () =>
-                widget.settings.update(language: text.isJapanese ? 'en' : 'ja'),
+            onPressed: () {
+              run.movement.setZero();
+              widget.settings.update(language: text.isJapanese ? 'en' : 'ja');
+              focus.requestFocus();
+            },
             icon: const Icon(Icons.translate, size: 18),
             label: Text(text.isJapanese ? 'English' : '日本語'),
           ),
@@ -212,7 +242,13 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
             onPressed: () {
               audio.unlock();
               widget.settings.update(muted: !widget.settings.muted);
+              audio.configure(
+                muted: widget.settings.muted,
+                volume: widget.settings.volume,
+              );
               if (!widget.settings.muted) audio.play(SoundCue.select);
+              run.movement.setZero();
+              focus.requestFocus();
             },
             icon: Icon(
               widget.settings.muted
@@ -383,8 +419,9 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
               const SizedBox(width: 8),
               const Text('runtime://local', style: TextStyle(fontSize: 12)),
               const Spacer(),
-              Flexible(
+              Expanded(
                 child: Text(
+                  textAlign: TextAlign.right,
                   text(switch (run.phase) {
                     RunPhase.ready => 'standby',
                     RunPhase.running => 'running',
@@ -499,9 +536,14 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
           children: [
             const Icon(Icons.account_tree_outlined, size: 19),
             const SizedBox(width: 8),
-            Text(
-              text('design'),
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+            Expanded(
+              child: Text(
+                text('design'),
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ),
           ],
         ),
@@ -540,12 +582,16 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
                   children: [
                     SizedBox(
                       width: 37,
-                      child: Text(
-                        entry.key.symbol,
-                        style: TextStyle(
-                          fontSize: 17,
-                          color: feature ? featureColor : infraColor,
-                          fontWeight: FontWeight.bold,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          entry.key.symbol,
+                          style: TextStyle(
+                            fontSize: 17,
+                            color: feature ? featureColor : infraColor,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
@@ -710,7 +756,7 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
           ],
         ),
       const SizedBox(height: 16),
-      darkBody(text('choicesKeys')),
+      darkBody(text(_codexOpen ? 'codexSelect' : 'choicesKeys')),
     ],
   );
   Widget upgradeCard(int index) => UpgradeCard(
@@ -731,7 +777,7 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
       const SizedBox(height: 25),
       action(text('resume'), Icons.play_arrow, resume),
       const SizedBox(height: 18),
-      darkBody(text('pauseKeys')),
+      darkBody(text(_codexOpen ? 'codexResume' : 'pauseKeys')),
     ],
   );
   Widget result() => Column(
@@ -834,10 +880,13 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
                   },
                 ),
                 OutlinedButton.icon(
-                  onPressed: () {
-                    audio.unlock();
-                    audio.play(SoundCue.levelUp);
-                  },
+                  onPressed:
+                      widget.settings.muted || widget.settings.volume == 0
+                      ? null
+                      : () {
+                          audio.unlock();
+                          audio.play(SoundCue.levelUp);
+                        },
                   icon: const Icon(Icons.music_note_outlined),
                   label: Text(text('soundTest')),
                 ),

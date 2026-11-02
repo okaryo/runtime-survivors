@@ -69,6 +69,8 @@ class GameText {
     ],
     'memory': ['メモリ（HP）', 'Memory (HP)'],
     'uptime': ['稼働時間', 'Uptime'],
+    'taskKinds': ['タスクの種類', 'Task types'],
+    'type': ['区分', 'Type'],
     'tasks': ['処理したタスク', 'Tasks processed'],
     'completed': ['完了', 'completed'],
     'level': ['言語レベル', 'Language level'],
@@ -164,6 +166,14 @@ class GameText {
       '遭遇したタスクと、取得した能力の記録。',
       'A record of encountered tasks and acquired upgrades.',
     ],
+    'codexResume': [
+      '図鑑を閉じるか、再開ボタンを押してください。',
+      'Close the codex or use the Resume button.',
+    ],
+    'codexSelect': [
+      '図鑑を閉じるか、カードをクリックしてください。',
+      'Close the codex or click an upgrade card.',
+    ],
     'codexPaused': ['図鑑を開いている間は一時停止します。', 'Opening the codex pauses the run.'],
     'undiscovered': ['未発見', 'Undiscovered'],
     'unlockEnemy': [
@@ -237,7 +247,7 @@ class GameText {
     'oop.tradeoff': ['最大メモリ −5 HP / ランク', 'Maximum memory −5 HP per rank'],
     'oop.change': [
       'オブジェクト {count}体 / 威力 {damage} / 最大HP {hp}',
-      '{count} objects / damage {damage} / max HP {hp}',
+      'Objects: {count} / damage {damage} / max HP {hp}',
     ],
     'functional.title': ['関数型プログラミング', 'Functional Programming'],
     'functional.description': [
@@ -250,8 +260,12 @@ class GameText {
     ],
     'functional.change': [
       '最大 {jumps}回連鎖 / 索敵範囲 {range}',
-      'Up to {jumps} jumps / targeting range {range}',
+      'Chain jumps: {jumps} / targeting range {range}',
     ],
+    'enemy.0.type': ['通常タスク', 'Standard task'],
+    'enemy.1.type': ['高速タスク', 'Fast task'],
+    'enemy.2.type': ['高耐久タスク', 'Heavy task'],
+    'enemy.3.type': ['エリートタスク', 'Elite task'],
     'enemy.0.title': ['リクエスト', 'Request'],
     'enemy.0.description': [
       '基本のタスク。ゆっくり追いかけてくる。接触ダメージ9。',
