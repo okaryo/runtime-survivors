@@ -422,6 +422,35 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
                   child: GameWidget(game: game, focusNode: focus),
                 ),
               ),
+              if (run.phase == RunPhase.running)
+                Positioned(
+                  right: 14,
+                  top: 14,
+                  child: IgnorePointer(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: ink,
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                      child: Text(
+                        run.isRush
+                            ? '⚡ ${text('rush')}'
+                            : '${text('nextRush')} ${run.secondsToRush.ceil()}s',
+                        style: TextStyle(
+                          color: run.isRush
+                              ? const Color(0xFFFFBA8C)
+                              : darkMuted,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               if (run.phase != RunPhase.running)
                 Positioned.fill(child: overlay()),
               if (run.phase == RunPhase.running && run.elapsed < 7)

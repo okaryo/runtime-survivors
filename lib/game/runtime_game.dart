@@ -171,6 +171,67 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
     canvas.save();
     canvas.translate(origin.dx, origin.dy);
     Offset point(Vector2 v) => Offset(v.x, v.y);
+    for (final enemy in run.enemies.where(
+      (e) => e.kind == 3 && (e.telegraphRemaining > 0 || e.chargeRemaining > 0),
+    )) {
+      canvas.save();
+      canvas.translate(enemy.position.x, enemy.position.y);
+      canvas.rotate(atan2(enemy.chargeDirection.y, enemy.chargeDirection.x));
+      final lane = Rect.fromLTWH(
+        0,
+        -22,
+        enemy.telegraphRemaining > 0 ? 322 : enemy.chargeRemaining * 460,
+        44,
+      );
+      canvas.drawRect(lane, Paint()..color = coral.withValues(alpha: 0.15));
+      canvas.drawRect(
+        lane,
+        Paint()
+          ..color = coral
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2,
+      );
+      for (double x = 30; x < lane.width; x += 45) {
+        canvas.drawLine(
+          Offset(x - 6, -6),
+          Offset(x, 0),
+          Paint()
+            ..color = coral
+            ..strokeWidth = 2,
+        );
+        canvas.drawLine(
+          Offset(x - 6, 6),
+          Offset(x, 0),
+          Paint()
+            ..color = coral
+            ..strokeWidth = 2,
+        );
+      }
+      canvas.restore();
+    }
+    for (final object in run.objects) {
+      final p = point(object.position);
+      canvas.drawCircle(
+        p,
+        16,
+        Paint()..color = const Color(0xFFE8C974).withValues(alpha: 0.12),
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromCenter(center: p, width: 22, height: 22),
+          const Radius.circular(5),
+        ),
+        Paint()..color = const Color(0xFFE8C974),
+      );
+      _text(
+        canvas,
+        '{}',
+        p - const Offset(7, 7),
+        const Color(0xFF152425),
+        12,
+        bold: true,
+      );
+    }
     for (final gem in run.experience) {
       canvas.save();
       canvas.translate(gem.position.x, gem.position.y);
@@ -200,6 +261,7 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
           : switch (enemy.kind) {
               1 => const Color(0xFFE8C974),
               2 => const Color(0xFFB9A0DC),
+              3 => const Color(0xFFF294BB),
               _ => coral,
             };
       canvas.save();
@@ -231,9 +293,29 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
           ..color = color
           ..strokeWidth = 2,
       );
+      if (enemy.kind == 3) {
+        canvas.drawRect(
+          Rect.fromLTWH(-25, -37, 50, 4),
+          Paint()..color = const Color(0xFF31423F),
+        );
+        canvas.drawRect(
+          Rect.fromLTWH(
+            -25,
+            -37,
+            50 * (enemy.health / enemy.maxHealth).clamp(0, 1),
+            4,
+          ),
+          Paint()..color = color,
+        );
+      }
       canvas.restore();
     }
     for (final shot in run.instructions) {
+      final shotColor = switch (shot.kind) {
+        InstructionKind.base => mint,
+        InstructionKind.object => const Color(0xFFE8C974),
+        InstructionKind.chain => const Color(0xFFCCA7F5),
+      };
       final direction = shot.target.position - shot.position;
       final tail = direction.length2 == 0
           ? Vector2.zero()
@@ -242,7 +324,7 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
         point(shot.position - tail),
         point(shot.position),
         Paint()
-          ..color = mint
+          ..color = shotColor
           ..strokeWidth = 2.5
           ..strokeCap = StrokeCap.round,
       );

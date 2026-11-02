@@ -134,7 +134,7 @@ void main() {
     'feature caps preserve three available choices, infrastructure can stack',
     () {
       final run = freshRun();
-      for (final feature in [Upgrade.garbageCollection, Upgrade.concurrency]) {
+      for (final feature in Upgrade.values.where((u) => u.isFeature)) {
         run.upgrades[feature] = 4;
       }
       run.addExperience(run.nextLevelXp);
@@ -143,7 +143,7 @@ void main() {
       run.choices = [Upgrade.memory];
       run.health = 30;
       run.choose(Upgrade.memory);
-      expect(run.maxHealth, 125);
+      expect(run.maxHealth, 105); // OOP rank 4 reserves 20 HP.
       expect(run.health, 65);
     },
   );

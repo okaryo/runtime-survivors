@@ -29,6 +29,15 @@ class GameText {
         'from': run.targetCount,
         'to': run.targetCount + 1,
       }),
+      Upgrade.oop => call('oop.change', {
+        'count': rank + 1,
+        'damage': 16 + (rank + 1) * 4,
+        'hp': (run.maxHealth - 5).toInt(),
+      }),
+      Upgrade.functional => call('functional.change', {
+        'jumps': rank + 1,
+        'range': (run.attackRange - 15).toInt(),
+      }),
       Upgrade.memory => call('memory.change', {
         'from': run.maxHealth.toInt(),
         'to': run.maxHealth.toInt() + 25,
@@ -219,6 +228,49 @@ class GameText {
     'concurrency.change': [
       '同時攻撃数 {from} → {to}',
       'Attack targets {from} → {to}',
+    ],
+    'oop.title': ['オブジェクト指向', 'Object-Oriented Programming'],
+    'oop.description': [
+      '周囲を回るオブジェクトが、それぞれ独立して攻撃します。0.9秒ごとに近くのタスクを狙います。',
+      'Orbiting objects independently attack nearby tasks every 0.9 seconds.',
+    ],
+    'oop.tradeoff': ['最大メモリ −5 HP / ランク', 'Maximum memory −5 HP per rank'],
+    'oop.change': [
+      'オブジェクト {count}体 / 威力 {damage} / 最大HP {hp}',
+      '{count} objects / damage {damage} / max HP {hp}',
+    ],
+    'functional.title': ['関数型プログラミング', 'Functional Programming'],
+    'functional.description': [
+      '通常攻撃が命中すると、近くの別のタスクへ連鎖。連鎖ごとに威力が70%になります。',
+      'Base attacks chain to nearby tasks on hit. Each jump retains 70% of its incoming damage.',
+    ],
+    'functional.tradeoff': [
+      '通常攻撃の索敵範囲 −15 / ランク',
+      'Base attack targeting range −15 per rank',
+    ],
+    'functional.change': [
+      '最大 {jumps}回連鎖 / 索敵範囲 {range}',
+      'Up to {jumps} jumps / targeting range {range}',
+    ],
+    'enemy.0.title': ['リクエスト', 'Request'],
+    'enemy.0.description': [
+      '基本のタスク。ゆっくり追いかけてくる。接触ダメージ9。',
+      'A basic task that steadily follows you. Contact damage: 9.',
+    ],
+    'enemy.1.title': ['割り込み', 'Interrupt'],
+    'enemy.1.description': [
+      '小さくすばしっこいタスク。集団で近づいてくる。接触ダメージ9。',
+      'A small, quick task that closes in fast. Contact damage: 9.',
+    ],
+    'enemy.2.title': ['メモリ確保', 'Allocation'],
+    'enemy.2.description': [
+      '大きく頑丈なタスク。移動は遅いが耐久力は通常の3倍。接触ダメージ15。',
+      'A bulky task. Slow, with three times the usual health. Contact damage: 15.',
+    ],
+    'enemy.3.title': ['デッドロック', 'Deadlock'],
+    'enemy.3.description': [
+      'エリートタスク。光るラインで方向を予告してから突進する。予告が出たら横へ避けよう。接触ダメージ22。',
+      'An elite task that telegraphs its charge with a bright lane. Dodge sideways when it winds up. Contact damage: 22.',
     ],
     'memory.title': ['メモリ増設', 'Memory Expansion'],
     'memory.description': [
