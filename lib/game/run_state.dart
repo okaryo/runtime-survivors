@@ -7,6 +7,8 @@ import '../audio/sound_cue.dart';
 import 'combat_entities.dart';
 import 'spawn_director.dart';
 import 'build.dart';
+import 'combat_rules.dart';
+import 'ability_runtime.dart';
 export 'combat_entities.dart';
 export 'build.dart';
 
@@ -33,8 +35,12 @@ class RunState {
   final List<RunEffect> effects = [];
   final List<RuntimeObject> objects = [];
   final List<LinearProjectile> projectiles = [];
+  final List<DangerZone> hazards = [];
+  final abilities = AbilityRuntime();
+  static const instructionLimit = 384;
   final director = const SpawnDirector();
   final Set<int> seenEnemies = {};
+  final Set<int> _introduced = {};
   final Set<Upgrade> seenUpgrades = {};
   final Map<Upgrade, int> upgrades = {};
   late final BuildStats _stats = BuildStats.live(upgrades);
@@ -107,11 +113,14 @@ class RunState {
     player.setZero();
     movement.setZero();
     enemies.clear();
+    _introduced.clear();
     instructions.clear();
     experience.clear();
     effects.clear();
     objects.clear();
     projectiles.clear();
+    hazards.clear();
+    abilities.reset();
     upgrades.clear();
     choices = [];
     elapsed = 0;
@@ -175,6 +184,8 @@ class RunState {
         .where(
           (u) =>
               (u.maxRank == null || rank(u) < u.maxRank!) &&
+              (u.requiresAny.isEmpty ||
+                  u.requiresAny.any((required) => rank(required) > 0)) &&
               (!u.isFeature || rank(u) > 0 || featureCount < featureSlots),
         )
         .toList();
@@ -227,7 +238,9 @@ class RunState {
 
   void choose(Upgrade upgrade) {
     if (phase != RunPhase.choosing || !choices.contains(upgrade)) return;
-    if ((upgrade.maxRank != null && rank(upgrade) >= upgrade.maxRank!) ||
+    if ((upgrade.requiresAny.isNotEmpty &&
+            !upgrade.requiresAny.any((feature) => rank(feature) > 0)) ||
+        (upgrade.maxRank != null && rank(upgrade) >= upgrade.maxRank!) ||
         (upgrade.isFeature &&
             rank(upgrade) == 0 &&
             featureCount >= featureSlots)) {
@@ -265,6 +278,7 @@ class RunState {
     }
     invulnerability = max(0, invulnerability - dt);
     shieldTimer = max(0, shieldTimer - dt);
+    _updateAbilities(dt);
     dynamicTimer = max(0, dynamicTimer - dt);
     dynamicCooldown = max(0, dynamicCooldown - dt);
     _stats.dynamicBoost = dynamicTimer > 0;
@@ -290,17 +304,25 @@ class RunState {
       _spawn();
       _spawnTimer = max(0.18, 0.70 - elapsed / 600) * (isRush ? 0.55 : 1);
     }
+    _updateHazards(dt);
+    if (phase == RunPhase.lost) return;
+    _updateEnemyStatuses();
     final children = <TaskEnemy>[];
     for (final enemy in enemies) {
       if (!enemy.alive) continue;
       enemy.flash = max(0, enemy.flash - dt);
+      enemy.armorFlash = max(0, enemy.armorFlash - dt);
       final delta = player - enemy.position;
+      if (delta.length2 > 0) enemy.facing.setFrom(delta.normalized());
       if (enemy.kind == 3) {
         _updateElite(enemy, delta, dt);
       } else if (enemy.kind == 4 || enemy.kind == 5) {
         _updateSpecialist(enemy, delta, dt, children);
-      } else if (delta.length2 > 0) {
-        enemy.position.add(delta.normalized() * enemy.speed * dt);
+      } else if (delta.length2 > 0 &&
+          (enemy.type != EnemyType.scheduler || delta.length > 210)) {
+        enemy.position.add(
+          delta.normalized() * enemy.speed * enemy.movementMultiplier * dt,
+        );
       }
       if (enemy.position.distanceTo(player) < enemy.radius + 13 &&
           invulnerability <= 0) {
@@ -331,13 +353,35 @@ class RunState {
                   .distanceToSquared(player)
                   .compareTo(b.position.distanceToSquared(player)),
             );
-      if (targets.isNotEmpty) _observeTarget(targets.first.kind);
+      var focusBonus = 1.0;
+      if (targets.isNotEmpty) {
+        _observeTarget(targets.first.kind);
+        if (rank(Upgrade.jitCompilation) > 0) {
+          focusBonus = abilities.focusMultiplier(
+            targets.first,
+            _stats.jitPerStack,
+          );
+        }
+      }
       for (final target in targets.take(targetCount)) {
+        if (instructions.length >= instructionLimit) break;
+        final damage =
+            attackDamage *
+            (identical(target, targets.first) ? focusBonus : 1.0);
+        if (rank(Upgrade.memoization) > 0 && abilities.echoes.length < 32) {
+          abilities.echoes.add(
+            PendingEcho(
+              target,
+              damage * _stats.echoRatio,
+              rank(Upgrade.functional),
+            ),
+          );
+        }
         instructions.add(
           Instruction(
             player.clone(),
             target,
-            attackDamage,
+            damage,
             jumps: rank(Upgrade.functional),
           ),
         );
@@ -374,7 +418,7 @@ class RunState {
       }
       final delta = shot.target.position - shot.position;
       if (delta.length <= projectileSpeed * dt + shot.target.radius) {
-        _damage(shot.target, shot.damage);
+        _damage(shot.target, shot.damage, origin: shot.position);
         if (shot.jumps > 0) {
           final candidates =
               enemies
@@ -413,7 +457,9 @@ class RunState {
       }
     }
     instructions.removeWhere((shot) => shot.life <= 0);
-    instructions.addAll(chained);
+    instructions.addAll(
+      chained.take(max(0, instructionLimit - instructions.length)),
+    );
     if (rank(Upgrade.garbageCollection) > 0) {
       _gcTimer -= dt;
       if (_gcTimer <= 0) {
@@ -457,6 +503,73 @@ class RunState {
     effects.removeWhere((effect) => effect.life <= 0);
   }
 
+  void _updateAbilities(double dt) {
+    abilities.advance(dt);
+    if (rank(Upgrade.lazyEvaluation) > 0 &&
+        abilities.fieldTimer <= 0 &&
+        abilities.fields.length < 3) {
+      abilities.fields.add(
+        SlowField(player.clone(), _stats.slowRadius, _stats.slowMultiplier),
+      );
+      abilities.fieldTimer = 5;
+    }
+    for (final echo in abilities.echoes.where((e) => e.remaining <= 0)) {
+      if (echo.target.alive &&
+          echo.target.position.distanceTo(player) <= attackRange &&
+          instructions.length < instructionLimit) {
+        instructions.add(
+          Instruction(
+            player.clone(),
+            echo.target,
+            echo.damage,
+            kind: InstructionKind.echo,
+            jumps: echo.jumps,
+          ),
+        );
+      }
+    }
+    abilities.echoes.removeWhere((e) => e.remaining <= 0 || !e.target.alive);
+  }
+
+  void _updateHazards(double dt) {
+    for (final hazard in hazards) {
+      hazard.remaining -= dt;
+      if (hazard.remaining <= 0) {
+        effects.add(RunEffect(hazard.position.clone(), radius: hazard.radius));
+        if (player.distanceTo(hazard.position) <= hazard.radius + 13) {
+          _damagePlayer(hazard.damage);
+        }
+      }
+    }
+    hazards.removeWhere(
+      (h) =>
+          h.remaining <= 0 || h.position.distanceTo(player) > spawnRadius * 2.2,
+    );
+  }
+
+  void _updateEnemyStatuses() {
+    final supports = enemies
+        .where((e) => e.alive && e.type == EnemyType.scheduler)
+        .toList();
+    for (final enemy in enemies) {
+      enemy.supported =
+          enemy.type != EnemyType.scheduler &&
+          supports.any(
+            (s) => s.position.distanceToSquared(enemy.position) <= 150 * 150,
+          );
+      var slow = 1.0;
+      for (final field in abilities.fields) {
+        if (field.position.distanceToSquared(enemy.position) <=
+            field.radius * field.radius) {
+          slow = min(slow, field.multiplier);
+        }
+      }
+      // Elites retain at least 80% movement speed; slow effects never stack.
+      if (enemy.type == EnemyType.deadlock) slow = max(0.8, slow);
+      enemy.movementMultiplier = (enemy.supported ? 1.25 : 1) * slow;
+    }
+  }
+
   void _updateObjects(double dt) {
     while (objects.length < rank(Upgrade.oop)) {
       objects.add(RuntimeObject(objects.length, player));
@@ -481,7 +594,7 @@ class RunState {
                     .distanceToSquared(object.position)
                     .compareTo(b.position.distanceToSquared(object.position)),
               );
-        if (targets.isNotEmpty) {
+        if (targets.isNotEmpty && instructions.length < instructionLimit) {
           instructions.add(
             Instruction(
               object.position.clone(),
@@ -525,7 +638,7 @@ class RunState {
   void _damagePlayer(double damage) {
     if (invulnerability > 0) return;
     health = max(0, health - damage);
-    invulnerability = 0.65;
+    invulnerability = _stats.hitInvulnerability;
     cues.add(SoundCue.hit);
     if (health <= 0) {
       phase = RunPhase.lost;
@@ -562,7 +675,7 @@ class RunState {
                 enemy.radius + shot.radius,
               )) {
             shot.hit.add(enemy);
-            _damage(enemy, shot.damage);
+            _damage(enemy, shot.damage, origin: from);
           }
         }
       }
@@ -618,11 +731,15 @@ class RunState {
     }
     // Specialists can be approached: retreat is slower than player movement.
     if (delta.length > (ranged ? 240 : 280)) {
-      enemy.position.add(delta.normalized() * enemy.speed * dt);
+      enemy.position.add(
+        delta.normalized() * enemy.speed * enemy.movementMultiplier * dt,
+      );
     } else if (ranged && delta.length > 1 && delta.length < 150) {
-      enemy.position.add(delta.normalized() * -enemy.speed * dt);
+      enemy.position.add(
+        delta.normalized() * -enemy.speed * enemy.movementMultiplier * dt,
+      );
     }
-    enemy.attackCooldown -= dt;
+    enemy.attackCooldown -= dt * enemy.attackRate;
     if (enemy.attackCooldown <= 0 && delta.length > 1 && delta.length < 430) {
       enemy.chargeDirection.setFrom(delta.normalized());
       enemy.telegraphRemaining = (ranged ? 0.9 : 1.2) + telegraphBonus;
@@ -634,14 +751,18 @@ class RunState {
       enemy.telegraphRemaining = max(0, enemy.telegraphRemaining - dt);
       if (enemy.telegraphRemaining == 0) enemy.chargeRemaining = 0.7;
     } else if (enemy.chargeRemaining > 0) {
-      enemy.position.add(enemy.chargeDirection * 460 * dt);
+      enemy.position.add(
+        enemy.chargeDirection * 460 * enemy.movementMultiplier * dt,
+      );
       enemy.chargeRemaining = max(0, enemy.chargeRemaining - dt);
       if (enemy.chargeRemaining == 0) enemy.chargeCooldown = 2.8;
     } else {
       if (delta.length2 > 0) {
-        enemy.position.add(delta.normalized() * enemy.speed * dt);
+        enemy.position.add(
+          delta.normalized() * enemy.speed * enemy.movementMultiplier * dt,
+        );
       }
-      enemy.chargeCooldown -= dt;
+      enemy.chargeCooldown -= dt * enemy.attackRate;
       if (enemy.chargeCooldown <= 0 && delta.length > 1 && delta.length < 450) {
         enemy.chargeDirection.setFrom(delta.normalized());
         enemy.telegraphRemaining = 0.9 + telegraphBonus;
@@ -652,7 +773,7 @@ class RunState {
   void _spawn({double? radius, int? kind}) {
     if (enemies.length >= (kind == 3 ? 240 : 236)) return;
     final angle = random.nextDouble() * pi * 2;
-    kind ??= director.choose(elapsed, enemies, random);
+    kind ??= director.choose(elapsed, enemies, random, introduced: _introduced);
     enemies.add(
       TaskEnemy(
         player + Vector2(cos(angle), sin(angle)) * (radius ?? spawnRadius),
@@ -664,20 +785,49 @@ class RunState {
                       ? 3
                       : kind == 5
                       ? 2.5
+                      : kind == 8
+                      ? 2.8
+                      : kind == 7
+                      ? 2.0
                       : kind == 4
                       ? 1.5
                       : 1),
       ),
     );
     seenEnemies.add(kind);
+    _introduced.add(kind);
   }
 
-  void _damage(TaskEnemy enemy, double damage) {
+  void _damage(TaskEnemy enemy, double damage, {Vector2? origin}) {
     if (!enemy.alive) return;
-    enemy.health -= damage;
+    enemy.health -= CombatRules.damage(
+      enemy,
+      damage,
+      origin: origin,
+      area: origin == null,
+    );
     enemy.flash = 0.12;
     if (!enemy.alive) {
       kills++;
+      if (rank(Upgrade.ownership) > 0 &&
+          !enemy.summoned &&
+          health < maxHealth &&
+          player.distanceToSquared(enemy.position) <=
+              _stats.ownershipRadius * _stats.ownershipRadius) {
+        final healed = abilities.claimHealing(
+          min(_stats.ownershipHeal, maxHealth - health),
+          _stats.ownershipCap,
+        );
+        health += healed;
+        if (healed > 0) {
+          effects.add(RunEffect(player.clone(), healing: true, radius: 28));
+        }
+      }
+      if (enemy.type == EnemyType.bufferOverflow && hazards.length < 24) {
+        hazards.add(
+          DangerZone(enemy.position.clone(), warning: 1.1 + telegraphBonus),
+        );
+      }
       cues.add(SoundCue.kill);
       experience.add(
         Experience(

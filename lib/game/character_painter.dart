@@ -11,6 +11,9 @@ class CharacterPainter {
     Color(0xFFF49AB5),
     Color(0xFF8CC9F2),
     Color(0xFF9ED99C),
+    Color(0xFFFFB66E),
+    Color(0xFF9CCDE0),
+    Color(0xFFB5BBD0),
   ];
   static void draw(
     Canvas canvas, {
@@ -93,6 +96,43 @@ class CharacterPainter {
           ..color = color
           ..strokeWidth = 3,
       );
+    } else if (kind >= 6) {
+      final body = RRect.fromRectAndRadius(
+        Rect.fromLTRB(-r, -r, r, r),
+        Radius.circular(kind == 6 ? 4 : 8),
+      );
+      canvas.drawRRect(body, fill);
+      canvas.drawRRect(body, outline);
+      if (kind == 6) {
+        for (final side in [-1.0, 1.0]) {
+          canvas.drawLine(
+            Offset(side * r, -r + 3),
+            Offset(side * (r + 6), -r - 3),
+            face,
+          );
+        }
+        canvas.drawCircle(Offset(0, r - 4), 2, face);
+      } else if (kind == 7) {
+        canvas.drawCircle(Offset(0, -r - 5), 5, fill);
+        canvas.drawArc(
+          Rect.fromCircle(center: Offset(0, -r - 5), radius: 10),
+          pi,
+          pi,
+          false,
+          outline,
+        );
+        canvas.drawLine(Offset(-r - 5, 1), Offset(r + 5, 1), outline);
+      } else {
+        final shield = Path()
+          ..moveTo(0, -r - 8)
+          ..lineTo(r + 5, -r)
+          ..lineTo(r + 2, r + 5)
+          ..lineTo(0, r + 12)
+          ..lineTo(-r - 2, r + 5)
+          ..lineTo(-r - 5, -r)
+          ..close();
+        canvas.drawPath(shield, outline);
+      }
     } else if (kind == 2) {
       // Allocation is a broad, stacked memory block.
       for (final y in [-5.0, 0.0, 5.0]) {

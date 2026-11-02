@@ -1,6 +1,16 @@
 import 'package:flame/components.dart';
 
-enum EnemyType { request, interrupt, allocation, deadlock, rpc, forkBomb }
+enum EnemyType {
+  request,
+  interrupt,
+  allocation,
+  deadlock,
+  rpc,
+  forkBomb,
+  bufferOverflow,
+  scheduler,
+  armoredAllocation,
+}
 
 class TaskEnemy {
   TaskEnemy(
@@ -15,6 +25,11 @@ class TaskEnemy {
   final bool summoned;
   final TaskEnemy? owner;
   EnemyType get type => EnemyType.values[kind];
+  final facing = Vector2(0, 1);
+  bool supported = false;
+  double movementMultiplier = 1;
+  double get attackRate => supported ? 1.15 : 1;
+  double armorFlash = 0;
   double attackCooldown = 1.5;
   double health;
   final double maxHealth;
@@ -26,7 +41,7 @@ class TaskEnemy {
   bool get alive => health > 0;
   double get radius => kind == 3
       ? 25
-      : kind == 2
+      : kind == 2 || kind == 8
       ? 18
       : 13;
   double get speed => switch (kind) {
@@ -35,11 +50,14 @@ class TaskEnemy {
     3 => 62,
     4 => 48,
     5 => 34,
+    6 => 50,
+    7 => 38,
+    8 => 46,
     _ => 57,
   };
 }
 
-enum InstructionKind { base, object, chain }
+enum InstructionKind { base, object, chain, echo }
 
 class Instruction {
   Instruction(
@@ -73,9 +91,15 @@ class Experience {
 }
 
 class RunEffect {
-  RunEffect(this.position, {this.pulse = false, this.radius = 22});
+  RunEffect(
+    this.position, {
+    this.pulse = false,
+    this.radius = 22,
+    this.healing = false,
+  });
   final Vector2 position;
   final bool pulse;
+  final bool healing;
   final double radius;
   double life = 0.5;
 }
@@ -106,4 +130,20 @@ bool crossesCircle(Vector2 from, Vector2 to, Vector2 center, double radius) {
       ? 0.0
       : ((center - from).dot(segment) / segment.length2).clamp(0.0, 1.0);
   return (from + segment * t).distanceToSquared(center) <= radius * radius;
+}
+
+/// A delayed blast records a fixed point; moving away is always a counter.
+class DangerZone {
+  DangerZone(
+    this.position, {
+    this.radius = 75,
+    this.damage = 18,
+    double warning = 1.1,
+  }) : remaining = warning,
+       duration = warning;
+  final Vector2 position;
+  final double radius;
+  final double damage;
+  final double duration;
+  double remaining;
 }

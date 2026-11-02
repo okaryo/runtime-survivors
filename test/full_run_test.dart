@@ -21,9 +21,16 @@ void main() {
           expect(run.enemies.length, lessThanOrEqualTo(240));
           expect(run.projectiles.length, lessThanOrEqualTo(108));
           expect(run.featureCount, lessThanOrEqualTo(4));
+          expect(
+            run.instructions.length,
+            lessThanOrEqualTo(RunState.instructionLimit),
+          );
+          expect(run.abilities.echoes.length, lessThanOrEqualTo(32));
+          expect(run.abilities.fields.length, lessThanOrEqualTo(3));
+          expect(run.hazards.length, lessThanOrEqualTo(24));
         }
         expect(run.phase, RunPhase.won);
-        expect(run.seenEnemies, containsAll([4, 5]));
+        expect(run.seenEnemies, containsAll([4, 5, 6, 7, 8]));
         expect(run.rushCount, 6);
         run.start(policy: policy);
         expect(run.projectiles, isEmpty);

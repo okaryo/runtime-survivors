@@ -7,13 +7,15 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:runtime_survivors/game/run_state.dart';
 import 'package:runtime_survivors/game/runtime_game.dart';
+import 'package:runtime_survivors/game/ability_runtime.dart';
+import 'package:runtime_survivors/l10n/game_text.dart';
 
 import 'support/runtime_fonts.dart';
 
 void main() {
   setUpAll(loadRuntimeFonts);
   testWidgets(
-    'all six task silhouettes, locked aim, summon warning and both projectile teams render safely',
+    'all task silhouettes, auras, slow fields, hazards and both projectile teams render safely',
     (tester) async {
       tester.view.physicalSize = const Size(1000, 600);
       tester.view.devicePixelRatio = 1;
@@ -22,9 +24,9 @@ void main() {
       final run = RunState()
         ..start(policy: TypingPolicy.dynamicTyping)
         ..enemies.clear();
-      for (var kind = 0; kind < 6; kind++) {
+      for (var kind = 0; kind < EnemyType.values.length; kind++) {
         final enemy = TaskEnemy(
-          Vector2((kind % 3 - 1) * 180, kind < 3 ? -130 : 130),
+          Vector2((kind % 3 - 1) * 220 + 110, (kind ~/ 3 - 1) * 170),
           kind: kind,
         );
         if (kind >= 3) {
@@ -43,13 +45,20 @@ void main() {
           hostile: false,
         ),
       ]);
+      run.hazards.add(DangerZone(Vector2(-220, 80))..remaining = 0.6);
+      run.abilities.fields.add(SlowField(Vector2(-170, -60), 110, 0.7));
+      run.abilities.focusTarget = run.enemies.last;
+      run.abilities.focusStacks = 4;
+      run.enemies[1].supported = true;
       run.phase = RunPhase.paused;
       final key = GlobalKey();
       await tester.pumpWidget(
         MaterialApp(
           home: RepaintBoundary(
             key: key,
-            child: GameWidget(game: RuntimeGame(run)),
+            child: GameWidget(
+              game: RuntimeGame(run)..text = const GameText('en'),
+            ),
           ),
         ),
       );

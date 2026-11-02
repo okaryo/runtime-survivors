@@ -29,7 +29,15 @@ void main() {
     );
     test('$language: later ranks compare the existing ability values', () {
       final run = RunState()..start();
-      run.upgrades.addAll({for (final upgrade in Upgrade.values) upgrade: 1});
+      run.upgrades.addAll({
+        for (final upgrade in [
+          Upgrade.garbageCollection,
+          Upgrade.concurrency,
+          Upgrade.oop,
+          Upgrade.functional,
+        ])
+          upgrade: 1,
+      });
       expect(
         text
             .comparisons(run.preview(Upgrade.garbageCollection))

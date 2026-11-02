@@ -144,6 +144,92 @@ class GameText {
           number(after.projectileSpeed),
         ),
       ],
+      Upgrade.lazyEvaluation => [
+        metric(
+          'stat.slowRadius',
+          first ? null : number(before.slowRadius),
+          number(after.slowRadius),
+        ),
+        metric(
+          'stat.slowAmount',
+          first ? null : '${((1 - before.slowMultiplier) * 100).round()}%',
+          '${((1 - after.slowMultiplier) * 100).round()}%',
+        ),
+      ],
+      Upgrade.memoization => [
+        metric(
+          'stat.echoRatio',
+          first ? null : '${(before.echoRatio * 100).round()}%',
+          '${(after.echoRatio * 100).round()}%',
+        ),
+        if (first)
+          metric(
+            'stat.damage',
+            number(before.attackDamage),
+            number(after.attackDamage),
+            cost: true,
+          ),
+      ],
+      Upgrade.jitCompilation => [
+        metric(
+          'stat.focusBonus',
+          first ? null : '+${(before.jitPerStack * 600).round()}%',
+          '+${(after.jitPerStack * 600).round()}%',
+        ),
+        if (first)
+          metric(
+            'stat.damage',
+            number(before.attackDamage),
+            number(after.attackDamage),
+            cost: true,
+          ),
+      ],
+      Upgrade.ownership => [
+        metric(
+          'stat.healKill',
+          first ? null : number(before.ownershipHeal),
+          number(after.ownershipHeal),
+        ),
+        metric(
+          'stat.healCap',
+          first ? null : '${number(before.ownershipCap)}/s',
+          '${number(after.ownershipCap)}/s',
+        ),
+        metric(
+          'stat.pickup',
+          number(before.pickupRadius),
+          number(after.pickupRadius),
+          cost: true,
+        ),
+      ],
+      Upgrade.spatialIndex => [
+        if (after.rank(Upgrade.garbageCollection) > 0)
+          metric(
+            'stat.radius',
+            number(before.gcRadius),
+            number(after.gcRadius),
+          ),
+        if (after.rank(Upgrade.lazyEvaluation) > 0)
+          metric(
+            'stat.slowRadius',
+            number(before.slowRadius),
+            number(after.slowRadius),
+          ),
+      ],
+      Upgrade.coprocessor => [
+        metric(
+          'stat.objectInterval',
+          '${before.objectInterval.toStringAsFixed(2)}s',
+          '${after.objectInterval.toStringAsFixed(2)}s',
+        ),
+      ],
+      Upgrade.memoryProtection => [
+        metric(
+          'stat.invulnerability',
+          '${before.hitInvulnerability.toStringAsFixed(2)}s',
+          '${after.hitInvulnerability.toStringAsFixed(2)}s',
+        ),
+      ],
       Upgrade.memory => [hp()],
       Upgrade.clock => [
         metric('stat.speed', before.speed.round(), after.speed.round()),
@@ -176,6 +262,94 @@ class GameText {
   });
 
   static const copy = <String, List<String>>{
+    'lazyEvaluation.title': ['遅延評価', 'Lazy Evaluation'],
+    'lazyEvaluation.description': [
+      '5秒ごとに減速領域を設置。3.5秒持続し、領域内の敵の移動を遅くします。',
+      'Places a slowing field every 5s, lasting 3.5s. Slows enemies inside it.',
+    ],
+    'lazyEvaluation.tradeoff': [
+      '直接ダメージなし。エリートへの減速は最大20%。',
+      'No direct damage. Elite slow is capped at 20%.',
+    ],
+    'memoization.title': ['メモ化', 'Memoization'],
+    'memoization.description': [
+      '通常攻撃を0.65秒後に再実行。対象が倒れると消失し、再攻撃の再記録はしません。',
+      'Repeats base shots after 0.65s. Lost if the target dies; echoes cannot record echoes.',
+    ],
+    'memoization.tradeoff': [
+      '通常攻撃の威力 −10%（初回のみ）',
+      'Base damage −10% on first acquisition',
+    ],
+    'jitCompilation.title': ['JITコンパイル', 'JIT Compilation'],
+    'jitCompilation.description': [
+      '同じ主対象への通常攻撃を最大6回まで蓄積。対象変更や2秒の中断でリセット。',
+      'Builds power over six repeated volleys at one primary target. Resets on a switch or 2s gap.',
+    ],
+    'jitCompilation.tradeoff': [
+      '通常攻撃の基礎威力 −15%（初回のみ）',
+      'Base damage −15% on first acquisition',
+    ],
+    'ownership.title': ['所有権', 'Ownership'],
+    'ownership.description': [
+      '距離105以内の撃破でメモリ回復。召喚雑魚は回復対象外。',
+      'Kills within 105 restore memory. Summoned tasks grant no healing.',
+    ],
+    'ownership.tradeoff': [
+      '経験値の回収範囲 −8 / ランク。回復量に上限。',
+      'Pickup radius −8 per rank. Healing has a budget.',
+    ],
+    'spatialIndex.title': ['空間インデックス', 'Spatial Index'],
+    'spatialIndex.description': [
+      'GCと新しく設置する減速領域の半径を拡大します。',
+      'Expands GC pulses and newly placed slowing fields.',
+    ],
+    'spatialIndex.tradeoff': [
+      'なし。GCまたは遅延評価の取得後に出現。',
+      'None. Offered after GC or Lazy Evaluation.',
+    ],
+    'coprocessor.title': ['補助プロセッサ', 'Coprocessor'],
+    'coprocessor.description': [
+      'OOPのオブジェクトが攻撃する間隔を短縮します。',
+      'Reduces the attack interval of OOP objects.',
+    ],
+    'coprocessor.tradeoff': ['なし。OOPの取得後に出現。', 'None. Offered after OOP.'],
+    'memoryProtection.title': ['メモリ保護', 'Memory Protection'],
+    'memoryProtection.description': [
+      '被弾後の無敵時間を延ばし、連続被弾から守ります。',
+      'Extends invulnerability after a hit, protecting against repeated damage.',
+    ],
+    'memoryProtection.tradeoff': [
+      'なし。被弾そのものは防がない。',
+      'None. Does not prevent the initial hit.',
+    ],
+    'stat.slowRadius': ['減速領域の半径', 'Field radius'],
+    'stat.slowAmount': ['移動の減速', 'Movement slow'],
+    'stat.echoRatio': ['再攻撃の威力比', 'Echo damage ratio'],
+    'stat.focusBonus': ['集中時の最大加算', 'Max focus bonus'],
+    'stat.healKill': ['撃破時の回復', 'Healing per kill'],
+    'stat.healCap': ['回復の上限', 'Healing budget'],
+    'stat.objectInterval': ['オブジェクトの間隔', 'Object interval'],
+    'stat.invulnerability': ['被弾後の無敵', 'Hit invulnerability'],
+    'jitStatus': ['JIT集中：{stacks} / 6', 'JIT focus: {stacks} / 6'],
+    'echoStatus': ['再攻撃待ち：{count}', 'Pending echoes: {count}'],
+    'enemy.6.title': ['Buffer Overflow', 'Buffer Overflow'],
+    'enemy.6.type': ['撃破後爆発タスク', 'Death-blast task'],
+    'enemy.6.description': [
+      '撃破した場所に赤い円を予告し、1.1秒後に爆発。範囲75、ダメージ18。防壁は防げないため、倒したら円から離れよう。',
+      'Leaves a marked blast on death: radius 75, damage 18 after 1.1s. Shields do not block it. Move out after the kill.',
+    ],
+    'enemy.7.title': ['Scheduler', 'Scheduler'],
+    'enemy.7.type': ['支援タスク', 'Support task'],
+    'enemy.7.description': [
+      '半径150の味方の移動速度を25%、攻撃準備を15%加速。支援は重複せず、本体を倒すと解除。貫通や連鎖で奥を狙おう。',
+      'Boosts allies within 150: movement +25%, attack preparation +15%. Auras do not stack. Defeat it with piercing or chains.',
+    ],
+    'enemy.8.title': ['装甲メモリ確保', 'Armored Allocation'],
+    'enemy.8.type': ['正面防御タスク', 'Directional armor task'],
+    'enemy.8.description': [
+      '正面からの弾のダメージを45%軽減。側面・背面やGCの範囲攻撃は軽減しない。OOPの回り込みや集中攻撃も有効。',
+      'Reduces frontal projectile damage by 45%. Flanking and GC area damage bypass the armor. Objects and focused attacks also help.',
+    ],
     'enemy.4.title': ['RPC要求', 'RPC request'],
     'enemy.4.type': ['射撃タスク', 'Ranged task'],
     'enemy.4.description': [

@@ -8,6 +8,31 @@ import 'package:runtime_survivors/game/language_profile.dart';
 import 'run_state_test.dart' show tick;
 
 void main() {
+  test('Ownership contributes a Rust affinity while hybrid profiles follow invested weights', () {
+    expect(
+      LanguageProfile.analyze(TypingPolicy.staticTyping, {
+        Upgrade.ownership: 2,
+        Upgrade.nullSafety: 1,
+      }).language,
+      'Rust',
+    );
+    expect(
+      LanguageProfile.analyze(TypingPolicy.dynamicTyping, {
+        Upgrade.oop: 4,
+        Upgrade.functional: 1,
+        Upgrade.concurrency: 1,
+      }).language,
+      'Ruby',
+    );
+    expect(
+      LanguageProfile.analyze(TypingPolicy.dynamicTyping, {
+        Upgrade.oop: 2,
+        Upgrade.functional: 4,
+        Upgrade.concurrency: 2,
+      }).language,
+      'JavaScript',
+    );
+  });
   test('static policy extends enemy warnings and applies only the advertised damage cost', () {
     final run = RunState(random: Random(2))
       ..start(policy: TypingPolicy.staticTyping)

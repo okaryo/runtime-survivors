@@ -23,35 +23,80 @@ class LanguageProfile {
     Map<Upgrade, int> ranks,
   ) {
     int rank(Upgrade u) => ranks[u] ?? 0;
-    final gc = rank(Upgrade.garbageCollection);
-    final oop = rank(Upgrade.oop);
-    final functional = rank(Upgrade.functional);
-    final concurrency = rank(Upgrade.concurrency);
     final total = ranks.entries
         .where((e) => e.key.isFeature)
         .fold(0, (sum, e) => sum + e.value);
     var language = 'custom';
+    var bestScore = -1;
     if (total >= 3 && policy != null) {
-      if (policy == TypingPolicy.staticTyping) {
-        if (functional >= 2 && functional > oop && oop > 0) {
-          language = 'Scala';
-        } else if (oop >= 2 && oop > concurrency && gc > 0) {
-          language = 'Java';
-        } else if (gc > 0 && concurrency > 0) {
-          language = 'Go';
+      for (final archetype in _archetypes) {
+        if (archetype.policy != policy ||
+            !archetype.required.entries.every((e) => rank(e.key) >= e.value)) {
+          continue;
         }
-      } else {
-        if (functional > 0 &&
-            concurrency > 0 &&
-            functional + concurrency >= 3) {
-          language = 'JavaScript';
-        } else if (oop >= 2 && oop > gc) {
-          language = 'Ruby';
-        } else if (gc > 0) {
-          language = 'Python';
+        final score = archetype.weights.entries.fold(
+          0,
+          (sum, e) => sum + rank(e.key) * e.value,
+        );
+        if (score > bestScore) {
+          bestScore = score;
+          language = archetype.language;
         }
       }
     }
     return LanguageProfile._(language, policy, Map.unmodifiable(ranks));
   }
 }
+
+class _Archetype {
+  const _Archetype(this.language, this.policy, this.required, this.weights);
+  final String language;
+  final TypingPolicy policy;
+  final Map<Upgrade, int> required;
+  final Map<Upgrade, int> weights;
+}
+
+const _archetypes = [
+  _Archetype(
+    'Go',
+    TypingPolicy.staticTyping,
+    {Upgrade.garbageCollection: 1, Upgrade.concurrency: 1},
+    {Upgrade.garbageCollection: 1, Upgrade.concurrency: 3},
+  ),
+  _Archetype(
+    'Java',
+    TypingPolicy.staticTyping,
+    {Upgrade.garbageCollection: 1, Upgrade.oop: 2},
+    {Upgrade.garbageCollection: 1, Upgrade.oop: 3, Upgrade.jitCompilation: 1},
+  ),
+  _Archetype(
+    'Scala',
+    TypingPolicy.staticTyping,
+    {Upgrade.oop: 1, Upgrade.functional: 2},
+    {Upgrade.oop: 1, Upgrade.functional: 3, Upgrade.jitCompilation: 1},
+  ),
+  _Archetype(
+    'Rust',
+    TypingPolicy.staticTyping,
+    {Upgrade.ownership: 2},
+    {Upgrade.ownership: 3, Upgrade.nullSafety: 1},
+  ),
+  _Archetype(
+    'Python',
+    TypingPolicy.dynamicTyping,
+    {Upgrade.garbageCollection: 1},
+    {Upgrade.garbageCollection: 2, Upgrade.oop: 1, Upgrade.memoization: 1},
+  ),
+  _Archetype(
+    'Ruby',
+    TypingPolicy.dynamicTyping,
+    {Upgrade.oop: 2},
+    {Upgrade.oop: 3, Upgrade.garbageCollection: 1},
+  ),
+  _Archetype(
+    'JavaScript',
+    TypingPolicy.dynamicTyping,
+    {Upgrade.functional: 1, Upgrade.concurrency: 1},
+    {Upgrade.functional: 2, Upgrade.concurrency: 2, Upgrade.jitCompilation: 1},
+  ),
+];

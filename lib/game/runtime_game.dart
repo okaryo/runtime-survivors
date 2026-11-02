@@ -183,6 +183,100 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
     canvas.save();
     canvas.translate(origin.dx, origin.dy);
     Offset point(Vector2 v) => Offset(v.x, v.y);
+    for (final field in run.abilities.fields) {
+      final p = point(field.position);
+      canvas.drawCircle(
+        p,
+        field.radius,
+        Paint()
+          ..color = const Color(0xFFB6A9EF)
+              .withValues(alpha: min(0.1, field.remaining * 0.05)),
+      );
+      canvas.drawCircle(
+        p,
+        field.radius,
+        Paint()
+          ..color = const Color(0xFFB6A9EF)
+              .withValues(alpha: min(0.6, field.remaining * 0.3))
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2,
+      );
+      _text(
+        canvas,
+        '...',
+        p - const Offset(9, 10),
+        const Color(0xFFB6A9EF),
+        18,
+        bold: true,
+      );
+    }
+    if (run.abilities.focusTarget case final target? when target.alive) {
+      canvas.drawCircle(
+        point(target.position),
+        target.radius + 10,
+        Paint()
+          ..color = const Color(0xFFFFD36D)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1 + run.abilities.focusStacks * 0.5,
+      );
+    }
+    for (final hazard in run.hazards) {
+      final p = point(hazard.position);
+      final progress = (1 - hazard.remaining / hazard.duration).clamp(0.0, 1.0);
+      canvas.drawCircle(
+        p,
+        hazard.radius,
+        Paint()..color = coral.withValues(alpha: 0.12),
+      );
+      canvas.drawCircle(
+        p,
+        hazard.radius,
+        Paint()
+          ..color = coral
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2,
+      );
+      canvas.drawArc(
+        Rect.fromCircle(center: p, radius: hazard.radius),
+        -pi / 2,
+        progress * pi * 2,
+        false,
+        Paint()
+          ..color = const Color(0xFFFFD59C)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 4,
+      );
+      canvas.drawLine(
+        p - const Offset(7, 7),
+        p + const Offset(7, 7),
+        Paint()
+          ..color = coral
+          ..strokeWidth = 2,
+      );
+      canvas.drawLine(
+        p - const Offset(7, -7),
+        p + const Offset(7, -7),
+        Paint()
+          ..color = coral
+          ..strokeWidth = 2,
+      );
+    }
+    for (final support in run.enemies.where(
+      (e) => e.alive && e.type == EnemyType.scheduler,
+    )) {
+      canvas.drawCircle(
+        point(support.position),
+        150,
+        Paint()..color = const Color(0xFF9CCDE0).withValues(alpha: 0.06),
+      );
+      canvas.drawCircle(
+        point(support.position),
+        150,
+        Paint()
+          ..color = const Color(0xFF9CCDE0).withValues(alpha: 0.4)
+          ..style = PaintingStyle.stroke,
+      );
+    }
     for (final enemy in run.enemies.where(
       (e) => e.kind == 3 && (e.telegraphRemaining > 0 || e.chargeRemaining > 0),
     )) {
@@ -305,9 +399,13 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
         point(effect.position),
         effect.radius * (effect.pulse ? progress : 0.3 + progress),
         Paint()
-          ..color = (effect.pulse ? mint : coral).withValues(
-            alpha: (1 - progress) * 0.7,
-          )
+          ..color =
+              (effect.healing
+                      ? const Color(0xFFA9F0A9)
+                      : effect.pulse
+                      ? mint
+                      : coral)
+                  .withValues(alpha: (1 - progress) * 0.7)
           ..style = PaintingStyle.stroke
           ..strokeWidth = effect.pulse ? 3 : 1.5,
       );
@@ -331,6 +429,28 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
         alert: enemy.telegraphRemaining > 0 || enemy.chargeRemaining > 0,
         time: run.elapsed + enemy.position.x * 0.01,
       );
+      if (enemy.type == EnemyType.armoredAllocation) {
+        final angle = atan2(enemy.facing.y, enemy.facing.x);
+        canvas.drawArc(
+          Rect.fromCircle(center: Offset.zero, radius: enemy.radius + 6),
+          angle - 1.3,
+          2.6,
+          false,
+          Paint()
+            ..color = enemy.armorFlash > 0
+                ? const Color(0xFFFFFFFF)
+                : const Color(0xFFDFE6FF)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 4,
+        );
+      }
+      if (enemy.supported) {
+        canvas.drawCircle(
+          const Offset(0, -25),
+          3,
+          Paint()..color = const Color(0xFF9CCDE0),
+        );
+      }
       if (enemy.kind == 3) {
         canvas.drawRect(
           Rect.fromLTWH(-25, -37, 50, 4),
@@ -353,6 +473,7 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
         InstructionKind.base => mint,
         InstructionKind.object => const Color(0xFFE8C974),
         InstructionKind.chain => const Color(0xFFCCA7F5),
+        InstructionKind.echo => const Color(0xFFBEE3FF),
       };
       final direction = shot.target.position - shot.position;
       final tail = direction.length2 == 0

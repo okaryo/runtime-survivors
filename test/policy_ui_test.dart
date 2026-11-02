@@ -32,22 +32,25 @@ void main() {
             )
             .game!;
         game.run.addExperience(game.run.nextLevelXp);
-        game.run.choices = [
-          Upgrade.nullSafety,
-          Upgrade.patternMatching,
-          Upgrade.pipeline,
-        ];
-        game.refresh();
-        await tester.pump();
-        await tester.pump();
-        expect(find.byType(UpgradeCard).hitTestable(), findsNWidgets(3));
-        for (final card in find.byType(UpgradeCard).evaluate()) {
-          expect(
-            tester.getRect(find.byWidget(card.widget)).bottom,
-            lessThanOrEqualTo(640),
-          );
+        for (final choices in [
+          [Upgrade.nullSafety, Upgrade.patternMatching, Upgrade.pipeline],
+          [Upgrade.lazyEvaluation, Upgrade.memoization, Upgrade.jitCompilation],
+          [Upgrade.ownership, Upgrade.spatialIndex, Upgrade.coprocessor],
+          [Upgrade.memoryProtection, Upgrade.bandwidth, Upgrade.clock],
+        ]) {
+          game.run.choices = choices;
+          game.refresh();
+          await tester.pump();
+          await tester.pump();
+          expect(find.byType(UpgradeCard).hitTestable(), findsNWidgets(3));
+          for (final card in find.byType(UpgradeCard).evaluate()) {
+            expect(
+              tester.getRect(find.byWidget(card.widget)).bottom,
+              lessThanOrEqualTo(640),
+            );
+          }
+          expect(tester.takeException(), isNull);
         }
-        expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox());
         settings.dispose();
       },

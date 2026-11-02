@@ -254,6 +254,82 @@ class _Artwork {
           ], color: accent);
         }
         line(50, 14, 50, 50);
+      case Upgrade.lazyEvaluation:
+        dot(32, 32, 20, fill: _paper);
+        line(25, 23, 25, 41, color: accent);
+        line(39, 23, 39, 41, color: accent);
+        line(17, 52, 47, 52, color: accent);
+      case Upgrade.memoization:
+        box(12, 12, 31, 31, fill: light);
+        box(21, 21, 31, 31, fill: _paper);
+        path([
+          const Offset(30, 33),
+          const Offset(42, 33),
+          const Offset(42, 43),
+          const Offset(32, 43),
+        ], color: accent);
+        path([
+          const Offset(36, 39),
+          const Offset(32, 43),
+          const Offset(36, 47),
+        ], color: accent);
+      case Upgrade.jitCompilation:
+        path([const Offset(12, 48), const Offset(12, 17)], color: accent);
+        path([const Offset(12, 48), const Offset(51, 48)], color: accent);
+        path(
+          [
+            const Offset(19, 39),
+            const Offset(29, 35),
+            const Offset(37, 24),
+            const Offset(49, 15),
+          ],
+          color: accent,
+          width: 4,
+        );
+        path([
+          const Offset(40, 15),
+          const Offset(49, 15),
+          const Offset(49, 24),
+        ], color: accent);
+      case Upgrade.ownership:
+        dot(24, 30, 12, fill: light);
+        path(
+          [
+            const Offset(35, 30),
+            const Offset(52, 30),
+            const Offset(52, 39),
+            const Offset(46, 39),
+            const Offset(46, 34),
+          ],
+          color: accent,
+          width: 4,
+        );
+        line(20, 30, 25, 30);
+      case Upgrade.spatialIndex:
+        for (final x in [15.0, 32.0, 49.0]) {
+          line(x, 13, x, 51);
+          line(13, x, 51, x);
+        }
+        dot(32, 32, 12, fill: light);
+      case Upgrade.coprocessor:
+        box(10, 18, 20, 28, fill: light);
+        box(34, 18, 20, 28, fill: _paper);
+        line(30, 26, 34, 26, color: accent);
+        line(30, 38, 34, 38, color: accent);
+        for (final x in [15.0, 24.0, 39.0, 48.0]) {
+          line(x, 12, x, 18);
+          line(x, 46, x, 52);
+        }
+      case Upgrade.memoryProtection:
+        polygon([
+          const Offset(13, 13),
+          const Offset(51, 13),
+          const Offset(47, 40),
+          const Offset(32, 54),
+          const Offset(17, 40),
+        ], fill: light);
+        line(32, 23, 32, 41, color: accent);
+        line(23, 32, 41, 32, color: accent);
       case Upgrade.compiler:
         // Code passes through an optimizing funnel, producing one bright result.
         path([

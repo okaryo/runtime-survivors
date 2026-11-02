@@ -696,6 +696,16 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
         metric(text('targets'), '${run.targetCount}'),
         metric(text('damage'), run.attackDamage.toStringAsFixed(1)),
         metric(text('interval'), '${run.attackInterval.toStringAsFixed(2)} s'),
+        if (run.rank(Upgrade.jitCompilation) > 0)
+          Text(
+            text('jitStatus', {'stacks': run.abilities.focusStacks}),
+            style: const TextStyle(fontSize: 12, color: muted),
+          ),
+        if (run.rank(Upgrade.memoization) > 0)
+          Text(
+            text('echoStatus', {'count': run.abilities.echoes.length}),
+            style: const TextStyle(fontSize: 12, color: muted),
+          ),
         if (run.rank(Upgrade.nullSafety) > 0)
           Text(
             run.shieldReady
