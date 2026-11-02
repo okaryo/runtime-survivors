@@ -7,7 +7,7 @@ import 'package:web/web.dart' as web;
 class SoundBackend {
   web.AudioContext? _context;
   web.GainNode? _master;
-  double _volume = 0.35;
+  double _volume = 1.0;
   bool _disposed = false;
 
   void unlock() {

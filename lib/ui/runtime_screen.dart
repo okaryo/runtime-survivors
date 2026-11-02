@@ -11,7 +11,7 @@ import '../l10n/game_text.dart';
 import '../settings.dart';
 import 'theme.dart';
 import 'codex_panel.dart';
-import 'upgrade_card.dart';
+import 'upgrade_choices.dart';
 
 class RuntimeScreen extends StatefulWidget {
   const RuntimeScreen({super.key, required this.settings});
@@ -115,58 +115,76 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
               470.0,
               min(740.0, constraints.maxHeight - 310),
             );
-            return SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(
-                compact ? 16 : 30,
-                22,
-                compact ? 16 : 30,
-                20,
-              ),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1600),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      header(compact),
-                      const SizedBox(height: 22),
-                      stats(compact),
-                      const SizedBox(height: 18),
-                      if (wide)
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(child: arena(arenaHeight)),
-                            const SizedBox(width: 20),
-                            SizedBox(width: 300, child: designPanel()),
+            return Stack(
+              children: [
+                SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(
+                    compact ? 16 : 30,
+                    22,
+                    compact ? 16 : 30,
+                    20,
+                  ),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1600),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          header(compact),
+                          const SizedBox(height: 22),
+                          stats(compact),
+                          const SizedBox(height: 18),
+                          if (wide)
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(child: arena(arenaHeight)),
+                                const SizedBox(width: 20),
+                                SizedBox(width: 300, child: designPanel()),
+                              ],
+                            )
+                          else ...[
+                            arena(arenaHeight),
+                            const SizedBox(height: 16),
+                            designPanel(),
                           ],
-                        )
-                      else ...[
-                        arena(arenaHeight),
-                        const SizedBox(height: 16),
-                        designPanel(),
-                      ],
-                      const SizedBox(height: 14),
-                      Text(
-                        text('controls'),
-                        style: const TextStyle(fontSize: 12, color: muted),
+                          const SizedBox(height: 14),
+                          Text(
+                            text('controls'),
+                            style: const TextStyle(fontSize: 12, color: muted),
+                          ),
+                          const SizedBox(height: 18),
+                          CodexPanel(
+                            text: text,
+                            discoveries: widget.settings.discoveries,
+                            expanded: _codexOpen,
+                            onToggle: () {
+                              if (!_codexOpen) pause();
+                              setState(() => _codexOpen = !_codexOpen);
+                              game.inputBlocked = _codexOpen || _modalOpen;
+                              if (!_codexOpen) focus.requestFocus();
+                            },
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 18),
-                      CodexPanel(
-                        text: text,
-                        discoveries: widget.settings.discoveries,
-                        expanded: _codexOpen,
-                        onToggle: () {
-                          if (!_codexOpen) pause();
-                          setState(() => _codexOpen = !_codexOpen);
-                          game.inputBlocked = _codexOpen || _modalOpen;
-                          if (!_codexOpen) focus.requestFocus();
-                        },
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
+                if (run.phase == RunPhase.choosing)
+                  Positioned.fill(
+                    child: UpgradeChoices(
+                      run: run,
+                      text: text,
+                      onChoose: choose,
+                      onLanguageToggle: () {
+                        widget.settings.update(
+                          language: text.isJapanese ? 'en' : 'ja',
+                        );
+                        focus.requestFocus();
+                      },
+                    ),
+                  ),
+              ],
             );
           },
         ),
@@ -488,7 +506,8 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
                     ),
                   ),
                 ),
-              if (run.phase != RunPhase.running)
+              if (run.phase != RunPhase.running &&
+                  run.phase != RunPhase.choosing)
                 Positioned.fill(child: overlay()),
               if (run.phase == RunPhase.running && run.elapsed < 7)
                 Positioned(
@@ -653,18 +672,20 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
 
   Widget overlay() => ColoredBox(
     color: const Color(0xFF102022).withValues(alpha: 0.93),
-    child: LayoutBuilder(
-      builder: (context, constraints) => Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 900),
-            child: switch (run.phase) {
-              RunPhase.ready => welcome(),
-              RunPhase.choosing => choices(constraints.maxWidth >= 760),
-              RunPhase.paused => paused(),
-              _ => result(),
-            },
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: LayoutBuilder(
+        builder: (context, constraints) => Center(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: SizedBox(
+              width: min(900, constraints.maxWidth),
+              child: switch (run.phase) {
+                RunPhase.ready => welcome(),
+                RunPhase.paused => paused(),
+                _ => result(),
+              },
+            ),
           ),
         ),
       ),
@@ -723,48 +744,6 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
       const SizedBox(height: 7),
       darkBody(text('pickupHint')),
     ],
-  );
-  Widget choices(bool horizontal) => Column(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      darkLabel('${text('level')} ${run.level}'),
-      const SizedBox(height: 10),
-      title(text('choicesTitle')),
-      const SizedBox(height: 8),
-      darkBody(text('choicesHint')),
-      const SizedBox(height: 22),
-      if (horizontal)
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              for (var i = 0; i < run.choices.length; i++) ...[
-                if (i > 0) const SizedBox(width: 12),
-                Expanded(child: upgradeCard(i)),
-              ],
-            ],
-          ),
-        )
-      else
-        Column(
-          children: [
-            for (var i = 0; i < run.choices.length; i++)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: upgradeCard(i),
-              ),
-          ],
-        ),
-      const SizedBox(height: 16),
-      darkBody(text(_codexOpen ? 'codexSelect' : 'choicesKeys')),
-    ],
-  );
-  Widget upgradeCard(int index) => UpgradeCard(
-    upgrade: run.choices[index],
-    index: index,
-    run: run,
-    text: text,
-    onChoose: () => choose(run.choices[index]),
   );
   Widget paused() => Column(
     mainAxisSize: MainAxisSize.min,

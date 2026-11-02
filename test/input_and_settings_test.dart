@@ -56,6 +56,7 @@ void main() {
       SharedPreferences.setMockInitialValues({});
       final first = GameSettings();
       await first.load();
+      expect(first.volume, 1.0);
       first.update(language: 'en', muted: true, volume: 0.6);
       first.discover(['enemy.0', 'upgrade.concurrency']);
       // Reload only after the ordered preference writes have reached storage.

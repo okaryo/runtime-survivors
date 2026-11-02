@@ -7,7 +7,7 @@ class GameAudio {
   final _clock = Stopwatch()..start();
   final Map<SoundCue, int> _lastPlayed = {};
   bool muted = false;
-  double volume = 0.35;
+  double volume = 1.0;
 
   void configure({required bool muted, required double volume}) {
     this.muted = muted;

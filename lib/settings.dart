@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class GameSettings extends ChangeNotifier {
   String language = 'ja';
   bool muted = false;
-  double volume = 0.35;
+  double volume = 1.0;
   final Set<String> discoveries = {};
   SharedPreferences? _preferences;
   bool _disposed = false;
@@ -22,7 +22,7 @@ class GameSettings extends ChangeNotifier {
       if (_changes == changesAtStart) {
         language = preferences.getString('language') == 'en' ? 'en' : 'ja';
         muted = preferences.getBool('muted') ?? false;
-        volume = (preferences.getDouble('volume') ?? 0.35).clamp(0, 1);
+        volume = (preferences.getDouble('volume') ?? 1.0).clamp(0, 1);
       }
       discoveries.addAll(preferences.getStringList('discoveries') ?? []);
       notifyListeners();
