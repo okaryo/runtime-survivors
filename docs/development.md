@@ -9,14 +9,26 @@
 - 対象：PCブラウザ
 - 配信：GitHub Pages
 
-FVMのバージョン指定は [`.fvmrc`](../.fvmrc) にあります。`fvm install` 後、`flutter` / `dart` の各コマンドを `fvm flutter` / `fvm dart` に読み替えて実行できます。
+Flutterのバージョンは [pubspec.yaml](../pubspec.yaml) の `environment.flutter` で指定し、CIもこのファイルを参照します。Actionの仕様に合わせ、範囲指定ではなく `3.47.8` のように完全なバージョンを指定します。
 
 ```sh
 flutter pub get --enforce-lockfile
 flutter run -d chrome
 ```
 
-CIも `.fvmrc` を参照します。SDKを更新する際は、`.fvmrc` と `pubspec.yaml` のSDK要件を揃えてください。
+SDKを更新する際は、`pubspec.yaml` の指定とローカルのFlutterを揃えてください。
+
+### FVM（任意）
+
+FVMを使う場合は、`pubspec.yaml` に指定されたバージョンをローカルに設定します。
+
+```sh
+fvm use 3.47.8
+fvm flutter pub get --enforce-lockfile
+fvm flutter run -d chrome
+```
+
+作成される `.fvmrc` とSDKキャッシュの `.fvm/` はGit管理対象外です。以降の `flutter` / `dart` コマンドは `fvm flutter` / `fvm dart` に読み替えて実行できます。
 
 ## コード構成
 
