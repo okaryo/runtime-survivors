@@ -9,6 +9,8 @@ class CharacterPainter {
     Color(0xFFF1D685),
     Color(0xFFC5B1E5),
     Color(0xFFF49AB5),
+    Color(0xFF8CC9F2),
+    Color(0xFF9ED99C),
   ];
   static void draw(
     Canvas canvas, {
@@ -100,6 +102,35 @@ class CharacterPainter {
         );
         canvas.drawRRect(block, fill);
         canvas.drawRRect(block, outline);
+      }
+    } else if (kind == 4 || kind == 5) {
+      final body = RRect.fromRectAndRadius(
+        Rect.fromLTRB(-r, -r, r, r),
+        Radius.circular(kind == 4 ? 3 : 10),
+      );
+      canvas.drawRRect(body, fill);
+      canvas.drawRRect(body, outline);
+      if (kind == 4) {
+        canvas.drawLine(Offset(0, -r), Offset(0, -r - 10), face);
+        canvas.drawCircle(Offset(0, -r - 11), 3, fill);
+        canvas.drawArc(
+          Rect.fromCircle(center: Offset(0, -r - 9), radius: 7),
+          -2.8,
+          2.4,
+          false,
+          outline,
+        );
+      } else {
+        for (final x in [-r - 4, r + 4]) {
+          canvas.drawRRect(
+            RRect.fromRectAndRadius(
+              Rect.fromCenter(center: Offset(x, 4), width: 7, height: 11),
+              const Radius.circular(2),
+            ),
+            fill,
+          );
+          canvas.drawCircle(Offset(x, 3), 1, face);
+        }
       }
     } else if (kind == 3) {
       // Deadlock wears two bracket-shaped horns and a lock shackle.

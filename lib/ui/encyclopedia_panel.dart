@@ -78,7 +78,11 @@ class EncyclopediaPanel extends StatelessWidget {
                     const SizedBox(height: 12),
                     rows(
                       [
-                        for (var kind = 0; kind < 4; kind++)
+                        for (
+                          var kind = 0;
+                          kind < EnemyType.values.length;
+                          kind++
+                        )
                           entry(
                             known: discoveries.contains('enemy.$kind'),
                             title: text('enemy.$kind.title'),

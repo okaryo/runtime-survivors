@@ -221,6 +221,51 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
       }
       canvas.restore();
     }
+    for (final enemy in run.enemies.where(
+      (e) => e.kind >= 4 && e.telegraphRemaining > 0,
+    )) {
+      final p = point(enemy.position);
+      if (enemy.kind == 4) {
+        canvas.drawLine(
+          p,
+          p + point(enemy.chargeDirection * 390),
+          Paint()
+            ..color = coral.withValues(alpha: 0.6)
+            ..strokeWidth = 2,
+        );
+      } else {
+        canvas.drawCircle(
+          p,
+          42 + sin(run.elapsed * 12) * 4,
+          Paint()
+            ..color = const Color(0xFF9ED99C)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2,
+        );
+      }
+    }
+    for (final shot in run.projectiles) {
+      final p = point(shot.position);
+      final paint = Paint()
+        ..color = shot.hostile ? coral : const Color(0xFF9DDBFF)
+        ..strokeWidth = shot.hostile ? 3 : 7
+        ..strokeCap = StrokeCap.round;
+      canvas.drawLine(
+        p - point(shot.velocity.normalized() * (shot.hostile ? 10 : 26)),
+        p,
+        paint,
+      );
+      if (shot.hostile) {
+        canvas.drawCircle(
+          p,
+          shot.radius,
+          Paint()
+            ..color = coral
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2,
+        );
+      }
+    }
     for (final object in run.objects) {
       final p = point(object.position);
       canvas.drawCircle(

@@ -124,6 +124,18 @@ class GameText {
   });
 
   static const copy = <String, List<String>>{
+    'enemy.4.title': ['RPC要求', 'RPC request'],
+    'enemy.4.type': ['射撃タスク', 'Ranged task'],
+    'enemy.4.description': [
+      '青いアンテナのタスク。射線を予告してから固定方向へ弾を撃つ。横へ避けて近づこう。弾のダメージ11。',
+      'An antenna task that telegraphs a fixed-direction shot. Sidestep, then approach. Projectile damage: 11.',
+    ],
+    'enemy.5.title': ['Fork Bomb', 'Fork Bomb'],
+    'enemy.5.type': ['召喚タスク', 'Summoner task'],
+    'enemy.5.description': [
+      '小型タスクを一度に3体、最大6体まで召喚。本体を倒すと追加召喚が止まる。召喚雑魚の経験値は1。',
+      'Summons three small tasks, up to six active children. Defeat the parent to stop spawning. Children grant 1 XP each.',
+    ],
     'newUpgrade': ['新規', 'NEW'],
     'featureBadge': ['言語機能', 'FEATURE'],
     'infraBadge': ['基盤強化', 'INFRA'],

@@ -3,6 +3,9 @@ import 'dart:math';
 import 'package:flame/components.dart';
 
 import '../audio/sound_cue.dart';
+import 'combat_entities.dart';
+import 'spawn_director.dart';
+export 'combat_entities.dart';
 
 enum RunPhase { ready, running, choosing, paused, won, lost }
 
@@ -86,73 +89,6 @@ class RunLog {
   final Upgrade? upgrade;
 }
 
-class TaskEnemy {
-  TaskEnemy(this.position, {this.kind = 0, this.health = 22})
-    : maxHealth = health;
-  final Vector2 position;
-  final int kind;
-  double health;
-  final double maxHealth;
-  double flash = 0;
-  double chargeCooldown = 2.2;
-  double telegraphRemaining = 0;
-  double chargeRemaining = 0;
-  final chargeDirection = Vector2.zero();
-  bool get alive => health > 0;
-  double get radius => kind == 3
-      ? 25
-      : kind == 2
-      ? 18
-      : 13;
-  double get speed => switch (kind) {
-    1 => 103,
-    2 => 40,
-    3 => 62,
-    _ => 57,
-  };
-}
-
-enum InstructionKind { base, object, chain }
-
-class Instruction {
-  Instruction(
-    this.position,
-    this.target,
-    this.damage, {
-    this.kind = InstructionKind.base,
-    this.jumps = 0,
-    Set<TaskEnemy>? visited,
-  }) : visited = visited ?? {target};
-  final Vector2 position;
-  final TaskEnemy target;
-  final double damage;
-  final InstructionKind kind;
-  final int jumps;
-  final Set<TaskEnemy> visited;
-  double life = 1.5;
-}
-
-class RuntimeObject {
-  RuntimeObject(this.index, Vector2 player) : position = player.clone();
-  final int index;
-  final Vector2 position;
-  double attackTimer = 0;
-}
-
-class Experience {
-  Experience(this.position, this.value);
-  final Vector2 position;
-  final int value;
-}
-
-class RunEffect {
-  RunEffect(this.position, {this.pulse = false, this.radius = 22});
-  final Vector2 position;
-  final bool pulse;
-  final double radius;
-  double life = 0.5;
-}
-
 /// Deterministic simulation, independent of the render loop and Flutter UI.
 class RunState {
   RunState({Random? random}) : random = random ?? Random();
@@ -166,6 +102,8 @@ class RunState {
   final List<Experience> experience = [];
   final List<RunEffect> effects = [];
   final List<RuntimeObject> objects = [];
+  final List<LinearProjectile> projectiles = [];
+  final director = const SpawnDirector();
   final Set<int> seenEnemies = {};
   final Set<Upgrade> seenUpgrades = {};
   final Map<Upgrade, int> upgrades = {};
@@ -220,6 +158,7 @@ class RunState {
     experience.clear();
     effects.clear();
     objects.clear();
+    projectiles.clear();
     upgrades.clear();
     choices = [];
     elapsed = 0;
@@ -344,7 +283,7 @@ class RunState {
       _rushUntil = elapsed + 9;
       _nextRush += 45;
       for (var i = 0; i < 18 + rushCount * 3; i++) {
-        _spawn();
+        _spawn(kind: random.nextBool() ? 0 : 1);
       }
       log(const RunLog('log.rush'));
       cues.add(SoundCue.warning);
@@ -361,36 +300,33 @@ class RunState {
       _spawn();
       _spawnTimer = max(0.18, 0.70 - elapsed / 600) * (isRush ? 0.55 : 1);
     }
+    final children = <TaskEnemy>[];
     for (final enemy in enemies) {
+      if (!enemy.alive) continue;
       enemy.flash = max(0, enemy.flash - dt);
       final delta = player - enemy.position;
       if (enemy.kind == 3) {
         _updateElite(enemy, delta, dt);
+      } else if (enemy.kind == 4 || enemy.kind == 5) {
+        _updateSpecialist(enemy, delta, dt, children);
       } else if (delta.length2 > 0) {
         enemy.position.add(delta.normalized() * enemy.speed * dt);
       }
       if (enemy.position.distanceTo(player) < enemy.radius + 13 &&
           invulnerability <= 0) {
-        health = max(
-          0,
-          health -
-              (enemy.kind == 3
-                  ? 22
-                  : enemy.kind == 2
-                  ? 15
-                  : 9),
+        _damagePlayer(
+          enemy.kind == 3
+              ? 22
+              : enemy.kind == 2
+              ? 15
+              : 9,
         );
-        invulnerability = 0.65;
-        cues.add(SoundCue.hit);
-        if (health <= 0) {
-          phase = RunPhase.lost;
-          movement.setZero();
-          log(const RunLog('log.lost'));
-          cues.add(SoundCue.end);
-          return;
-        }
+        if (phase == RunPhase.lost) return;
       }
     }
+    enemies.addAll(children);
+    _updateProjectiles(dt);
+    if (phase == RunPhase.lost) return;
     _updateObjects(dt);
     _attackTimer -= dt;
     if (_attackTimer <= 0) {
@@ -548,6 +484,107 @@ class RunState {
     }
   }
 
+  void _damagePlayer(double damage) {
+    if (invulnerability > 0) return;
+    health = max(0, health - damage);
+    invulnerability = 0.65;
+    cues.add(SoundCue.hit);
+    if (health <= 0) {
+      phase = RunPhase.lost;
+      movement.setZero();
+      log(const RunLog('log.lost'));
+      cues.add(SoundCue.end);
+    }
+  }
+
+  void _updateProjectiles(double dt) {
+    for (final shot in projectiles) {
+      final from = shot.position.clone();
+      shot.life -= dt;
+      shot.position.add(shot.velocity * dt);
+      if (shot.hostile) {
+        if (crossesCircle(from, shot.position, player, shot.radius + 13)) {
+          _damagePlayer(shot.damage);
+          shot.life = 0;
+        }
+      } else {
+        for (final enemy in enemies) {
+          if (enemy.alive &&
+              !shot.hit.contains(enemy) &&
+              crossesCircle(
+                from,
+                shot.position,
+                enemy.position,
+                enemy.radius + shot.radius,
+              )) {
+            shot.hit.add(enemy);
+            _damage(enemy, shot.damage);
+          }
+        }
+      }
+    }
+    projectiles.removeWhere(
+      (shot) =>
+          shot.life <= 0 ||
+          shot.position.distanceTo(player) > spawnRadius * 2.2,
+    );
+  }
+
+  void _updateSpecialist(
+    TaskEnemy enemy,
+    Vector2 delta,
+    double dt,
+    List<TaskEnemy> children,
+  ) {
+    final ranged = enemy.kind == 4;
+    if (enemy.telegraphRemaining > 0) {
+      enemy.telegraphRemaining = max(0, enemy.telegraphRemaining - dt);
+      if (enemy.telegraphRemaining == 0) {
+        if (ranged && projectiles.where((s) => s.hostile).length < 96) {
+          projectiles.add(
+            LinearProjectile(
+              enemy.position.clone(),
+              enemy.chargeDirection * 180,
+              damage: 11,
+            ),
+          );
+        } else if (!ranged) {
+          final owned = enemies
+              .where((e) => e.alive && identical(e.owner, enemy))
+              .length;
+          final count = min(
+            3,
+            min(6 - owned, 236 - enemies.length - children.length),
+          );
+          for (var i = 0; i < count; i++) {
+            final angle = i * pi * 2 / 3 + elapsed;
+            children.add(
+              TaskEnemy(
+                enemy.position + Vector2(cos(angle), sin(angle)) * 32,
+                health: 12 + elapsed / 30,
+                summoned: true,
+                owner: enemy,
+              ),
+            );
+          }
+        }
+        enemy.attackCooldown = ranged ? 2.6 : 5.5;
+      }
+      return;
+    }
+    // Specialists can be approached: retreat is slower than player movement.
+    if (delta.length > (ranged ? 240 : 280)) {
+      enemy.position.add(delta.normalized() * enemy.speed * dt);
+    } else if (ranged && delta.length > 1 && delta.length < 150) {
+      enemy.position.add(delta.normalized() * -enemy.speed * dt);
+    }
+    enemy.attackCooldown -= dt;
+    if (enemy.attackCooldown <= 0 && delta.length > 1 && delta.length < 430) {
+      enemy.chargeDirection.setFrom(delta.normalized());
+      enemy.telegraphRemaining = ranged ? 0.9 : 1.2;
+    }
+  }
+
   void _updateElite(TaskEnemy enemy, Vector2 delta, double dt) {
     if (enemy.telegraphRemaining > 0) {
       enemy.telegraphRemaining = max(0, enemy.telegraphRemaining - dt);
@@ -571,16 +608,21 @@ class RunState {
   void _spawn({double? radius, int? kind}) {
     if (enemies.length >= (kind == 3 ? 240 : 236)) return;
     final angle = random.nextDouble() * pi * 2;
-    kind ??= elapsed > 45 && random.nextDouble() < 0.2
-        ? 2
-        : (elapsed > 20 && random.nextDouble() < 0.3 ? 1 : 0);
+    kind ??= director.choose(elapsed, enemies, random);
     enemies.add(
       TaskEnemy(
         player + Vector2(cos(angle), sin(angle)) * (radius ?? spawnRadius),
         kind: kind,
         health: kind == 3
             ? 240 + elapsed * 1.6
-            : (22 + elapsed / 18) * (kind == 2 ? 3 : 1),
+            : (22 + elapsed / 18) *
+                  (kind == 2
+                      ? 3
+                      : kind == 5
+                      ? 2.5
+                      : kind == 4
+                      ? 1.5
+                      : 1),
       ),
     );
     seenEnemies.add(kind);
@@ -596,7 +638,9 @@ class RunState {
       experience.add(
         Experience(
           enemy.position.clone(),
-          enemy.kind == 3
+          enemy.summoned
+              ? 1
+              : enemy.kind == 3
               ? 45
               : enemy.kind == 2
               ? 9
