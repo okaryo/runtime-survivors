@@ -1,9 +1,12 @@
 import 'sound_backend_stub.dart'
     if (dart.library.js_interop) 'sound_backend_web.dart';
 import 'sound_cue.dart';
+import 'audio_output.dart';
 
 class GameAudio {
-  final _backend = SoundBackend();
+  GameAudio({AudioOutput? output}) : _backend = output ?? SoundBackend();
+  final AudioOutput _backend;
+  bool _musicWanted = false;
   final _clock = Stopwatch()..start();
   final Map<SoundCue, int> _lastPlayed = {};
   bool muted = false;
@@ -13,10 +16,20 @@ class GameAudio {
     this.muted = muted;
     this.volume = volume;
     _backend.setVolume(muted ? 0 : volume);
+    _syncMusic();
   }
 
   // Call only from a click/key gesture, so browsers can unlock Web Audio.
   void unlock() => _backend.unlock();
+
+  void setMusicPlaying(bool playing) {
+    _musicWanted = playing;
+    _syncMusic();
+  }
+
+  void _syncMusic() =>
+      _backend.setMusicPlaying(_musicWanted && !muted && volume > 0);
+  void restartMusic() => _backend.restartMusic();
 
   void play(SoundCue cue) {
     if (muted || volume <= 0) return;

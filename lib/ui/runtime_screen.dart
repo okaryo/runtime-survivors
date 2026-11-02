@@ -34,6 +34,8 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
   void initState() {
     super.initState();
     game.onSound = audio.play;
+    game.onPhaseChanged = (phase) =>
+        audio.setMusicPlaying(phase == RunPhase.running);
     game.onDiscover = widget.settings.discover;
     lifecycle = AppLifecycleListener(onInactive: pause, onHide: pause);
   }
@@ -44,6 +46,7 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
   }
 
   void start() {
+    audio.restartMusic();
     audio.unlock();
     setState(() => _codexOpen = false);
     game.inputBlocked = _modalOpen;
@@ -76,6 +79,7 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
   void dispose() {
     lifecycle.dispose();
     game.onSound = null;
+    game.onPhaseChanged = null;
     game.onDiscover = null;
     audio.dispose();
     focus.dispose();
@@ -112,7 +116,7 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
             final wide = constraints.maxWidth >= 1180;
             final compact = constraints.maxWidth < 720;
             final arenaHeight = max(
-              470.0,
+              320.0,
               min(740.0, constraints.maxHeight - 310),
             );
             return Stack(

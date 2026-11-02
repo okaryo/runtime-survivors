@@ -14,6 +14,8 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
   RuntimeGame(this.run);
   final RunState run;
   void Function(SoundCue)? onSound;
+  void Function(RunPhase)? onPhaseChanged;
+  RunPhase? _notifiedPhase;
   GameText text = const GameText('ja');
   bool inputBlocked = false;
   void Function(Iterable<String>)? onDiscover;
@@ -30,6 +32,10 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
   }
 
   void refresh() {
+    if (_notifiedPhase != run.phase) {
+      _notifiedPhase = run.phase;
+      onPhaseChanged?.call(run.phase);
+    }
     onDiscover?.call([
       for (final kind in run.seenEnemies) 'enemy.$kind',
       for (final upgrade in run.seenUpgrades) 'upgrade.${upgrade.name}',

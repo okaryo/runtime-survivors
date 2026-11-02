@@ -28,6 +28,10 @@ void main() {
       final text = GameText(settings.language);
       await tester.pumpWidget(RuntimeSurvivorsApp(settings: settings));
       await tester.pump(const Duration(milliseconds: 100));
+      if (scenario.$1.width >= 1180) {
+        final arena = tester.getRect(find.byType(GameWidget<RuntimeGame>));
+        expect(arena.bottom, lessThanOrEqualTo(scenario.$1.height));
+      }
       await tester.ensureVisible(find.text(text('start')));
       await tester.tap(find.text(text('start')));
       await tester.pump();
