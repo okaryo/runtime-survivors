@@ -15,6 +15,9 @@ void main() {
         Upgrade.cache: 1,
         Upgrade.compiler: 2,
       });
+      if (upgrade.isFeature && run.rank(upgrade) == 0) {
+        run.upgrades.remove(Upgrade.functional);
+      }
       run.health = 37.5;
       run.phase = RunPhase.choosing;
       run.choices = [upgrade];
@@ -39,7 +42,7 @@ void main() {
       expect(run.gcDamage, prediction.after.gcDamage);
       expect(run.gcRadius, prediction.after.gcRadius);
       expect(run.objectDamage, prediction.after.objectDamage);
-      expect(prediction.before.rank(upgrade), ranks[upgrade]);
+      expect(prediction.before.rank(upgrade), ranks[upgrade] ?? 0);
       expect(prediction.beforeHealth, 37.5);
     });
   }

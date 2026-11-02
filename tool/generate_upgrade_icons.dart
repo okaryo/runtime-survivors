@@ -216,6 +216,44 @@ class _Artwork {
           const Offset(42, 22),
           const Offset(34, 22),
         ], fill: const Color(0xFFF6BB79));
+      case Upgrade.nullSafety:
+        polygon([
+          const Offset(15, 14),
+          const Offset(49, 14),
+          const Offset(46, 39),
+          const Offset(32, 54),
+          const Offset(18, 39),
+        ], fill: light);
+        path(
+          [const Offset(24, 31), const Offset(30, 37), const Offset(41, 24)],
+          color: accent,
+          width: 4,
+        );
+      case Upgrade.patternMatching:
+        for (final x in [14.0, 30.0, 46.0]) {
+          box(x, 17, 7, 30, fill: light, r: 2);
+        }
+        arrow(9, 32, 56, 32);
+      case Upgrade.pipeline:
+        for (final y in [17.0, 32.0, 47.0]) {
+          arrow(12, y, 51, y);
+        }
+        line(26, 11, 26, 53);
+        line(39, 11, 39, 53);
+      case Upgrade.bandwidth:
+        for (final y in [19.0, 32.0, 45.0]) {
+          path([
+            Offset(13, y - 5),
+            Offset(21, y),
+            Offset(13, y + 5),
+          ], color: accent);
+          path([
+            Offset(29, y - 5),
+            Offset(37, y),
+            Offset(29, y + 5),
+          ], color: accent);
+        }
+        line(50, 14, 50, 50);
       case Upgrade.compiler:
         // Code passes through an optimizing funnel, producing one bright result.
         path([
@@ -270,7 +308,10 @@ void main() {
       picture.dispose();
     }
     final picture = sheet.endRecording();
-    final image = await picture.toImage(1124, 572);
+    final image = await picture.toImage(
+      1124,
+      20 + ((Upgrade.values.length + 3) ~/ 4) * 276,
+    );
     final bytes = (await image.toByteData(format: ui.ImageByteFormat.png))!;
     File('/tmp/runtime-upgrade-icons.png')
         .writeAsBytesSync(bytes.buffer.asUint8List());

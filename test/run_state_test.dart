@@ -143,7 +143,7 @@ void main() {
       run.choices = [Upgrade.memory];
       run.health = 30;
       run.choose(Upgrade.memory);
-      expect(run.maxHealth, 105); // OOP rank 4 reserves 20 HP.
+      expect(run.maxHealth, 73); // OOP and Null Safety reserve memory.
       expect(run.health, 65);
     },
   );

@@ -373,6 +373,17 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
       );
     }
     final position = point(run.player);
+    if (run.shieldReady) {
+      canvas.drawCircle(
+        position,
+        29,
+        Paint()
+          ..color = const Color(0xFF9DDBFF)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.5,
+      );
+    }
+
     canvas.drawCircle(
       position,
       32,

@@ -1,86 +1,16 @@
 import 'dart:math';
+import 'dart:math' as math show log;
 
 import 'package:flame/components.dart';
 
 import '../audio/sound_cue.dart';
 import 'combat_entities.dart';
 import 'spawn_director.dart';
+import 'build.dart';
 export 'combat_entities.dart';
+export 'build.dart';
 
 enum RunPhase { ready, running, choosing, paused, won, lost }
-
-enum Upgrade {
-  garbageCollection,
-  concurrency,
-  oop,
-  functional,
-  memory,
-  clock,
-  cache,
-  compiler,
-}
-
-extension UpgradeInfo on Upgrade {
-  String get symbol => switch (this) {
-    Upgrade.garbageCollection => 'GC',
-    Upgrade.concurrency => '&&',
-    Upgrade.oop => '{}',
-    Upgrade.functional => 'λ',
-    Upgrade.memory => 'MEM',
-    Upgrade.clock => 'Hz',
-    Upgrade.cache => r'$',
-    Upgrade.compiler => '-O',
-  };
-
-  bool get isFeature => switch (this) {
-    Upgrade.garbageCollection ||
-    Upgrade.concurrency ||
-    Upgrade.oop ||
-    Upgrade.functional => true,
-    _ => false,
-  };
-}
-
-/// Shared stat formulas for live combat and immutable upgrade snapshots.
-class BuildStats {
-  BuildStats._(this._ranks);
-  BuildStats.snapshot(Map<Upgrade, int> ranks)
-    : _ranks = Map.unmodifiable(ranks);
-  final Map<Upgrade, int> _ranks;
-  int rank(Upgrade upgrade) => _ranks[upgrade] ?? 0;
-  double get maxHealth =>
-      100 + 25.0 * rank(Upgrade.memory) - 5.0 * rank(Upgrade.oop);
-  double get speed => 185.0 * pow(1.12, rank(Upgrade.clock));
-  double get pickupRadius => 66 + 35.0 * rank(Upgrade.cache);
-  double get attackRange =>
-      300 + 20.0 * rank(Upgrade.cache) - 15.0 * rank(Upgrade.functional);
-  double get objectDamage => 16 + rank(Upgrade.oop) * 4.0;
-  double get objectInterval => 0.9;
-  double get chainRadius => 155;
-  double get attackDamage =>
-      24.0 *
-      pow(1.25, rank(Upgrade.compiler)) *
-      pow(0.88, rank(Upgrade.concurrency));
-  double get attackInterval => 0.62 + rank(Upgrade.garbageCollection) * 0.08;
-  int get targetCount => 1 + rank(Upgrade.concurrency);
-  double get gcRadius => 115 + rank(Upgrade.garbageCollection) * 18.0;
-  double get gcDamage => 22 + rank(Upgrade.garbageCollection) * 14.0;
-}
-
-class UpgradePreview {
-  const UpgradePreview({
-    required this.upgrade,
-    required this.before,
-    required this.after,
-    required this.beforeHealth,
-    required this.afterHealth,
-  });
-  final Upgrade upgrade;
-  final BuildStats before;
-  final BuildStats after;
-  final double beforeHealth;
-  final double afterHealth;
-}
 
 class RunLog {
   const RunLog(this.key, {this.args = const {}, this.upgrade});
@@ -107,7 +37,7 @@ class RunState {
   final Set<int> seenEnemies = {};
   final Set<Upgrade> seenUpgrades = {};
   final Map<Upgrade, int> upgrades = {};
-  late final BuildStats _stats = BuildStats._(upgrades);
+  late final BuildStats _stats = BuildStats.live(upgrades);
   final List<RunLog> events = [const RunLog('log.ready')];
   final Set<SoundCue> cues = {};
   List<Upgrade> choices = [];
@@ -120,6 +50,13 @@ class RunState {
   double _spawnTimer = 0;
   double _attackTimer = 0;
   double _gcTimer = 3;
+  double _patternTimer = 0;
+  double shieldTimer = 0;
+  bool get shieldReady => rank(Upgrade.nullSafety) > 0 && shieldTimer <= 0;
+  static const featureSlots = 4;
+  int get featureCount =>
+      upgrades.keys.where((u) => u.isFeature && rank(u) > 0).length;
+  double get projectileSpeed => _stats.projectileSpeed;
   double invulnerability = 0;
   double _nextRush = 45;
   double _rushUntil = 0;
@@ -169,6 +106,8 @@ class RunState {
     _spawnTimer = 0;
     _attackTimer = 0;
     _gcTimer = 3;
+    _patternTimer = 0;
+    shieldTimer = 0;
     invulnerability = 0;
     _nextRush = 45;
     _rushUntil = 0;
@@ -211,9 +150,21 @@ class RunState {
     level++;
     phase = RunPhase.choosing;
     movement.setZero();
-    final available =
-        Upgrade.values.where((u) => !u.isFeature || rank(u) < 4).toList()
-          ..shuffle(random);
+    final available = Upgrade.values
+        .where(
+          (u) =>
+              !u.isFeature ||
+              (rank(u) < 4 && (rank(u) > 0 || featureCount < featureSlots)),
+        )
+        .toList();
+    // Weighted sampling without replacement; later choices favor invested features.
+    final keys = {
+      for (final u in available)
+        u:
+            -math.log(max(0.000001, random.nextDouble())) /
+            (level >= 5 && rank(u) > 0 && u.isFeature ? 2.5 : 1.0),
+    };
+    available.sort((a, b) => keys[a]!.compareTo(keys[b]!));
     final features = available.where((u) => u.isFeature).toList();
     final infrastructure = available.where((u) => !u.isFeature).toList();
     if (features.isNotEmpty && infrastructure.isNotEmpty) {
@@ -250,6 +201,11 @@ class RunState {
 
   void choose(Upgrade upgrade) {
     if (phase != RunPhase.choosing || !choices.contains(upgrade)) return;
+    if (upgrade.isFeature &&
+        (rank(upgrade) >= 4 ||
+            (rank(upgrade) == 0 && featureCount >= featureSlots))) {
+      return;
+    }
     final prediction = preview(upgrade);
     upgrades[upgrade] = rank(upgrade) + 1;
     health = prediction.afterHealth;
@@ -278,6 +234,7 @@ class RunState {
       player.add(movement.normalized() * speed * dt);
     }
     invulnerability = max(0, invulnerability - dt);
+    shieldTimer = max(0, shieldTimer - dt);
     if (elapsed >= _nextRush) {
       rushCount++;
       _rushUntil = elapsed + 9;
@@ -353,6 +310,27 @@ class RunState {
       }
       _attackTimer = targets.isEmpty ? 0 : attackInterval;
     }
+    _patternTimer -= dt;
+    if (rank(Upgrade.patternMatching) > 0 && _patternTimer <= 0) {
+      final target = _nearestEnemy(player, attackRange);
+      if (target != null && projectiles.where((s) => !s.hostile).length < 12) {
+        final delta = target.position - player;
+        final direction = delta.length2 > 0
+            ? delta.normalized()
+            : Vector2(1, 0);
+        projectiles.add(
+          LinearProjectile(
+            player.clone(),
+            direction * projectileSpeed,
+            damage: _stats.patternDamage,
+            hostile: false,
+            radius: _stats.patternRadius,
+            life: 1.2,
+          ),
+        );
+        _patternTimer = _stats.patternInterval;
+      }
+    }
     final chained = <Instruction>[];
     for (final shot in instructions) {
       shot.life -= dt;
@@ -361,7 +339,7 @@ class RunState {
         continue;
       }
       final delta = shot.target.position - shot.position;
-      if (delta.length <= 640 * dt + shot.target.radius) {
+      if (delta.length <= projectileSpeed * dt + shot.target.radius) {
         _damage(shot.target, shot.damage);
         if (shot.jumps > 0) {
           final candidates =
@@ -397,7 +375,7 @@ class RunState {
         }
         shot.life = 0;
       } else {
-        shot.position.add(delta.normalized() * 640 * dt);
+        shot.position.add(delta.normalized() * projectileSpeed * dt);
       }
     }
     instructions.removeWhere((shot) => shot.life <= 0);
@@ -484,6 +462,19 @@ class RunState {
     }
   }
 
+  TaskEnemy? _nearestEnemy(Vector2 origin, double range) {
+    TaskEnemy? result;
+    var distance = range * range;
+    for (final enemy in enemies) {
+      final d = enemy.position.distanceToSquared(origin);
+      if (enemy.alive && d <= distance) {
+        result = enemy;
+        distance = d;
+      }
+    }
+    return result;
+  }
+
   void _damagePlayer(double damage) {
     if (invulnerability > 0) return;
     health = max(0, health - damage);
@@ -504,7 +495,13 @@ class RunState {
       shot.position.add(shot.velocity * dt);
       if (shot.hostile) {
         if (crossesCircle(from, shot.position, player, shot.radius + 13)) {
-          _damagePlayer(shot.damage);
+          if (invulnerability <= 0 && shieldReady) {
+            shieldTimer = _stats.shieldCooldown;
+            effects.add(RunEffect(player.clone(), pulse: true, radius: 35));
+            cues.add(SoundCue.pulse);
+          } else {
+            _damagePlayer(shot.damage);
+          }
           shot.life = 0;
         }
       } else {

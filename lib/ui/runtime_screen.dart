@@ -592,6 +592,14 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
           text('designHint'),
           style: const TextStyle(fontSize: 12, color: muted),
         ),
+        const SizedBox(height: 8),
+        Text(
+          text('featureSlots', {
+            'used': run.featureCount,
+            'max': RunState.featureSlots,
+          }),
+          style: const TextStyle(fontSize: 12, color: muted),
+        ),
         const SizedBox(height: 20),
         for (final feature in [true, false]) ...[
           badge(
@@ -649,6 +657,13 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
         metric(text('targets'), '${run.targetCount}'),
         metric(text('damage'), run.attackDamage.toStringAsFixed(1)),
         metric(text('interval'), '${run.attackInterval.toStringAsFixed(2)} s'),
+        if (run.rank(Upgrade.nullSafety) > 0)
+          Text(
+            run.shieldReady
+                ? text('shieldReady')
+                : text('shieldCharging', {'seconds': run.shieldTimer.ceil()}),
+            style: const TextStyle(fontSize: 12, color: infraColor),
+          ),
         const SizedBox(height: 20),
         sectionLabel(text('log')),
         const SizedBox(height: 10),

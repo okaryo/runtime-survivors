@@ -92,6 +92,40 @@ class GameText {
           cost: true,
         ),
       ],
+      Upgrade.nullSafety => [
+        metric(
+          'stat.shieldCooldown',
+          first ? null : '${before.shieldCooldown.toStringAsFixed(0)}s',
+          '${after.shieldCooldown.toStringAsFixed(0)}s',
+        ),
+        hp(cost: true),
+      ],
+      Upgrade.patternMatching => [
+        metric(
+          'stat.patternDamage',
+          first ? null : number(before.patternDamage),
+          number(after.patternDamage),
+        ),
+        metric(
+          'stat.patternWidth',
+          first ? null : number(before.patternRadius * 2),
+          number(after.patternRadius * 2),
+        ),
+      ],
+      Upgrade.pipeline => [
+        metric(
+          'stat.interval',
+          '${before.attackInterval.toStringAsFixed(2)}s',
+          '${after.attackInterval.toStringAsFixed(2)}s',
+        ),
+      ],
+      Upgrade.bandwidth => [
+        metric(
+          'stat.projectileSpeed',
+          number(before.projectileSpeed),
+          number(after.projectileSpeed),
+        ),
+      ],
       Upgrade.memory => [hp()],
       Upgrade.clock => [
         metric('stat.speed', before.speed.round(), after.speed.round()),
@@ -136,6 +170,37 @@ class GameText {
       '小型タスクを一度に3体、最大6体まで召喚。本体を倒すと追加召喚が止まる。召喚雑魚の経験値は1。',
       'Summons three small tasks, up to six active children. Defeat the parent to stop spawning. Children grant 1 XP each.',
     ],
+    'nullSafety.title': ['Null Safety', 'Null Safety'],
+    'nullSafety.description': [
+      '敵弾を1発防ぐ防壁。消費後に再充填します。接触は防げません。',
+      'Blocks one enemy projectile, then recharges. Does not block contact.',
+    ],
+    'nullSafety.tradeoff': ['最大メモリ −8 / ランク', 'Maximum memory −8 per rank'],
+    'patternMatching.title': ['パターンマッチング', 'Pattern Matching'],
+    'patternMatching.description': [
+      '3.2秒ごとに直線の貫通弾を発射。発射後は追尾しません。',
+      'Fires a piercing shot every 3.2s. Its trajectory is fixed after firing.',
+    ],
+    'patternMatching.tradeoff': ['発射後の追尾なし', 'Does not home after firing'],
+    'pipeline.title': ['命令パイプライン', 'Instruction Pipeline'],
+    'pipeline.description': [
+      '通常攻撃の間隔を短縮。連鎖や同時攻撃の起点を増やします。',
+      'Reduces base attack interval, creating more opportunities for chains and concurrent shots.',
+    ],
+    'pipeline.tradeoff': ['なし（間隔の下限0.12秒）', 'None (minimum interval 0.12s)'],
+    'bandwidth.title': ['転送帯域', 'Transfer Bandwidth'],
+    'bandwidth.description': [
+      '通常弾・オブジェクト弾・連鎖弾・貫通弾の速度を上げます。',
+      'Speeds up base, object, chain, and piercing projectiles.',
+    ],
+    'bandwidth.tradeoff': ['なし（弾速の上限1600）', 'None (maximum speed 1600)'],
+    'stat.shieldCooldown': ['防壁の再充填', 'Shield recharge'],
+    'stat.patternDamage': ['貫通攻撃の威力', 'Piercing damage'],
+    'stat.patternWidth': ['貫通弾の幅', 'Shot width'],
+    'stat.projectileSpeed': ['弾速', 'Projectile speed'],
+    'featureSlots': ['採用枠 {used} / {max}', 'Feature slots {used} / {max}'],
+    'shieldReady': ['防壁：準備完了', 'Shield: ready'],
+    'shieldCharging': ['防壁：{seconds}秒', 'Shield: {seconds}s'],
     'newUpgrade': ['新規', 'NEW'],
     'featureBadge': ['言語機能', 'FEATURE'],
     'infraBadge': ['基盤強化', 'INFRA'],
