@@ -28,29 +28,12 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
   final _choiceFocus = FocusNode();
   final _pageScroll = ScrollController();
   final _gameWidgetKey = GlobalKey();
-  List<Upgrade>? _inspectionChoices;
-  Upgrade? _inspectedUpgrade;
-
-  Upgrade? get inspectedUpgrade {
-    if (run.phase != RunPhase.choosing || run.choices.isEmpty) return null;
-    if (!identical(_inspectionChoices, run.choices)) {
-      _inspectionChoices = run.choices;
-      _inspectedUpgrade = run.choices.first;
-    }
-    return _inspectedUpgrade;
-  }
-
   void restoreFocus() {
     // Wait for choice nodes and Web semantics to be attached after transitions.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _modalOpen) return;
       (run.phase == RunPhase.choosing ? _choiceFocus : focus).requestFocus();
     });
-  }
-
-  void inspect(Upgrade upgrade) {
-    if (run.phase != RunPhase.choosing || inspectedUpgrade == upgrade) return;
-    setState(() => _inspectedUpgrade = upgrade);
   }
 
   final audio = GameAudio();
@@ -150,17 +133,18 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
         builder: (context, _, _) => LayoutBuilder(
           builder: (context, constraints) {
             final selecting = run.phase == RunPhase.choosing;
-            final beside = constraints.maxWidth >= (selecting ? 1000 : 1180);
-            final compactSelection = selecting && !beside;
+            final beside = constraints.maxWidth >= 1180;
             final compact = constraints.maxWidth < 720;
-            final arenaHeight = compactSelection
-                ? max(260.0, min(520.0, constraints.maxHeight - 300))
+            final arenaHeight = selecting
+                ? compact
+                      ? 1100.0
+                      : max(620.0, constraints.maxHeight - 230)
                 : max(320.0, min(740.0, constraints.maxHeight - 310));
             return SingleChildScrollView(
               controller: _pageScroll,
               padding: EdgeInsets.fromLTRB(
                 compact ? 16 : 30,
-                compactSelection ? 12 : 22,
+                selecting ? 12 : 22,
                 compact ? 16 : 30,
                 20,
               ),
@@ -170,27 +154,39 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      if (compactSelection) ...[
+                      if (selecting && beside) ...[
                         SizedBox(
-                          height: max(0, constraints.maxHeight - 24),
+                          height: constraints.maxHeight - 24,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              selectionHeader(),
-                              const SizedBox(height: 8),
-                              selectionMemory(),
-                              const SizedBox(height: 8),
-                              SelectionBuild(
-                                run: run,
-                                text: text,
-                                inspected: inspectedUpgrade,
-                                inline: true,
-                              ),
-                              const SizedBox(height: 8),
+                              header(false),
+                              const SizedBox(height: 12),
                               Expanded(
-                                child: LayoutBuilder(
-                                  builder: (context, available) =>
-                                      arena(max(0, available.maxHeight - 48)),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      child: LayoutBuilder(
+                                        builder: (context, available) => arena(
+                                          max(0, available.maxHeight - 48),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    SizedBox(
+                                      width: 240,
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: [
+                                          selectionMemory(),
+                                          const SizedBox(height: 12),
+                                          SelectionBuild(run: run, text: text),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
@@ -209,20 +205,16 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
                               const SizedBox(width: 20),
                               SizedBox(
                                 width: constraints.maxWidth < 1180 ? 260 : 300,
-                                child: selecting
-                                    ? SelectionBuild(
-                                        run: run,
-                                        text: text,
-                                        inspected: inspectedUpgrade,
-                                      )
-                                    : designPanel(),
+                                child: designPanel(),
                               ),
                             ],
                           )
                         else ...[
                           arena(arenaHeight),
                           const SizedBox(height: 16),
-                          designPanel(),
+                          selecting
+                              ? SelectionBuild(run: run, text: text)
+                              : designPanel(),
                         ],
                       ],
                       const SizedBox(height: 14),
@@ -253,70 +245,32 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
     );
   }
 
-  Widget selectionHeader() => Row(
-    children: [
-      const Expanded(
-        child: Text(
-          'Runtime Survivors',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-          overflow: TextOverflow.ellipsis,
-        ),
-      ),
-      TextButton(
-        key: const Key('language-toggle'),
-        onPressed: () {
-          widget.settings.update(language: text.isJapanese ? 'en' : 'ja');
-          restoreFocus();
-        },
-        child: Text(text.isJapanese ? 'EN' : '日本語'),
-      ),
-      IconButton(
-        tooltip: text('settings'),
-        onPressed: settingsDialog,
-        icon: const Icon(Icons.tune, size: 20),
-      ),
-      IconButton(
-        tooltip: text('help'),
-        onPressed: help,
-        icon: const Icon(Icons.help_outline, size: 20),
-      ),
-    ],
-  );
-
   Widget selectionMemory() => Container(
     key: const Key('memory-status'),
-    padding: const EdgeInsets.all(10),
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
     decoration: BoxDecoration(
       color: const Color(0xFFFAFAF5),
       border: Border.all(color: line),
       borderRadius: BorderRadius.circular(7),
     ),
     child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            const Icon(Icons.memory, size: 18, color: orange),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                text('memory'),
-                style: const TextStyle(fontSize: 12, color: muted),
-              ),
-            ),
-            Text(
-              '${run.health.ceil()} / ${run.maxHealth.toInt()} HP',
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(width: 14),
-            Text('Lv.${run.level}', style: const TextStyle(fontSize: 12)),
-          ],
+        Text(
+          text('memory'),
+          style: const TextStyle(fontSize: 14, color: muted),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 5),
+        Text(
+          '${run.health.ceil()}/${run.maxHealth.toInt()}',
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 8),
         LinearProgressIndicator(
           value: (run.health / run.maxHealth).clamp(0, 1),
           color: orange,
           backgroundColor: line,
-          minHeight: 4,
+          minHeight: 6,
         ),
       ],
     ),
@@ -650,8 +604,6 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
                     text: text,
                     onChoose: choose,
                     focusNode: _choiceFocus,
-                    onInspect: inspect,
-                    inspected: inspectedUpgrade,
                   ),
                 ),
               if (run.phase != RunPhase.running &&

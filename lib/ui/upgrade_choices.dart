@@ -6,22 +6,18 @@ import '../l10n/game_text.dart';
 import 'theme.dart';
 import 'upgrade_card.dart';
 
-/// Only the arena is covered. HP and the acquired build remain available.
+/// Only the arena is covered. Memory and the acquired build remain available.
 class UpgradeChoices extends StatelessWidget {
   const UpgradeChoices({
     super.key,
     required this.run,
     required this.text,
     required this.onChoose,
-    required this.onInspect,
-    required this.inspected,
     this.focusNode,
   });
   final RunState run;
   final GameText text;
   final ValueChanged<Upgrade> onChoose;
-  final ValueChanged<Upgrade> onInspect;
-  final Upgrade? inspected;
   final FocusNode? focusNode;
 
   @override
@@ -46,84 +42,64 @@ class UpgradeChoices extends StatelessWidget {
         key: const Key('upgrade-choices'),
         color: const Color(0xFF102022).withValues(alpha: 0.94),
         child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: LayoutBuilder(
-            builder: (context, constraints) => Center(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: SizedBox(
-                  width: constraints.maxWidth,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              text('choicesTitle'),
-                              style: const TextStyle(
-                                color: darkText,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
-                          Text(
-                            'Lv.${run.level}',
-                            style: const TextStyle(color: mint, fontSize: 12),
-                          ),
-                        ],
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      text('choicesTitle'),
+                      style: const TextStyle(
+                        color: darkText,
+                        fontSize: 23,
+                        fontWeight: FontWeight.w800,
                       ),
-                      const SizedBox(height: 9),
-                      if (constraints.maxWidth < 620)
-                        Column(
-                          children: [
-                            for (var i = 0; i < run.choices.length; i++)
-                              Padding(
-                                padding: EdgeInsets.only(
-                                  bottom: i == run.choices.length - 1 ? 0 : 6,
-                                ),
-                                child: card(i, horizontal: true),
-                              ),
-                          ],
-                        )
-                      else
-                        IntrinsicHeight(
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              for (var i = 0; i < run.choices.length; i++) ...[
-                                if (i > 0) const SizedBox(width: 8),
-                                Expanded(child: card(i)),
-                              ],
-                            ],
-                          ),
-                        ),
-                      const SizedBox(height: 8),
-                      Text(
-                        text('choicesControls'),
-                        style: const TextStyle(color: darkMuted, fontSize: 11),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
+                  Text(
+                    text('choicesControls'),
+                    style: const TextStyle(color: darkMuted, fontSize: 14),
+                  ),
+                ],
               ),
-            ),
+              const SizedBox(height: 10),
+              LayoutBuilder(
+                builder: (context, constraints) => constraints.maxWidth < 620
+                    ? Column(
+                        children: [
+                          for (var i = 0; i < run.choices.length; i++) ...[
+                            if (i > 0) const SizedBox(height: 10),
+                            card(i),
+                          ],
+                        ],
+                      )
+                    : IntrinsicHeight(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            for (var i = 0; i < run.choices.length; i++) ...[
+                              if (i > 0) const SizedBox(width: 12),
+                              Expanded(child: card(i)),
+                            ],
+                          ],
+                        ),
+                      ),
+              ),
+            ],
           ),
         ),
       ),
     ),
   );
 
-  Widget card(int index, {bool horizontal = false}) => UpgradeCard(
+  Widget card(int index) => UpgradeCard(
     focusNode: index == 0 ? focusNode : null,
     upgrade: run.choices[index],
     index: index,
     run: run,
     text: text,
-    inspected: inspected == run.choices[index],
-    horizontal: horizontal,
-    onInspect: () => onInspect(run.choices[index]),
     onChoose: () => onChoose(run.choices[index]),
   );
 }

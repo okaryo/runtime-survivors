@@ -16,7 +16,8 @@ void main() {
     (const Size(1280, 720), 'ja', 1.25),
     (const Size(1366, 768), 'en', 1.25),
     (const Size(1440, 800), 'ja', 1.0),
-    (const Size(600, 720), 'en', 1.0),
+    (const Size(1280, 800), 'en', 1.0),
+    (const Size(1440, 900), 'en', 1.0),
   ]) {
     testWidgets('all choices fit without scrolling: $scenario', (tester) async {
       tester.view.physicalSize = scenario.$1;
@@ -57,16 +58,34 @@ void main() {
         findsNothing,
       );
       expect(find.byType(UpgradeCard).hitTestable(), findsNWidgets(3));
-      expect(find.byType(AcquiredUpgrade).hitTestable(), findsNWidgets(8));
+      for (final upgrade in Upgrade.values) {
+        expect(
+          find.byKey(Key('acquired-${upgrade.name}')).hitTestable(),
+          findsOneWidget,
+        );
+      }
       final arenaRect = tester.getRect(find.byType(GameWidget<RuntimeGame>));
       final panelRect = tester.getRect(panel);
       expect(panelRect, arenaRect);
       final hpRect = tester.getRect(find.byKey(const Key('memory-status')));
       expect(hpRect.top, greaterThanOrEqualTo(0));
-      expect(hpRect.bottom, lessThanOrEqualTo(panelRect.top));
+      expect(hpRect.bottom, lessThanOrEqualTo(scenario.$1.height));
+      expect(hpRect.left, greaterThan(panelRect.right));
       final buildRect = tester.getRect(find.byType(SelectionBuild));
       expect(buildRect.top, greaterThanOrEqualTo(0));
       expect(buildRect.bottom, lessThanOrEqualTo(scenario.$1.height));
+      expect(
+        find.descendant(of: panel, matching: find.byType(FittedBox)),
+        findsNothing,
+      );
+      for (final upgrade in game.run.choices) {
+        final description = find.text(text.description(upgrade));
+        expect(description.hitTestable(), findsOneWidget);
+        expect(
+          tester.widget<Text>(description).style!.fontSize,
+          greaterThanOrEqualTo(15),
+        );
+      }
       for (final card in find.byType(UpgradeCard).evaluate()) {
         final rect = tester.getRect(find.byWidget(card.widget));
         expect(rect.top, greaterThanOrEqualTo(0));

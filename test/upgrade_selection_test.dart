@@ -7,18 +7,21 @@ import 'package:runtime_survivors/main.dart';
 import 'package:runtime_survivors/settings.dart';
 import 'package:runtime_survivors/game/run_state.dart';
 import 'package:runtime_survivors/game/runtime_game.dart';
+import 'package:runtime_survivors/l10n/game_text.dart';
 import 'package:runtime_survivors/ui/upgrade_card.dart';
+import 'package:runtime_survivors/ui/upgrade_choices.dart';
 import 'package:runtime_survivors/ui/selection_build.dart';
 
 void main() {
   testWidgets(
-    'hover and focus compare the existing build without acquiring upgrades',
+    'all card details stay visible; keyboard selects without inspection',
     (tester) async {
       tester.view.physicalSize = const Size(1280, 720);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       final settings = GameSettings();
+      const text = GameText('ja');
       await tester.pumpWidget(RuntimeSurvivorsApp(settings: settings));
       await tester.pump(const Duration(milliseconds: 100));
       await tester.tap(find.text('ランタイムを起動'));
@@ -36,79 +39,48 @@ void main() {
       ];
       game.refresh();
       await tester.pump();
-      Finder card(Upgrade upgrade) => find.byWidgetPredicate(
-        (w) => w is UpgradeCard && w.upgrade == upgrade,
+      final panel = find.byType(UpgradeChoices);
+      expect(
+        find.descendant(of: panel, matching: find.byType(Tooltip)),
+        findsNothing,
       );
-      AcquiredUpgrade acquired() =>
-          tester.widget<AcquiredUpgrade>(find.byType(AcquiredUpgrade));
-      expect(acquired().highlighted, isTrue);
-      final hpLine = tester
-          .widget<Text>(find.byKey(const Key('preview-memory-0')))
-          .textSpan!
-          .toPlainText();
-      expect(hpLine, contains('35/100 → 70/125'));
-      final gcCost = tester
-          .widget<Text>(find.byKey(const Key('preview-garbageCollection-2')))
-          .textSpan!
-          .toPlainText();
-      expect(gcCost, contains('0.70s → 0.78s'));
-      final oopCost = tester
-          .widget<Text>(find.byKey(const Key('preview-oop-2')))
-          .textSpan!
-          .toPlainText();
-      expect(oopCost, contains('35/100 → 35/95'));
-
+      for (final upgrade in game.run.choices) {
+        expect(
+          find.text(text.description(upgrade)).hitTestable(),
+          findsOneWidget,
+        );
+      }
+      String change(String key) =>
+          tester.widget<Text>(find.byKey(Key(key))).textSpan!.toPlainText();
+      expect(change('change-memory-0'), 'メモリ 35/100 → 70/125');
+      expect(change('change-garbageCollection-2'), contains('0.70s → 0.78s'));
+      expect(change('change-oop-2'), 'メモリ 35/100 → 35/95');
+      final build = find.byType(SelectionBuild);
+      final buildBefore = tester
+          .widgetList<Text>(
+            find.descendant(of: build, matching: find.byType(Text)),
+          )
+          .map((w) => w.data)
+          .toList();
       final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
       await mouse.addPointer(location: const Offset(5, 5));
-      await mouse.moveTo(tester.getCenter(card(Upgrade.memory)));
+      await mouse.moveTo(tester.getCenter(find.byType(UpgradeCard).at(1)));
       await tester.pump();
       expect(
-        acquired().highlighted,
-        isFalse,
-      ); // New ability: no existing row to highlight.
-      expect(
-        tester.widget<UpgradeCard>(card(Upgrade.memory)).inspected,
-        isTrue,
+        tester
+            .widgetList<Text>(
+              find.descendant(of: build, matching: find.byType(Text)),
+            )
+            .map((w) => w.data)
+            .toList(),
+        buildBefore,
       );
       expect(game.run.health, 35);
-      expect(game.run.rank(Upgrade.memory), 0);
       expect(game.run.phase, RunPhase.choosing);
-      await tester.tap(
-        find.descendant(
-          of: card(Upgrade.memory),
-          matching: find.byIcon(Icons.info_outline),
-        ),
-      );
-      await tester.pump();
-      expect(game.run.phase, RunPhase.choosing);
-      expect(game.run.rank(Upgrade.memory), 0);
-      expect(game.run.health, 35);
-      // Return to the first card, then test normal Tab/Shift+Tab comparison.
-      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
-      await tester.pump();
-
+      // Focus starts on the first card. Tab + Enter acquires the second card.
       await tester.sendKeyEvent(LogicalKeyboardKey.tab);
       await tester.pump();
-      await tester.pump();
-      expect(
-        tester.widget<UpgradeCard>(card(Upgrade.memory)).inspected,
-        isTrue,
-      );
-      await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
-      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
-      await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
-      await tester.pump();
-      await tester.pump();
-      expect(acquired().highlighted, isTrue);
-      expect(
-        tester.widget<UpgradeCard>(card(Upgrade.garbageCollection)).inspected,
-        isTrue,
-      );
-      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
-      await tester.pump();
-      await tester.pump();
-      expect(acquired().highlighted, isFalse);
-      await tester.sendKeyEvent(LogicalKeyboardKey.digit2);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pump();
       expect(game.run.phase, RunPhase.running);
       expect(game.run.health, 70);

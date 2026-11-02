@@ -19,7 +19,6 @@ class GameText {
   String category(Upgrade upgrade) =>
       call(upgrade.isFeature ? 'feature' : 'infra');
   String shortTitle(Upgrade upgrade) => call('${upgrade.name}.short');
-  String summary(Upgrade upgrade) => call('${upgrade.name}.summary');
   List<UpgradeComparison> comparisons(UpgradePreview preview) {
     final before = preview.before;
     final after = preview.after;
@@ -35,7 +34,7 @@ class GameText {
       bool cost = false,
     }) => UpgradeComparison(call(label), '$from', '$to', cost: cost);
     UpgradeComparison hp({bool cost = false}) => metric(
-      'stat.hp',
+      'stat.memory',
       '${number(preview.beforeHealth)}/${number(before.maxHealth)}',
       '${number(preview.afterHealth)}/${number(after.maxHealth)}',
       cost: cost,
@@ -119,15 +118,11 @@ class GameText {
 
   static const copy = <String, List<String>>{
     'currentBuild': ['現在のビルド', 'Current build'],
-    'inspectHint': ['カードにカーソルを合わせて比較', 'Hover or focus a card to compare'],
     'newUpgrade': ['新規', 'NEW'],
     'featureBadge': ['言語機能', 'FEATURE'],
     'infraBadge': ['基盤強化', 'INFRA'],
-    'choicesControls': [
-      '1 / 2 / 3 またはクリック · ⚠ トレードオフ',
-      'Click or 1 / 2 / 3 · ⚠ Tradeoff',
-    ],
-    'stat.hp': ['HP', 'HP'],
+    'choicesControls': ['1 / 2 / 3 で取得', '1 / 2 / 3 to acquire'],
+    'stat.memory': ['メモリ', 'Memory'],
     'stat.pulseDamage': ['範囲攻撃の威力', 'Pulse damage'],
     'stat.radius': ['範囲', 'Radius'],
     'stat.interval': ['攻撃間隔', 'Interval'],
@@ -140,33 +135,13 @@ class GameText {
     'stat.speed': ['移動速度', 'Move speed'],
     'stat.pickup': ['経験値の回収範囲', 'Pickup radius'],
     'garbageCollection.short': ['GC', 'GC'],
-    'garbageCollection.summary': [
-      '3秒ごとに周囲をまとめて攻撃。',
-      'Area pulse every 3 seconds.',
-    ],
     'concurrency.short': ['並行処理', 'Concurrency'],
-    'concurrency.summary': [
-      '近くの複数のタスクを同時攻撃。',
-      'Attacks multiple nearby tasks.',
-    ],
     'oop.short': ['オブジェクト指向', 'OOP'],
-    'oop.summary': ['周囲のオブジェクトが自律攻撃。', 'Orbiting objects attack on their own.'],
     'functional.short': ['関数型', 'Functional'],
-    'functional.summary': [
-      '通常攻撃が連鎖。1回ごとに威力70%。',
-      'Base attacks chain at 70% damage per jump.',
-    ],
     'memory.short': ['メモリ', 'Memory'],
-    'memory.summary': ['最大HPを増やし、HPを回復。', 'Adds max HP and restores memory.'],
     'clock.short': ['クロック', 'Clock'],
-    'clock.summary': ['移動速度を上げる。', 'Moves your runtime faster.'],
     'cache.short': ['キャッシュ', 'Cache'],
-    'cache.summary': ['経験値回収と索敵の範囲を拡大。', 'Expands pickup and targeting range.'],
     'compiler.short': ['最適化', 'Compiler'],
-    'compiler.summary': [
-      '通常攻撃と、その連鎖の威力を強化。',
-      'Boosts base attacks and their chains.',
-    ],
     'tagline': [
       'タスクを処理し、自分だけの言語を設計しよう。',
       'Survive the tasks. Design your language.',
@@ -340,7 +315,7 @@ class GameText {
       '周囲を回るオブジェクトが、それぞれ独立して攻撃します。0.9秒ごとに近くのタスクを狙います。',
       'Orbiting objects independently attack nearby tasks every 0.9 seconds.',
     ],
-    'oop.tradeoff': ['最大メモリ −5 HP / ランク', 'Maximum memory −5 HP per rank'],
+    'oop.tradeoff': ['最大メモリ −5 / ランク', 'Maximum memory −5 per rank'],
     'functional.title': ['関数型プログラミング', 'Functional Programming'],
     'functional.description': [
       '通常攻撃が命中すると、近くの別のタスクへ連鎖。連鎖ごとに威力が70%になります。',
@@ -377,7 +352,7 @@ class GameText {
     'memory.title': ['メモリ増設', 'Memory Expansion'],
     'memory.description': [
       '最大メモリを増やし、現在のメモリも回復します。',
-      'Expands your memory capacity and restores current HP.',
+      'Expands your memory capacity and restores current memory.',
     ],
     'memory.tradeoff': ['なし', 'None'],
     'clock.title': ['クロックアップ', 'Clock Speed'],
