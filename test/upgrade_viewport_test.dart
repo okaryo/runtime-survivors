@@ -80,6 +80,10 @@ void main() {
       expect(hpRect.top, greaterThanOrEqualTo(0));
       expect(hpRect.bottom, lessThanOrEqualTo(scenario.$1.height));
       expect(hpRect, memoryBefore);
+      final hudRect = tester.getRect(find.byKey(const Key('runtime-hud')));
+      expect(hudRect.contains(hpRect.center), isTrue);
+      expect(hudRect.bottom, lessThanOrEqualTo(arenaRect.top));
+      expect(arenaRect.height, greaterThan(scenario.$1.height - 290));
       expect(hpRect.bottom, lessThan(panelRect.top));
       final sidebarAfter = tester.getRect(
         find.byKey(const Key('design-panel')),

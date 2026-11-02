@@ -14,7 +14,7 @@ import 'support/runtime_fonts.dart';
 void main() {
   setUpAll(loadRuntimeFonts);
   testWidgets(
-    'language switch preserves run; cards select and encyclopedia pauses safely',
+    'language switch preserves run; encyclopedia is always visible without blocking keys',
     (tester) async {
       tester.view.physicalSize = const Size(1440, 1100);
       tester.view.devicePixelRatio = 1;
@@ -23,6 +23,8 @@ void main() {
       final settings = GameSettings();
       await tester.pumpWidget(RuntimeSurvivorsApp(settings: settings));
       await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('未採用'), findsNWidgets(RunState.featureSlots));
+      expect(find.byKey(const Key('encyclopedia-heading')), findsOneWidget);
       await tester.tap(find.text('ランタイムを起動'));
       await tester.pump();
       final game = tester
@@ -51,22 +53,26 @@ void main() {
       await tester.pump();
       expect(game.run.phase, RunPhase.running);
       expect(settings.discoveries, contains('upgrade.${selected.name}'));
-      await tester.ensureVisible(find.byKey(const Key('encyclopedia-toggle')));
-      await tester.tap(find.byKey(const Key('encyclopedia-toggle')));
+      expect(find.byKey(const Key('empty-feature-3')), findsOneWidget);
+      expect(
+        find.text('Empty feature slot'),
+        findsNWidgets(RunState.featureSlots - game.run.featureCount),
+      );
+      expect(find.byKey(const Key('empty-infra-slot')), findsOneWidget);
+      expect(find.byKey(const Key('encyclopedia-toggle')), findsNothing);
+      await tester.ensureVisible(find.byKey(const Key('encyclopedia-heading')));
       await tester.pump();
-      expect(game.run.phase, RunPhase.paused);
-      expect(game.inputBlocked, isTrue);
+      expect(game.run.phase, RunPhase.running);
+      expect(game.inputBlocked, isFalse);
       expect(find.text(const GameText('en')('enemy.0.title')), findsOneWidget);
       expect(find.text(const GameText('en')('enemy.3.title')), findsNothing);
       expect(find.text('???'), findsWidgets);
       await tester.sendKeyEvent(LogicalKeyboardKey.keyP);
       await tester.pump();
       expect(game.run.phase, RunPhase.paused);
-      await tester.ensureVisible(find.byKey(const Key('encyclopedia-toggle')));
-      await tester.tap(find.byKey(const Key('encyclopedia-toggle')));
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyP);
       await tester.pump();
-      expect(game.inputBlocked, isFalse);
-      expect(game.run.phase, RunPhase.paused);
+      expect(game.run.phase, RunPhase.running);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       settings.dispose();

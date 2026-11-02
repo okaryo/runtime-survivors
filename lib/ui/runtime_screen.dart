@@ -16,6 +16,7 @@ import 'encyclopedia_panel.dart';
 import 'upgrade_choices.dart';
 import 'upgrade_icon.dart';
 import 'policy_picker.dart';
+import 'runtime_hud.dart';
 
 class RuntimeScreen extends StatefulWidget {
   const RuntimeScreen({super.key, required this.settings});
@@ -41,7 +42,6 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
 
   final audio = GameAudio();
   late final AppLifecycleListener lifecycle;
-  bool _encyclopediaOpen = false;
   bool _modalOpen = false;
   GameText get text => GameText(widget.settings.language);
 
@@ -67,7 +67,6 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
   void start() {
     audio.restartMusic();
     audio.unlock();
-    setState(() => _encyclopediaOpen = false);
     game.inputBlocked = _modalOpen;
     run.start(policy: selectedPolicy);
     game.refresh();
@@ -76,7 +75,6 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
 
   void resume() {
     if (_modalOpen) return;
-    if (_encyclopediaOpen) setState(() => _encyclopediaOpen = false);
     game.inputBlocked = false;
     audio.unlock();
     run.resume();
@@ -86,7 +84,6 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
 
   void choose(Upgrade upgrade) {
     if (_modalOpen) return;
-    if (_encyclopediaOpen) setState(() => _encyclopediaOpen = false);
     game.inputBlocked = false;
     audio.unlock();
     run.choose(upgrade);
@@ -115,7 +112,7 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
     } finally {
       if (mounted) {
         _modalOpen = false;
-        game.inputBlocked = _encyclopediaOpen;
+        game.inputBlocked = false;
         restoreFocus();
       }
     }
@@ -130,7 +127,11 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
     );
     return ValueListenableBuilder<int>(
       valueListenable: game.revision,
-      builder: (context, _, _) => CallbackShortcuts(
+      child: EncyclopediaPanel(
+        text: text,
+        discoveries: Set.of(widget.settings.discoveries),
+      ),
+      builder: (context, _, encyclopedia) => CallbackShortcuts(
         bindings: run.phase == RunPhase.ready
             ? {
                 const SingleActivator(LogicalKeyboardKey.digit1): () {
@@ -154,8 +155,8 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
               final beside = constraints.maxWidth >= 1180;
               final compact = constraints.maxWidth < 720;
               final arenaHeight = max(
-                320.0,
-                min(740.0, constraints.maxHeight - 290),
+                500.0,
+                min(960.0, constraints.maxHeight - 132),
               );
               return SingleChildScrollView(
                 padding: EdgeInsets.fromLTRB(
@@ -171,8 +172,6 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         header(compact),
-                        const SizedBox(height: 22),
-                        stats(compact),
                         const SizedBox(height: 18),
                         if (beside)
                           Row(
@@ -194,19 +193,7 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
                           style: const TextStyle(fontSize: 12, color: muted),
                         ),
                         const SizedBox(height: 18),
-                        EncyclopediaPanel(
-                          text: text,
-                          discoveries: widget.settings.discoveries,
-                          expanded: _encyclopediaOpen,
-                          onToggle: () {
-                            if (!_encyclopediaOpen) pause();
-                            setState(
-                              () => _encyclopediaOpen = !_encyclopediaOpen,
-                            );
-                            game.inputBlocked = _encyclopediaOpen || _modalOpen;
-                            if (!_encyclopediaOpen) restoreFocus();
-                          },
-                        ),
+                        encyclopedia!,
                       ],
                     ),
                   ),
@@ -317,139 +304,8 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
     ],
   );
 
-  Widget stats(bool compact) {
-    final cards = [
-      stat(
-        text('memory'),
-        '${run.health.ceil()}',
-        '/ ${run.maxHealth.toInt()} MB',
-        Icons.memory,
-        run.health / run.maxHealth,
-        orange,
-        key: const Key('memory-status'),
-      ),
-      stat(
-        text('uptime'),
-        run.timeLabel,
-        '/ 05:00',
-        Icons.timer_outlined,
-        run.elapsed / RunState.duration,
-        ink,
-      ),
-      stat(
-        text('tasks'),
-        '${run.kills}',
-        text('completed'),
-        Icons.done_all,
-        null,
-        ink,
-      ),
-      stat(
-        text('level'),
-        run.level.toString().padLeft(2, '0'),
-        '${run.xp} / ${run.nextLevelXp} XP',
-        Icons.auto_awesome_outlined,
-        run.xp / run.nextLevelXp,
-        infraColor,
-      ),
-    ];
-    if (compact) {
-      return Column(
-        children: [
-          for (var row = 0; row < 2; row++)
-            Padding(
-              padding: EdgeInsets.only(top: row == 0 ? 0 : 10),
-              child: Row(
-                children: [
-                  Expanded(child: cards[row * 2]),
-                  const SizedBox(width: 10),
-                  Expanded(child: cards[row * 2 + 1]),
-                ],
-              ),
-            ),
-        ],
-      );
-    }
-    return Row(
-      children: [
-        for (var i = 0; i < 4; i++) ...[
-          if (i > 0) const SizedBox(width: 12),
-          Expanded(child: cards[i]),
-        ],
-      ],
-    );
-  }
-
-  Widget stat(
-    String label,
-    String value,
-    String suffix,
-    IconData icon,
-    double? progress,
-    Color color, {
-    Key? key,
-  }) => Container(
-    key: key,
-    height: 101,
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-    decoration: BoxDecoration(
-      color: const Color(0xFFFAFAF5),
-      border: Border.all(color: line),
-      borderRadius: BorderRadius.circular(8),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(icon, size: 16, color: muted),
-            const SizedBox(width: 7),
-            Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(fontSize: 12, color: muted),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 7),
-        Expanded(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 27,
-                  height: 1,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'monospace',
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  suffix,
-                  style: const TextStyle(fontSize: 12, color: muted),
-                ),
-              ),
-            ],
-          ),
-        ),
-        if (progress != null)
-          LinearProgressIndicator(
-            value: progress.clamp(0, 1),
-            minHeight: 4,
-            color: color,
-            backgroundColor: line,
-            borderRadius: BorderRadius.circular(2),
-          ),
-      ],
-    ),
-  );
-
   Widget arena(double height) => Container(
+    height: height,
     decoration: BoxDecoration(
       border: Border.all(color: line),
       borderRadius: BorderRadius.circular(8),
@@ -457,49 +313,8 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
     clipBehavior: Clip.antiAlias,
     child: Column(
       children: [
-        Container(
-          height: 46,
-          color: const Color(0xFFE9EDE2),
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          child: Row(
-            children: [
-              const Icon(Icons.terminal, size: 18),
-              const SizedBox(width: 8),
-              const Text('runtime://local', style: TextStyle(fontSize: 12)),
-              const Spacer(),
-              Expanded(
-                child: Text(
-                  textAlign: TextAlign.right,
-                  text(switch (run.phase) {
-                    RunPhase.ready => 'standby',
-                    RunPhase.running => 'running',
-                    RunPhase.choosing => 'choosing',
-                    RunPhase.paused => 'paused',
-                    _ => 'terminated',
-                  }),
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12, color: muted),
-                ),
-              ),
-              IconButton(
-                tooltip: text(
-                  run.phase == RunPhase.paused ? 'resume' : 'pause',
-                ),
-                onPressed: run.phase == RunPhase.running
-                    ? pause
-                    : run.phase == RunPhase.paused
-                    ? resume
-                    : null,
-                icon: Icon(
-                  run.phase == RunPhase.paused ? Icons.play_arrow : Icons.pause,
-                  size: 20,
-                ),
-              ),
-            ],
-          ),
-        ),
-        SizedBox(
-          height: height,
+        RuntimeHud(run: run, text: text, onPause: pause, onResume: resume),
+        Expanded(
           child: Stack(
             children: [
               Positioned.fill(
@@ -511,35 +326,6 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
                   ),
                 ),
               ),
-              if (run.phase == RunPhase.running)
-                Positioned(
-                  right: 14,
-                  top: 14,
-                  child: IgnorePointer(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: ink,
-                        borderRadius: BorderRadius.circular(5),
-                      ),
-                      child: Text(
-                        run.isRush
-                            ? '⚡ ${text('rush')}'
-                            : '${text('nextRush')} ${run.secondsToRush.ceil()}s',
-                        style: TextStyle(
-                          color: run.isRush
-                              ? const Color(0xFFFFBA8C)
-                              : darkMuted,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
               if (run.phase == RunPhase.choosing)
                 Positioned.fill(
                   child: UpgradeChoices(
@@ -552,31 +338,6 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
               if (run.phase != RunPhase.running &&
                   run.phase != RunPhase.choosing)
                 Positioned.fill(child: overlay()),
-              if (run.phase == RunPhase.running && run.elapsed < 7)
-                Positioned(
-                  left: 16,
-                  right: 16,
-                  top: 50,
-                  child: IgnorePointer(
-                    child: Center(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 9,
-                        ),
-                        decoration: BoxDecoration(
-                          color: ink,
-                          borderRadius: BorderRadius.circular(5),
-                        ),
-                        child: Text(
-                          text('moveHint'),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(color: mint, fontSize: 13),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
             ],
           ),
         ),
@@ -615,14 +376,6 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
           text('designHint'),
           style: const TextStyle(fontSize: 12, color: muted),
         ),
-        const SizedBox(height: 8),
-        Text(
-          text('featureSlots', {
-            'used': run.featureCount,
-            'max': RunState.featureSlots,
-          }),
-          style: const TextStyle(fontSize: 12, color: muted),
-        ),
         if (run.typingPolicy != null) ...[
           const SizedBox(height: 10),
           Text(
@@ -652,68 +405,17 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
             style: const TextStyle(fontSize: 12, color: muted),
           ),
           const SizedBox(height: 10),
-          if (!run.upgrades.keys.any((u) => u.isFeature == feature))
-            Text(
-              text(feature ? 'emptyFeatures' : 'emptyInfra'),
-              style: const TextStyle(fontSize: 13, color: muted),
-            ),
           for (final entry in run.upgrades.entries.where(
             (e) => e.key.isFeature == feature,
           ))
-            Tooltip(
-              message:
-                  '${text.description(entry.key)}\n${text.tradeoff(entry.key)}',
-              child: Padding(
-                key: Key('acquired-${entry.key.name}'),
-                padding: const EdgeInsets.only(bottom: 9),
-                child: Row(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(right: 9),
-                      child: UpgradeIcon(upgrade: entry.key, size: 28),
-                    ),
-                    Expanded(
-                      child: Text(
-                        text.title(entry.key),
-                        style: const TextStyle(fontSize: 13),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Lv.${entry.value}',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            acquiredSlot(entry.key, entry.value),
+          if (feature)
+            for (var i = run.featureCount; i < RunState.featureSlots; i++)
+              emptySlot(Key('empty-feature-$i'), text('emptyFeatureSlot'))
+          else
+            emptySlot(const Key('empty-infra-slot'), text('addInfraSlot')),
           const SizedBox(height: 20),
         ],
-        const Divider(color: line),
-        const SizedBox(height: 10),
-        sectionLabel(text('metrics')),
-        const SizedBox(height: 8),
-        metric(text('targets'), '${run.targetCount}'),
-        metric(text('damage'), run.attackDamage.toStringAsFixed(1)),
-        metric(text('interval'), '${run.attackInterval.toStringAsFixed(2)} s'),
-        if (run.rank(Upgrade.jitCompilation) > 0)
-          Text(
-            text('jitStatus', {'stacks': run.abilities.focusStacks}),
-            style: const TextStyle(fontSize: 12, color: muted),
-          ),
-        if (run.rank(Upgrade.memoization) > 0)
-          Text(
-            text('echoStatus', {'count': run.abilities.echoes.length}),
-            style: const TextStyle(fontSize: 12, color: muted),
-          ),
-        if (run.rank(Upgrade.nullSafety) > 0)
-          Text(
-            run.shieldReady
-                ? text('shieldReady')
-                : text('shieldCharging', {'seconds': run.shieldTimer.ceil()}),
-            style: const TextStyle(fontSize: 12, color: infraColor),
-          ),
-        const SizedBox(height: 20),
         sectionLabel(text('log')),
         const SizedBox(height: 10),
         for (final event in run.events.take(3))
@@ -727,19 +429,56 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
       ],
     ),
   );
-  Widget metric(String label, String value) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 4),
+  Widget acquiredSlot(Upgrade upgrade, int rank) => Tooltip(
+    message: '${text.description(upgrade)}\n${text.tradeoff(upgrade)}',
+    child: Container(
+      key: Key('acquired-${upgrade.name}'),
+      constraints: const BoxConstraints(minHeight: 38),
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: paper,
+        border: Border.all(color: line),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        children: [
+          UpgradeIcon(upgrade: upgrade, size: 28),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Text(
+              text.title(upgrade),
+              style: const TextStyle(fontSize: 13),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text('Lv.$rank', style: const TextStyle(fontSize: 12)),
+        ],
+      ),
+    ),
+  );
+
+  Widget emptySlot(Key key, String label) => Container(
+    key: key,
+    constraints: const BoxConstraints(minHeight: 38),
+    margin: const EdgeInsets.only(bottom: 6),
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+    decoration: BoxDecoration(
+      border: Border.all(color: line),
+      borderRadius: BorderRadius.circular(6),
+    ),
     child: Row(
       children: [
+        const SizedBox(
+          width: 28,
+          child: Icon(Icons.add, size: 16, color: muted),
+        ),
+        const SizedBox(width: 9),
         Expanded(
           child: Text(
             label,
             style: const TextStyle(fontSize: 12, color: muted),
           ),
-        ),
-        Text(
-          value,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
         ),
       ],
     ),
@@ -849,7 +588,7 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
       const SizedBox(height: 25),
       action(text('resume'), Icons.play_arrow, resume),
       const SizedBox(height: 18),
-      darkBody(text(_encyclopediaOpen ? 'encyclopediaResume' : 'pauseKeys')),
+      darkBody(text('pauseKeys')),
     ],
   );
   Widget result() => LayoutBuilder(
@@ -887,12 +626,6 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
             text.profileDescription(profile),
             textAlign: TextAlign.center,
             style: const TextStyle(color: darkText, fontSize: 14, height: 1.5),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            text('profile.note'),
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: darkMuted, fontSize: 12, height: 1.4),
           ),
         ],
       );

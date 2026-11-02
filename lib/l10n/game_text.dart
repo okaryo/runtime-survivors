@@ -390,7 +390,8 @@ class GameText {
     'stat.patternDamage': ['貫通攻撃の威力', 'Piercing damage'],
     'stat.patternWidth': ['貫通弾の幅', 'Shot width'],
     'stat.projectileSpeed': ['弾速', 'Projectile speed'],
-    'featureSlots': ['採用枠 {used} / {max}', 'Feature slots {used} / {max}'],
+    'emptyFeatureSlot': ['未採用', 'Empty feature slot'],
+    'addInfraSlot': ['基盤を追加（上限なし）', 'Add infrastructure · no limit'],
     'shieldReady': ['防壁：準備完了', 'Shield: ready'],
     'shieldCharging': ['防壁：{seconds}秒', 'Shield: {seconds}s'],
     'policyTitle': ['型付けの設計方針', 'Typing policy'],
@@ -430,10 +431,6 @@ class GameText {
     'profile.description': [
       '{policy}を採用。主に伸ばした機能：{features}。',
       '{policy}. Main investments: {features}.',
-    ],
-    'profile.note': [
-      '取得・強化した機能から見た傾向です。実際の言語との一致を示すものではありません。',
-      'A playful affinity based on your choices and ranks, rather than an exact match to a real language.',
     ],
     'newUpgrade': ['新規', 'NEW'],
     'featureBadge': ['言語機能', 'FEATURE'],
@@ -477,15 +474,11 @@ class GameText {
     'resume': ['処理を再開', 'Resume runtime'],
     'standby': ['起動待ち', 'Standby'],
     'running': ['稼働中', 'Running'],
-    'choosing': ['設計を選択中', 'Choosing an upgrade'],
+    'choosing': ['設計を選択中', 'Choosing'],
     'terminated': ['終了', 'Terminated'],
     'controls': [
       'WASD / HJKL / 矢印キー：移動　 ESC / P：一時停止',
       'WASD / HJKL / Arrows: move   ESC / P: pause',
-    ],
-    'moveHint': [
-      '移動して回避。攻撃は自動。◆ を集めて成長しよう。',
-      'Keep moving. Attacks are automatic. Collect ◆ to grow.',
     ],
     'design': ['言語の設計', 'Language design'],
     'designHint': ['選んだ機能が、戦い方を変える。', 'Your choices shape the way you fight.'],
@@ -494,8 +487,6 @@ class GameText {
     'featureHint': ['攻撃方法や振る舞いを変える', 'Changes attacks and behavior'],
     'infraHint': ['基本性能を引き上げる', 'Improves your base stats'],
     'emptyFeatures': ['機能はまだありません', 'No features yet'],
-    'emptyInfra': ['基盤は初期構成です', 'Running on base infrastructure'],
-    'metrics': ['処理性能', 'Runtime metrics'],
     'targets': ['同時攻撃数', 'Attack targets'],
     'damage': ['通常攻撃の威力', 'Base attack damage'],
     'interval': ['通常攻撃の間隔', 'Attack interval'],
@@ -549,20 +540,8 @@ class GameText {
     ],
     'encyclopedia': ['ランタイム図鑑', 'Runtime encyclopedia'],
     'encyclopediaHint': [
-      '遭遇したタスクと、取得した能力の記録。',
-      'A record of encountered tasks and acquired upgrades.',
-    ],
-    'encyclopediaResume': [
-      '図鑑を閉じるか、再開ボタンを押してください。',
-      'Close the encyclopedia or use the Resume button.',
-    ],
-    'encyclopediaSelect': [
-      '図鑑を閉じるか、カードをクリックしてください。',
-      'Close the encyclopedia or click an upgrade card.',
-    ],
-    'encyclopediaPaused': [
-      '図鑑を開いている間は一時停止します。',
-      'Opening the encyclopedia pauses the run.',
+      '遭遇したタスクと、取得した能力の記録。読むときは Esc / P で一時停止。',
+      'A record of encountered tasks and acquired upgrades. Press Esc / P to pause while reading.',
     ],
     'undiscovered': ['未発見', 'Undiscovered'],
     'unlockEnemy': [
@@ -579,12 +558,7 @@ class GameText {
     'rushHint': ['大量のタスクを受信中', 'Incoming task burst'],
     'eliteWarning': ['エリート接続', 'Elite connected'],
     'nextRush': ['次のラッシュ', 'Next rush'],
-    'heap': ['ヒープ', 'Heap'],
     'you': ['YOU', 'YOU'],
-    'legend': [
-      '◆ 経験値　 敵を避けて、タスクを処理しよう',
-      '◆ Experience   Dodge enemies and process tasks',
-    ],
     'log.ready': ['ランタイムの起動を待っています。', 'Waiting to start the runtime.'],
     'log.start': ['ランタイム起動。タスクの受信を開始。', 'Runtime started. Receiving tasks.'],
     'log.level': [

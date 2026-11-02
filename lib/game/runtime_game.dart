@@ -543,20 +543,6 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
       11,
     );
     canvas.restore();
-    _text(
-      canvas,
-      '${text('heap')} / SECTOR ${((run.player.x + 10000) / 240).floor()}.${((run.player.y + 10000) / 240).floor()}',
-      const Offset(20, 18),
-      const Color(0xFFA4BCB2),
-      11,
-    );
-    _text(
-      canvas,
-      text('legend'),
-      Offset(20, size.y - 30),
-      const Color(0xFFA4BCB2),
-      11,
-    );
     canvas.restore();
   }
 

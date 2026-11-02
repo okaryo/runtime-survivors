@@ -11,13 +11,9 @@ class EncyclopediaPanel extends StatelessWidget {
     super.key,
     required this.text,
     required this.discoveries,
-    required this.expanded,
-    required this.onToggle,
   });
   final GameText text;
   final Set<String> discoveries;
-  final bool expanded;
-  final VoidCallback onToggle;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -30,106 +26,95 @@ class EncyclopediaPanel extends StatelessWidget {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        InkWell(
-          key: const Key('encyclopedia-toggle'),
-          onTap: onToggle,
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Row(
-              children: [
-                const Icon(Icons.menu_book_outlined, size: 22),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        text('encyclopedia'),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 16,
-                        ),
+        Padding(
+          key: const Key('encyclopedia-heading'),
+          padding: const EdgeInsets.all(18),
+          child: Row(
+            children: [
+              const Icon(Icons.menu_book_outlined, size: 22),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      text('encyclopedia'),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
                       ),
-                      const SizedBox(height: 5),
-                      Text(
-                        expanded
-                            ? text('encyclopediaPaused')
-                            : text('encyclopediaHint'),
-                        style: const TextStyle(color: muted, fontSize: 12),
-                      ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      text('encyclopediaHint'),
+                      style: const TextStyle(color: muted, fontSize: 12),
+                    ),
+                  ],
                 ),
-                Icon(expanded ? Icons.expand_less : Icons.expand_more),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
-        if (expanded)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 0, 18, 20),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final narrow = constraints.maxWidth < 760;
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    sectionLabel(text('taskKinds')),
-                    const SizedBox(height: 12),
-                    rows(
-                      [
-                        for (
-                          var kind = 0;
-                          kind < EnemyType.values.length;
-                          kind++
-                        )
-                          entry(
-                            known: discoveries.contains('enemy.$kind'),
-                            title: text('enemy.$kind.title'),
-                            description: text('enemy.$kind.description'),
-                            details: text('enemy.$kind.type'),
-                            unknown: text('unlockEnemy'),
-                            icon: SizedBox(
-                              width: 42,
-                              height: 42,
-                              child: CustomPaint(painter: CharacterIcon(kind)),
-                            ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 0, 18, 20),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final narrow = constraints.maxWidth < 760;
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  sectionLabel(text('taskKinds')),
+                  const SizedBox(height: 12),
+                  rows(
+                    [
+                      for (var kind = 0; kind < EnemyType.values.length; kind++)
+                        entry(
+                          known: discoveries.contains('enemy.$kind'),
+                          title: text('enemy.$kind.title'),
+                          description: text('enemy.$kind.description'),
+                          details: text('enemy.$kind.type'),
+                          unknown: text('unlockEnemy'),
+                          icon: SizedBox(
+                            width: 42,
+                            height: 42,
+                            child: CustomPaint(painter: CharacterIcon(kind)),
                           ),
-                      ],
-                      narrow,
-                      detailLabel: text('type'),
-                    ),
-                    const SizedBox(height: 22),
-                    for (final feature in [true, false]) ...[
-                      badge(
-                        text(feature ? 'feature' : 'infra'),
-                        color: feature ? featureColor : infraColor,
-                        icon: feature ? Icons.auto_awesome : Icons.memory,
-                      ),
-                      const SizedBox(height: 12),
-                      rows([
-                        for (final upgrade in Upgrade.values.where(
-                          (u) => u.isFeature == feature,
-                        ))
-                          entry(
-                            known: discoveries.contains(
-                              'upgrade.${upgrade.name}',
-                            ),
-                            title: text.title(upgrade),
-                            description: text.description(upgrade),
-                            details:
-                                '${text('tradeoff')}: ${text.tradeoff(upgrade)}',
-                            unknown: text('unlockUpgrade'),
-                            icon: UpgradeIcon(upgrade: upgrade, size: 42),
-                          ),
-                      ], narrow),
-                      const SizedBox(height: 16),
+                        ),
                     ],
+                    narrow,
+                    detailLabel: text('type'),
+                  ),
+                  const SizedBox(height: 22),
+                  for (final feature in [true, false]) ...[
+                    badge(
+                      text(feature ? 'feature' : 'infra'),
+                      color: feature ? featureColor : infraColor,
+                      icon: feature ? Icons.auto_awesome : Icons.memory,
+                    ),
+                    const SizedBox(height: 12),
+                    rows([
+                      for (final upgrade in Upgrade.values.where(
+                        (u) => u.isFeature == feature,
+                      ))
+                        entry(
+                          known: discoveries.contains(
+                            'upgrade.${upgrade.name}',
+                          ),
+                          title: text.title(upgrade),
+                          description: text.description(upgrade),
+                          details:
+                              '${text('tradeoff')}: ${text.tradeoff(upgrade)}',
+                          unknown: text('unlockUpgrade'),
+                          icon: UpgradeIcon(upgrade: upgrade, size: 42),
+                        ),
+                    ], narrow),
+                    const SizedBox(height: 16),
                   ],
-                );
-              },
-            ),
+                ],
+              );
+            },
           ),
+        ),
       ],
     ),
   );
