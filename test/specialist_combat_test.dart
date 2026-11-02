@@ -23,7 +23,10 @@ void main() {
       run.player.y = 100;
       tick(run, 0.7);
       expect(run.projectiles, isNotEmpty);
-      expect(run.projectiles.first.velocity.normalized(), aim);
+      expect(
+        run.projectiles.first.velocity.normalized().distanceTo(aim),
+        lessThan(0.0001),
+      );
       expect(rpc.attackCooldown, greaterThan(0));
     },
   );
@@ -53,7 +56,7 @@ void main() {
         ..attackCooldown = 0;
       run.enemies.add(parent);
       tick(run, 1.3);
-      expect(run.enemies.where((e) => e.owner == parent).length, 3);
+      expect(run.enemies.where((e) => e.owner == parent).length, 2);
       for (var cycle = 0; cycle < 3; cycle++) {
         parent.attackCooldown = 0;
         tick(run, 1.3);

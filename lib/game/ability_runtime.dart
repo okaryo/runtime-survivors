@@ -24,7 +24,6 @@ class AbilityRuntime {
   bool get jitOptimized => jitExecutions >= jitRequiredExecutions;
   double fieldTimer = 0;
   double memoTimer = 0;
-  double nullTimer = 0;
   double ownershipTimer = 0;
   double gcPause = 0;
   double healingTimer = 0;
@@ -34,7 +33,7 @@ class AbilityRuntime {
     fields.clear();
     cachedInputs.clear();
     jitExecutions = 0;
-    fieldTimer = memoTimer = nullTimer = ownershipTimer = gcPause = 0;
+    fieldTimer = memoTimer = ownershipTimer = gcPause = 0;
     healingTimer = 0;
     _healingSpent = 0;
   }
@@ -42,7 +41,6 @@ class AbilityRuntime {
   void advance(double dt) {
     fieldTimer -= dt;
     memoTimer -= dt;
-    nullTimer -= dt;
     ownershipTimer -= dt;
     gcPause = max(0, gcPause - dt);
     healingTimer -= dt;

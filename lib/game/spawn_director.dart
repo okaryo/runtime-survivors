@@ -15,21 +15,18 @@ class EncounterRule {
   final double weight;
   final int limit;
   final int cost;
-  int get batchSize => type == EnemyType.duplicateRequest ? 2 : 1;
+  int get batchSize => type == EnemyType.batch ? 4 : 1;
 }
 
 /// Definitions preserve stable enemy IDs, and share a bounded specialist budget.
 class SpawnDirector {
   const SpawnDirector();
   static const rules = [
-    EncounterRule(EnemyType.duplicateRequest, 30, 0.18, 12, 1),
-    EncounterRule(EnemyType.nullReference, 65, 0.12, 3, 2),
-    EncounterRule(EnemyType.rpc, 40, 0.16, 4, 3),
-    EncounterRule(EnemyType.forkBomb, 110, 0.10, 2, 4),
-    EncounterRule(EnemyType.bufferOverflow, 70, 0.14, 4, 2),
-    EncounterRule(EnemyType.scheduler, 140, 0.10, 2, 3),
-    EncounterRule(EnemyType.armoredAllocation, 160, 0.14, 4, 2),
+    EncounterRule(EnemyType.batch, 30, 0.20, 20, 1),
+    EncounterRule(EnemyType.rpc, 50, 0.13, 4, 3),
+    EncounterRule(EnemyType.forkBomb, 100, 0.10, 2, 4),
   ];
+
   int choose(
     double elapsed,
     List<TaskEnemy> enemies,
@@ -61,7 +58,6 @@ class SpawnDirector {
         18 - pending.fold(0, (sum, r) => sum + r.cost * r.batchSize);
     final choices = <(int, double)>[(0, 0.48)];
     if (elapsed >= 20) choices.add((1, 0.30));
-    if (elapsed >= 45) choices.add((2, 0.22));
     for (final rule in rules) {
       if (elapsed >= rule.startsAt &&
           (counts[rule.type] ?? 0) + rule.batchSize <= rule.limit &&

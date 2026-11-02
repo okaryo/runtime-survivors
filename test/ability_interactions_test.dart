@@ -41,7 +41,7 @@ void main() {
     final run = prepared()..upgrades[Upgrade.memoization] = 1;
     final completed = TaskEnemy(
       Vector2(240, 0),
-      kind: 10,
+      kind: 11,
       inputVariant: 1,
       health: 1,
     );
@@ -52,13 +52,13 @@ void main() {
     run.instructions.clear();
     final matching = TaskEnemy(
       Vector2(250, 0),
-      kind: 10,
+      kind: 11,
       inputVariant: 1,
       health: 1000,
     );
     final different = TaskEnemy(
       Vector2(200, 0),
-      kind: 10,
+      kind: 11,
       inputVariant: 2,
       health: 1000,
     );

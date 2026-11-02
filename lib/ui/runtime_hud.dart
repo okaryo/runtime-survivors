@@ -43,6 +43,7 @@ class RuntimeHud extends StatelessWidget {
     builder: (context, constraints) {
       final width = constraints.maxWidth;
       final compact = width < 680;
+      final encounter = run.deadlocks.where((e) => e.core.alive).firstOrNull;
       final insets = safeInsets(context, width);
       final remaining = clock(RunState.duration - run.elapsed);
       final showRush = switch (run.phase) {
@@ -52,6 +53,53 @@ class RuntimeHud extends StatelessWidget {
       return Stack(
         key: const Key('runtime-hud'),
         children: [
+          if (encounter != null)
+            Positioned(
+              left: compact ? (width - 220) / 2 : 32 + min(232.0, width * 0.28),
+              top: compact ? 64 : 14,
+              width: compact
+                  ? 220
+                  : ((width - 120) / 2 - min(232.0, width * 0.28) - 48).clamp(
+                      90.0,
+                      200.0,
+                    ),
+              child: IgnorePointer(
+                child: Column(
+                  key: const Key('deadlock-status'),
+                  children: [
+                    Text(
+                      text('enemy.3.title'),
+                      style: const TextStyle(
+                        color: _amber,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        shadows: _shadow,
+                      ),
+                    ),
+                    Text(
+                      text(
+                        encounter.exposed
+                            ? 'bossExposedShort'
+                            : 'bossLockedShort',
+                      ),
+                      style: const TextStyle(
+                        color: _amber,
+                        fontSize: 11,
+                        shadows: _shadow,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    LinearProgressIndicator(
+                      value: (encounter.core.health / encounter.core.maxHealth)
+                          .clamp(0, 1),
+                      color: _amber,
+                      backgroundColor: const Color(0xFF51432C),
+                      minHeight: 4,
+                    ),
+                  ],
+                ),
+              ),
+            ),
           Positioned(
             left: 0,
             right: 0,

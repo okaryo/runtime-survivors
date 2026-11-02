@@ -79,7 +79,10 @@ class EncyclopediaPanel extends StatelessWidget {
                   const SizedBox(height: 12),
                   _rows(
                     [
-                      for (var kind = 0; kind < EnemyType.values.length; kind++)
+                      for (final kind
+                          in EnemyType.values
+                              .where((type) => type.isDiscoverable)
+                              .map((type) => type.index))
                         _entry(
                           known: discoveries.contains('enemy.$kind'),
                           title: text('enemy.$kind.title'),
@@ -160,13 +163,6 @@ class EncyclopediaPanel extends StatelessWidget {
             ],
           ),
         ),
-      if (type == EnemyType.armoredAllocation) ...[
-        const SizedBox(height: 4),
-        Text(
-          text('armorAffinityNote'),
-          style: const TextStyle(fontSize: 12, height: 1.5, color: muted),
-        ),
-      ],
     ],
   );
 

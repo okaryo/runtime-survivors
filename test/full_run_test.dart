@@ -112,11 +112,11 @@ void main() {
           expect(run.hazards.length, lessThanOrEqualTo(24));
         }
         expect(run.phase, RunPhase.won);
-        expect(run.seenEnemies, containsAll([4, 5, 6, 7, 8, 9, 10]));
+        expect(run.seenEnemies, containsAll([4, 5, 11]));
         expect(run.rushCount, 6);
         run.start();
         expect(run.projectiles, isEmpty);
-        expect(run.shieldTimer, 0);
+        expect(run.deadlocks, isEmpty);
         expect(run.upgrades, isEmpty);
         expect(run.health, 100);
       },

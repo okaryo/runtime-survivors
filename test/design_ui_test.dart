@@ -38,7 +38,7 @@ void main() {
           [Upgrade.compiler, Upgrade.memoization, Upgrade.memory],
           [Upgrade.memoization, Upgrade.patternMatching, Upgrade.compiler],
           [Upgrade.lazyEvaluation, Upgrade.memoization, Upgrade.jitCompilation],
-          [Upgrade.ownership, Upgrade.spatialIndex, Upgrade.coprocessor],
+          [Upgrade.ownership, Upgrade.spatialIndex, Upgrade.memoryProtection],
           [Upgrade.memoryProtection, Upgrade.bandwidth, Upgrade.clock],
         ]) {
           game.run.choices = choices;

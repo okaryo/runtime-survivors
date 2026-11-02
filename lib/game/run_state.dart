@@ -7,7 +7,7 @@ import '../audio/sound_cue.dart';
 import 'combat_entities.dart';
 import 'spawn_director.dart';
 import 'build.dart';
-import 'combat_rules.dart';
+import 'deadlock_encounter.dart';
 import 'ability_runtime.dart';
 export 'combat_entities.dart';
 export 'build.dart';
@@ -37,6 +37,8 @@ class RunState {
   final List<LinearProjectile> projectiles = [];
   final List<DangerZone> hazards = [];
   final abilities = AbilityRuntime();
+  final List<DeadlockEncounter> deadlocks = [];
+  Iterable<LockBarrier> get lockBarriers => deadlocks.expand((e) => e.barriers);
   static const instructionLimit = 384;
   final director = const SpawnDirector();
   final Set<int> seenEnemies = {};
@@ -57,8 +59,6 @@ class RunState {
   double _attackTimer = 0;
   double _gcTimer = 3;
   double _patternTimer = 0;
-  double shieldTimer = 0;
-  bool get shieldReady => rank(Upgrade.nullSafety) > 0 && shieldTimer <= 0;
   static const featureSlots = 4;
   static const infraSlots = 4;
   int get featureCount =>
@@ -69,9 +69,9 @@ class RunState {
   double invulnerability = 0;
   double _nextRush = 45;
   double _rushUntil = 0;
-  double _nextElite = 75;
+  double _nextDeadlock = 75;
   int rushCount = 0;
-  int eliteCount = 0;
+  int deadlockCount = 0;
 
   bool get isRush => phase != RunPhase.ready && elapsed < _rushUntil;
   double get secondsToRush => max(0, _nextRush - elapsed);
@@ -112,6 +112,7 @@ class RunState {
     objects.clear();
     projectiles.clear();
     hazards.clear();
+    deadlocks.clear();
     abilities.reset();
     upgrades.clear();
     choices = [];
@@ -124,13 +125,12 @@ class RunState {
     _attackTimer = 0;
     _gcTimer = 3;
     _patternTimer = 0;
-    shieldTimer = 0;
     invulnerability = 0;
     _nextRush = 45;
     _rushUntil = 0;
-    _nextElite = 75;
+    _nextDeadlock = 75;
     rushCount = 0;
-    eliteCount = 0;
+    deadlockCount = 0;
     events.clear();
     if (initialPhase == RunPhase.ready) {
       log(const RunLog('log.ready'));
@@ -247,9 +247,6 @@ class RunState {
     final prediction = preview(upgrade);
     upgrades[upgrade] = rank(upgrade) + 1;
     health = prediction.afterHealth;
-    if (upgrade == Upgrade.nullSafety) {
-      shieldTimer = min(shieldTimer, _stats.shieldCooldown);
-    }
     if (upgrade == Upgrade.garbageCollection) _gcTimer = min(_gcTimer, 0.6);
     seenUpgrades.add(upgrade);
     log(RunLog('log.upgrade', args: {'rank': rank(upgrade)}, upgrade: upgrade));
@@ -275,7 +272,6 @@ class RunState {
       player.add(movement.normalized() * speed * dt);
     }
     invulnerability = max(0, invulnerability - dt);
-    shieldTimer = max(0, shieldTimer - dt);
     _updateAbilities(dt);
     if (elapsed >= _nextRush) {
       rushCount++;
@@ -287,12 +283,14 @@ class RunState {
       log(const RunLog('log.rush'));
       cues.add(SoundCue.warning);
     }
-    if (elapsed >= _nextElite) {
-      _spawn(kind: 3, radius: min(spawnRadius, 420));
-      _nextElite += 90;
-      eliteCount++;
-      log(const RunLog('log.elite'));
-      cues.add(SoundCue.warning);
+    if (elapsed >= _nextDeadlock) {
+      if (!deadlocks.any((e) => e.core.alive)) {
+        _spawn(kind: 3, radius: min(spawnRadius * 0.55, 260));
+        deadlockCount++;
+        log(const RunLog('log.deadlock'));
+        cues.add(SoundCue.warning);
+      }
+      _nextDeadlock += 90;
     }
     _spawnTimer -= dt;
     if (_spawnTimer <= 0 && enemies.length < 240) {
@@ -302,41 +300,43 @@ class RunState {
     _updateHazards(dt);
     if (phase == RunPhase.lost) return;
     _updateEnemyStatuses();
+    for (final encounter in deadlocks) {
+      enemies.addAll(encounter.advance(dt, player));
+    }
+    deadlocks.removeWhere((e) => !e.core.alive);
+    for (final barrier in lockBarriers.where((b) => !b.warning)) {
+      if (crossesCircle(barrier.from, barrier.to, player, 17)) {
+        _damagePlayer(16);
+      }
+    }
+    if (phase == RunPhase.lost) return;
     final children = <TaskEnemy>[];
     for (final enemy in enemies) {
       if (!enemy.alive) continue;
       enemy.flash = max(0, enemy.flash - dt);
-      enemy.armorFlash = max(0, enemy.armorFlash - dt);
       final delta = player - enemy.position;
-      if (delta.length2 > 0) enemy.facing.setFrom(delta.normalized());
-      if (enemy.kind == 3) {
-        _updateElite(enemy, delta, dt);
-      } else if (enemy.kind == 4 ||
-          enemy.kind == 5 ||
-          enemy.type == EnemyType.nullReference) {
+      if (enemy.type == EnemyType.deadlock ||
+          enemy.type == EnemyType.lockNode) {
+        // Encounter positions and links are advanced together above.
+      } else if (enemy.type == EnemyType.rpc ||
+          enemy.type == EnemyType.forkBomb) {
         _updateSpecialist(enemy, delta, dt, children);
-      } else if (delta.length2 > 0 &&
-          (enemy.type != EnemyType.scheduler || delta.length > 210)) {
+      } else if (enemy.type == EnemyType.batch && enemy.owner?.alive == true) {
+        enemy.position.setFrom(enemy.owner!.position + enemy.formationOffset);
+      } else if (delta.length2 > 0) {
         enemy.position.add(
           delta.normalized() * enemy.speed * enemy.movementMultiplier * dt,
         );
       }
-      if (enemy.position.distanceTo(player) < enemy.radius + 13 &&
+      // Nodes become dangerous through their warned links, not on appearance.
+      if (enemy.type != EnemyType.lockNode &&
+          enemy.position.distanceTo(player) < enemy.radius + 13 &&
           invulnerability <= 0) {
-        if (enemy.type == EnemyType.nullReference && shieldReady) {
-          _consumeNullShield();
-        } else {
-          _damagePlayer(
-            enemy.kind == 3
-                ? 22
-                : enemy.kind == 2
-                ? 15
-                : 9,
-          );
-          if (phase == RunPhase.lost) return;
-        }
+        _damagePlayer(enemy.type == EnemyType.deadlock ? 22 : 9);
+        if (phase == RunPhase.lost) return;
       }
     }
+
     enemies.addAll(children);
     _updateProjectiles(dt);
     if (phase == RunPhase.lost) return;
@@ -410,7 +410,7 @@ class RunState {
           ? min(1600.0, projectileSpeed * 1.5)
           : projectileSpeed;
       if (delta.length <= shotSpeed * dt + shot.target.radius) {
-        _damage(shot.target, shot.damage, origin: shot.position);
+        _damage(shot.target, shot.damage);
         if (shot.jumps > 0) {
           final candidates =
               enemies
@@ -468,11 +468,15 @@ class RunState {
     }
     enemies.removeWhere((enemy) => !enemy.alive);
     // Keep the endless arena bounded in memory when the player outruns tasks.
-    enemies.removeWhere(
-      (enemy) =>
-          enemy.kind != 3 &&
-          enemy.position.distanceTo(player) > spawnRadius * 2.2,
-    );
+    enemies.removeWhere((enemy) {
+      if (enemy.type == EnemyType.deadlock ||
+          enemy.type == EnemyType.lockNode) {
+        return false;
+      }
+      final distant = enemy.position.distanceTo(player) > spawnRadius * 2.2;
+      if (distant) enemy.health = 0;
+      return distant;
+    });
     var earned = 0;
     experience.removeWhere((gem) {
       final distance = gem.position.distanceTo(player);
@@ -533,16 +537,6 @@ class RunState {
         }
       }
     }
-    if (rank(Upgrade.nullSafety) > 0 && abilities.nullTimer <= 0) {
-      _pulse(_stats.nullRadius, _stats.nullDamage, nullSafe: true);
-      projectiles.removeWhere(
-        (s) =>
-            s.hostile &&
-            s.nullReference &&
-            s.position.distanceTo(player) <= _stats.nullRadius,
-      );
-      abilities.nullTimer = _stats.nullInterval;
-    }
     if (rank(Upgrade.ownership) > 0 && abilities.ownershipTimer <= 0) {
       _pulse(_stats.ownershipRadius, _stats.ownershipDamage, healing: true);
       abilities.ownershipTimer = _stats.ownershipInterval;
@@ -584,31 +578,15 @@ class RunState {
     }
   }
 
-  void _pulse(
-    double radius,
-    double damage, {
-    bool nullSafe = false,
-    bool healing = false,
-  }) {
+  void _pulse(double radius, double damage, {bool healing = false}) {
     effects.add(
       RunEffect(player.clone(), pulse: true, radius: radius, healing: healing),
     );
     for (final enemy in enemies.where(
       (e) => e.alive && e.position.distanceTo(player) <= radius,
     )) {
-      _damage(
-        enemy,
-        damage * (nullSafe && enemy.type == EnemyType.nullReference ? 1.5 : 1),
-      );
+      _damage(enemy, damage);
     }
-  }
-
-  void _consumeNullShield() {
-    shieldTimer = _stats.shieldCooldown;
-    // Brief grace prevents the same contact from damaging on the next frame.
-    invulnerability = _stats.hitInvulnerability;
-    effects.add(RunEffect(player.clone(), pulse: true, radius: 35));
-    cues.add(SoundCue.pulse);
   }
 
   void _updateHazards(double dt) {
@@ -628,15 +606,7 @@ class RunState {
   }
 
   void _updateEnemyStatuses() {
-    final supports = enemies
-        .where((e) => e.alive && e.type == EnemyType.scheduler)
-        .toList();
     for (final enemy in enemies) {
-      enemy.supported =
-          enemy.type != EnemyType.scheduler &&
-          supports.any(
-            (s) => s.position.distanceToSquared(enemy.position) <= 150 * 150,
-          );
       var slow = 1.0;
       for (final field in abilities.fields.where((f) => f.triggered)) {
         if (field.position.distanceToSquared(enemy.position) <=
@@ -644,9 +614,9 @@ class RunState {
           slow = min(slow, field.multiplier);
         }
       }
-      // Elites retain at least 80% movement speed; slow effects never stack.
+      // Deadlock movement retains a floor; slow effects never stack.
       if (enemy.type == EnemyType.deadlock) slow = max(0.8, slow);
-      enemy.movementMultiplier = (enemy.supported ? 1.25 : 1) * slow;
+      enemy.movementMultiplier = slow;
     }
   }
 
@@ -723,11 +693,7 @@ class RunState {
       shot.position.add(shot.velocity * dt);
       if (shot.hostile) {
         if (crossesCircle(from, shot.position, player, shot.radius + 13)) {
-          if (invulnerability <= 0 && shieldReady && shot.nullReference) {
-            _consumeNullShield();
-          } else {
-            _damagePlayer(shot.damage);
-          }
+          _damagePlayer(shot.damage);
           shot.life = 0;
         }
       } else {
@@ -741,7 +707,7 @@ class RunState {
                 enemy.radius + shot.radius,
               )) {
             shot.hit.add(enemy);
-            _damage(enemy, shot.damage, origin: from);
+            _damage(enemy, shot.damage);
           }
         }
       }
@@ -759,140 +725,152 @@ class RunState {
     double dt,
     List<TaskEnemy> children,
   ) {
-    final ranged = enemy.type != EnemyType.forkBomb;
+    final ranged = enemy.type == EnemyType.rpc;
+    final root = enemy.owner ?? enemy;
+    final canFork = !ranged && root.alive && enemy.generation < 2;
     if (enemy.telegraphRemaining > 0) {
       enemy.telegraphRemaining = max(0, enemy.telegraphRemaining - dt);
       if (enemy.telegraphRemaining == 0) {
-        if (ranged && projectiles.where((s) => s.hostile).length < 96) {
-          projectiles.add(
-            LinearProjectile(
-              enemy.position.clone(),
-              enemy.chargeDirection * 180,
-              damage: 11,
-              nullReference: enemy.type == EnemyType.nullReference,
-            ),
-          );
-        } else if (!ranged) {
-          final owned = enemies
-              .where((e) => e.alive && identical(e.owner, enemy))
-              .length;
-          final count = min(
-            3,
-            min(6 - owned, 236 - enemies.length - children.length),
-          );
+        if (ranged) {
+          final count = 1 + enemy.retryCount;
           for (var i = 0; i < count; i++) {
-            final angle = i * pi * 2 / 3 + elapsed;
-            children.add(
-              TaskEnemy(
-                enemy.position + Vector2(cos(angle), sin(angle)) * 32,
-                health: 12 + elapsed / 30,
-                summoned: true,
-                owner: enemy,
+            if (projectiles.where((s) => s.hostile).length >= 96) break;
+            final angle =
+                atan2(enemy.chargeDirection.y, enemy.chargeDirection.x) +
+                (i - (count - 1) / 2) * 0.22;
+            projectiles.add(
+              LinearProjectile(
+                enemy.position.clone(),
+                Vector2(cos(angle), sin(angle)) * 180,
+                damage: 11,
               ),
             );
           }
+          enemy.retryCount = min(2, enemy.retryCount + 1);
+          enemy.attackCooldown = 2.8 + enemy.retryCount * 0.6;
+        } else if (canFork) {
+          final owned =
+              enemies
+                  .where(
+                    (e) => e.alive && e.summoned && identical(e.owner, root),
+                  )
+                  .length +
+              children.where((e) => identical(e.owner, root)).length;
+          final count = min(
+            enemy.summoned ? 1 : 2,
+            min(6 - owned, 232 - enemies.length - children.length),
+          );
+          for (var i = 0; i < count; i++) {
+            final angle = elapsed + i * pi;
+            children.add(
+              TaskEnemy(
+                enemy.position + Vector2(cos(angle), sin(angle)) * 28,
+                kind: EnemyType.forkBomb.index,
+                health: 12 + elapsed / 35,
+                summoned: true,
+                owner: root,
+                generation: enemy.generation + 1,
+              ),
+            );
+          }
+          enemy.attackCooldown = 5;
         }
-        enemy.attackCooldown = ranged ? 2.6 : 5.5;
       }
       return;
     }
-    // Specialists can be approached: retreat is slower than player movement.
-    if (delta.length > (ranged ? 240 : 280)) {
+    if (delta.length >
+        (ranged
+            ? 240
+            : enemy.summoned
+            ? 0
+            : 260)) {
       enemy.position.add(
         delta.normalized() * enemy.speed * enemy.movementMultiplier * dt,
       );
     } else if (ranged && delta.length > 1 && delta.length < 150) {
-      enemy.position.add(
-        delta.normalized() * -enemy.speed * enemy.movementMultiplier * dt,
-      );
+      enemy.position.add(delta.normalized() * -enemy.speed * dt);
     }
-    enemy.attackCooldown -= dt * enemy.attackRate;
-    if (enemy.attackCooldown <= 0 && delta.length > 1 && delta.length < 430) {
+    enemy.attackCooldown -= dt;
+    if (enemy.attackCooldown <= 0 &&
+        delta.length > 1 &&
+        delta.length < 430 &&
+        (ranged || canFork)) {
       enemy.chargeDirection.setFrom(delta.normalized());
-      enemy.telegraphRemaining = ranged ? 0.65 : 1.2;
-    }
-  }
-
-  void _updateElite(TaskEnemy enemy, Vector2 delta, double dt) {
-    if (enemy.telegraphRemaining > 0) {
-      enemy.telegraphRemaining = max(0, enemy.telegraphRemaining - dt);
-      if (enemy.telegraphRemaining == 0) enemy.chargeRemaining = 0.7;
-    } else if (enemy.chargeRemaining > 0) {
-      enemy.position.add(
-        enemy.chargeDirection * 460 * enemy.movementMultiplier * dt,
-      );
-      enemy.chargeRemaining = max(0, enemy.chargeRemaining - dt);
-      if (enemy.chargeRemaining == 0) enemy.chargeCooldown = 2.8;
-    } else {
-      if (delta.length2 > 0) {
-        enemy.position.add(
-          delta.normalized() * enemy.speed * enemy.movementMultiplier * dt,
-        );
-      }
-      enemy.chargeCooldown -= dt * enemy.attackRate;
-      if (enemy.chargeCooldown <= 0 && delta.length > 1 && delta.length < 450) {
-        enemy.chargeDirection.setFrom(delta.normalized());
-        enemy.telegraphRemaining = 0.9;
-      }
+      enemy.telegraphRemaining = ranged ? 0.65 : 1.1;
     }
   }
 
   void _spawn({double? radius, int? kind}) {
-    if (enemies.length >= (kind == 3 ? 240 : 236)) return;
     final angle = random.nextDouble() * pi * 2;
     kind ??= director.choose(elapsed, enemies, random, introduced: _introduced);
-    enemies.add(
-      TaskEnemy(
-        player + Vector2(cos(angle), sin(angle)) * (radius ?? spawnRadius),
-        kind: kind,
-        inputVariant: random.nextInt(3),
-        health: kind == 3
-            ? 240 + elapsed * 1.6
-            : (22 + elapsed / 18) *
-                  (kind == 2
-                      ? 3
-                      : kind == 5
-                      ? 2.5
-                      : kind == 8
-                      ? 2.8
-                      : kind == 7
-                      ? 2.0
-                      : kind == 4
-                      ? 1.5
-                      : 1),
-      ),
+    final type = EnemyType.values[kind];
+    if (type == EnemyType.deadlock && deadlocks.any((e) => e.core.alive)) {
+      return;
+    }
+    final count = type == EnemyType.batch
+        ? 4
+        : type == EnemyType.deadlock
+        ? 4
+        : 1;
+    if (enemies.length + count > (type == EnemyType.deadlock ? 240 : 232)) {
+      return;
+    }
+    final position =
+        player + Vector2(cos(angle), sin(angle)) * (radius ?? spawnRadius);
+    final leader = TaskEnemy(
+      position,
+      kind: kind,
+      inputVariant: random.nextInt(3),
+      health: type == EnemyType.deadlock
+          ? 820 + elapsed * 2
+          : (22 + elapsed / 18) *
+                (type == EnemyType.forkBomb
+                    ? 2.5
+                    : type == EnemyType.rpc
+                    ? 1.6
+                    : type == EnemyType.batch
+                    ? 1.15
+                    : 1),
     );
-    if (kind == EnemyType.duplicateRequest.index && enemies.length < 236) {
-      final original = enemies.last;
-      enemies.add(
-        TaskEnemy(
-          original.position + Vector2(28, 18),
-          kind: kind,
-          inputVariant: original.inputVariant,
-          health: original.maxHealth,
-        ),
-      );
+    enemies.add(leader);
+    if (type == EnemyType.deadlock) {
+      final encounter = DeadlockEncounter(leader);
+      deadlocks.add(encounter);
+      enemies.addAll(encounter.rebuild());
+    } else if (type == EnemyType.batch) {
+      final direction = (position - player).normalized();
+      for (var i = 1; i < 4; i++) {
+        final offset = direction * (32.0 * i);
+        enemies.add(
+          TaskEnemy(
+            position + offset,
+            kind: kind,
+            owner: leader,
+            inputVariant: (leader.inputVariant + i) % 3,
+            health: leader.maxHealth,
+          )..formationOffset.setFrom(offset),
+        );
+      }
     }
     seenEnemies.add(kind);
     _introduced.add(kind);
   }
 
-  void _damage(TaskEnemy enemy, double damage, {Vector2? origin}) {
+  void _damage(TaskEnemy enemy, double damage) {
     if (!enemy.alive) return;
-    enemy.health -= CombatRules.damage(
-      enemy,
-      damage,
-      origin: origin,
-      area: origin == null,
-    );
+    final encounter = deadlocks
+        .where((e) => identical(e.core, enemy))
+        .firstOrNull;
+    enemy.health -= damage * (encounter?.damageMultiplier ?? 1);
     enemy.flash = 0.12;
     if (!enemy.alive) {
       kills++;
-      if (rank(Upgrade.memoization) > 0) {
+      if (rank(Upgrade.memoization) > 0 && enemy.cacheable) {
         abilities.cachedInputs.add(enemy.inputSignature);
       }
       if (rank(Upgrade.ownership) > 0 &&
           !enemy.summoned &&
+          enemy.type != EnemyType.lockNode &&
           health < maxHealth &&
           player.distanceToSquared(enemy.position) <=
               _stats.ownershipRadius * _stats.ownershipRadius) {
@@ -905,19 +883,27 @@ class RunState {
           effects.add(RunEffect(player.clone(), healing: true, radius: 28));
         }
       }
-      if (enemy.type == EnemyType.bufferOverflow && hazards.length < 24) {
-        hazards.add(DangerZone(enemy.position.clone(), warning: 1.1));
+      if (enemy.type == EnemyType.lockNode) {
+        final owner = deadlocks
+            .where((e) => identical(e.core, enemy.owner))
+            .firstOrNull;
+        owner?.breakDependency();
+      }
+      if (encounter != null) {
+        for (final node in encounter.nodes) {
+          node.health = 0;
+        }
       }
       cues.add(SoundCue.kill);
       experience.add(
         Experience(
           enemy.position.clone(),
-          enemy.summoned
+          enemy.type == EnemyType.lockNode
+              ? 3
+              : enemy.summoned
               ? 1
               : enemy.kind == 3
               ? 45
-              : enemy.kind == 2
-              ? 9
               : 4,
         ),
       );

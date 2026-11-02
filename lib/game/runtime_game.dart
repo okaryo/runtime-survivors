@@ -251,66 +251,45 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
           ..strokeWidth = 2,
       );
     }
-    for (final support in run.enemies.where(
-      (e) => e.alive && e.type == EnemyType.scheduler,
-    )) {
-      canvas.drawCircle(
-        point(support.position),
-        150,
-        Paint()..color = const Color(0xFF9CCDE0).withValues(alpha: 0.06),
-      );
-      canvas.drawCircle(
-        point(support.position),
-        150,
-        Paint()
-          ..color = const Color(0xFF9CCDE0).withValues(alpha: 0.4)
-          ..style = PaintingStyle.stroke,
-      );
+    for (final barrier in run.lockBarriers) {
+      final paint = Paint()
+        ..color = (barrier.warning ? const Color(0xFFFFD36D) : coral)
+            .withValues(alpha: barrier.warning ? 0.55 : 0.9)
+        ..strokeWidth = barrier.warning ? 2 : 6
+        ..strokeCap = StrokeCap.round;
+      final a = point(barrier.from), b = point(barrier.to);
+      if (barrier.warning) {
+        final length = (b - a).distance;
+        if (length > 0) {
+          final direction = (b - a) / length;
+          for (double d = 0; d < length; d += 18) {
+            canvas.drawLine(
+              a + direction * d,
+              a + direction * min(length, d + 9),
+              paint,
+            );
+          }
+        }
+      } else {
+        canvas.drawLine(a, b, paint);
+      }
     }
     for (final enemy in run.enemies.where(
-      (e) => e.kind == 3 && (e.telegraphRemaining > 0 || e.chargeRemaining > 0),
+      (e) => e.type == EnemyType.batch && e.owner?.alive == true,
     )) {
-      canvas.save();
-      canvas.translate(enemy.position.x, enemy.position.y);
-      canvas.rotate(atan2(enemy.chargeDirection.y, enemy.chargeDirection.x));
-      final lane = Rect.fromLTWH(
-        0,
-        -22,
-        enemy.telegraphRemaining > 0 ? 322 : enemy.chargeRemaining * 460,
-        44,
-      );
-      canvas.drawRect(lane, Paint()..color = coral.withValues(alpha: 0.15));
-      canvas.drawRect(
-        lane,
+      canvas.drawLine(
+        point(enemy.position),
+        point(enemy.owner!.position),
         Paint()
-          ..color = coral
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2,
+          ..color = const Color(0xFFC5B1E5).withValues(alpha: 0.25)
+          ..strokeWidth = 1,
       );
-      for (double x = 30; x < lane.width; x += 45) {
-        canvas.drawLine(
-          Offset(x - 6, -6),
-          Offset(x, 0),
-          Paint()
-            ..color = coral
-            ..strokeWidth = 2,
-        );
-        canvas.drawLine(
-          Offset(x - 6, 6),
-          Offset(x, 0),
-          Paint()
-            ..color = coral
-            ..strokeWidth = 2,
-        );
-      }
-      canvas.restore();
     }
     for (final enemy in run.enemies.where(
       (e) => e.kind >= 4 && e.telegraphRemaining > 0,
     )) {
       final p = point(enemy.position);
-      if (enemy.type == EnemyType.rpc ||
-          enemy.type == EnemyType.nullReference) {
+      if (enemy.type == EnemyType.rpc) {
         canvas.drawCircle(
           p,
           enemy.radius + 6 + sin(run.elapsed * 18) * 2,
@@ -333,9 +312,7 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
     for (final shot in run.projectiles) {
       final p = point(shot.position);
       final paint = Paint()
-        ..color = shot.hostile
-            ? (shot.nullReference ? const Color(0xFFE9A0ED) : coral)
-            : const Color(0xFF9DDBFF)
+        ..color = shot.hostile ? coral : const Color(0xFF9DDBFF)
         ..strokeWidth = shot.hostile ? 3 : 7
         ..strokeCap = StrokeCap.round;
       canvas.drawLine(
@@ -394,9 +371,7 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
         effect.radius * (effect.pulse ? progress : 0.3 + progress),
         Paint()
           ..color =
-              (effect.dynamicCheck
-                      ? const Color(0xFF9EDFFF)
-                      : effect.optimized
+              (effect.optimized
                       ? const Color(0xFFFFD36D)
                       : effect.healing
                       ? const Color(0xFFA9F0A9)
@@ -424,10 +399,10 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
         kind: enemy.kind,
         radius: enemy.radius,
         flash: enemy.flash > 0,
-        alert: enemy.telegraphRemaining > 0 || enemy.chargeRemaining > 0,
+        alert: enemy.telegraphRemaining > 0,
         time: run.elapsed + enemy.position.x * 0.01,
       );
-      if (run.rank(Upgrade.memoization) > 0) {
+      if (run.rank(Upgrade.memoization) > 0 && enemy.cacheable) {
         for (var i = 0; i <= enemy.inputVariant; i++) {
           canvas.drawCircle(
             Offset(-6.0 + i * 6, enemy.radius + 10),
@@ -440,26 +415,13 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
           );
         }
       }
-      if (enemy.type == EnemyType.armoredAllocation) {
-        final angle = atan2(enemy.facing.y, enemy.facing.x);
-        canvas.drawArc(
-          Rect.fromCircle(center: Offset.zero, radius: enemy.radius + 6),
-          angle - 1.3,
-          2.6,
-          false,
-          Paint()
-            ..color = enemy.armorFlash > 0
-                ? const Color(0xFFFFFFFF)
-                : const Color(0xFFDFE6FF)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 4,
-        );
-      }
-      if (enemy.supported) {
-        canvas.drawCircle(
-          const Offset(0, -25),
-          3,
-          Paint()..color = const Color(0xFF9CCDE0),
+      if (enemy.type == EnemyType.rpc) {
+        _text(
+          canvas,
+          enemy.retryCount == 0 ? 'SEND' : 'RETRY ${enemy.retryCount}',
+          Offset(-20, -enemy.radius - 18),
+          const Color(0xFF8CC9F2),
+          9,
         );
       }
       if (enemy.kind == 3) {
@@ -525,16 +487,6 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
         position + const Offset(-38, 42),
         const Color(0xFFFFD36D),
         11,
-      );
-    }
-    if (run.shieldReady) {
-      canvas.drawCircle(
-        position,
-        29,
-        Paint()
-          ..color = const Color(0xFF9DDBFF)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.5,
       );
     }
 

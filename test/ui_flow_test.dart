@@ -92,11 +92,9 @@ void main() {
         ),
         findsNothing,
       );
-      settings.discover(['enemy.8']);
+      settings.discover(['enemy.11', 'enemy.8', 'upgrade.coprocessor']);
       await tester.pump();
-      final armorAffinity = find.byKey(
-        const Key('enemy-affinity-armoredAllocation'),
-      );
+      final armorAffinity = find.byKey(const Key('enemy-affinity-batch'));
       expect(
         find.descendant(
           of: armorAffinity,
@@ -109,10 +107,20 @@ void main() {
       expect(
         find.descendant(
           of: armorAffinity,
-          matching: find.text(const GameText('en').title(Upgrade.oop)),
+          matching: find.text(
+            const GameText('en').title(Upgrade.patternMatching),
+          ),
         ),
         findsOneWidget,
       );
+      final tables = tester.widgetList<Table>(find.byType(Table)).toList();
+      expect(tables.last.children.first.children.length, 2);
+      expect(tables[1].children.first.children.length, 3);
+      expect(
+        find.byKey(const Key('enemy-affinity-armoredAllocation')),
+        findsNothing,
+      );
+      expect(find.text('Coprocessor'), findsNothing);
       expect(find.textContaining('Tradeoff:'), findsNothing);
       await tester.sendKeyEvent(LogicalKeyboardKey.keyP);
       await tester.pump();

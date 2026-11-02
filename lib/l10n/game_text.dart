@@ -245,6 +245,23 @@ class GameText {
   });
 
   static const copy = <String, List<String>>{
+    'bossLockedShort': ['ロックを処理', 'Break a lock'],
+    'bossExposedShort': ['本体を処理', 'Core exposed'],
+    'enemy.11.title': ['バッチ処理', 'Batch job'],
+    'enemy.11.description': [
+      '同じ処理を行うデータが隊列を組んで進む。列を揃えて貫通するか、まとめて範囲攻撃。同じ入力の再来にはメモ化も有効。',
+      'Data for the same operation advances in a formation. Line up piercing shots or clear the batch with area attacks; repeated inputs also suit memoization.',
+    ],
+    'bossLocked': ['デッドロック · ロックを処理して解除', 'Deadlock · break a lock to release'],
+    'bossExposed': [
+      'デッドロック · 循環解除、処理のチャンス',
+      'Deadlock · cycle released, core exposed',
+    ],
+    'log.deadlock': [
+      'デッドロックが発生。ロックを処理して進路を開こう。',
+      'Deadlock detected. Break a lock to open the route.',
+    ],
+
     'stat.gcPause': ['回収時の通常攻撃待機', 'Base pause on collection'],
     'stat.areaScale': ['攻撃範囲の倍率', 'Attack area scale'],
     'enemy.9.title': ['Null参照', 'Null reference'],
@@ -279,15 +296,12 @@ class GameText {
       'GC area damage and OOP shots from the sides or rear bypass frontal armor.',
     ],
     'garbageCollection.matchup': [
-      '密集・正面装甲への範囲攻撃',
-      'Crowds; bypasses frontal armor',
+      '密集・バッチ・増えたコピー',
+      'Crowds, batches and forked copies',
     ],
     'concurrency.matchup': ['分散した複数の敵', 'Several spread-out enemies'],
-    'oop.matchup': ['側背面からの攻撃', 'Attacks from the sides and rear'],
-    'functional.matchup': [
-      '召喚雑魚・群れの奥の敵',
-      'Summoned crowds; enemies behind them',
-    ],
+    'oop.matchup': ['分散したタスク・ロックノード', 'Spread-out tasks and lock nodes'],
+    'functional.matchup': ['コピーの群れ・近接したタスク', 'Forked crowds and nearby tasks'],
     'nullSafety.matchup': [
       '近距離の群れ・Null参照の処理',
       'Nearby crowds; null references',
@@ -301,13 +315,16 @@ class GameText {
       '同じ入力のタスクが繰り返す場面',
       'Repeated tasks with the same input',
     ],
-    'jitCompilation.matchup': ['攻撃を続ける長い戦闘', 'Sustained combat'],
+    'jitCompilation.matchup': [
+      '長い戦闘・デッドロックの処理',
+      'Sustained combat; Deadlock encounters',
+    ],
     'ownership.matchup': [
       '近距離で攻撃しながらメモリ回収',
       'Close-range attacks with memory recovery',
     ],
     'memory.matchup': ['生存力の確保とメモリ回復', 'Survivability and memory recovery'],
-    'clock.matchup': ['射線・爆発からの回避', 'Dodge shot lanes and blasts'],
+    'clock.matchup': ['弾・障壁からの回避', 'Dodge projectiles and barriers'],
     'cache.matchup': ['散った経験値の回収', 'Collect scattered experience'],
     'compiler.matchup': [
       '通常攻撃とFeatureの攻撃頻度',
@@ -332,8 +349,8 @@ class GameText {
     ],
     'memoization.title': ['メモ化', 'Memoization'],
     'memoization.description': [
-      'タスクを処理して結果を保存。同じ入力のタスクには、結果を再利用する強力な高速弾を発射します。',
-      'Stores completed results. Fires stronger, faster cache shots at tasks with the same input.',
+      '計算結果を保存し、同じ入力を強力な高速弾で処理。保存できないタスクにも通常の処理弾を撃ちます。',
+      'Caches completed calculations. Matching inputs get stronger, faster shots; other tasks get normal shots.',
     ],
     'memoization.tradeoff': [
       '結果の保存領域として、使える最大メモリの一部を予約。',
@@ -402,17 +419,17 @@ class GameText {
       '正面からの弾を軽減。側面・背面からの弾や範囲攻撃は防御を回避する。',
       'Resists frontal shots. Flanking shots and area attacks bypass its armor.',
     ],
-    'enemy.4.title': ['RPC要求', 'RPC request'],
+    'enemy.4.title': ['タイムアウトRPC', 'Timeout RPC'],
     'enemy.4.type': ['射撃タスク', 'Ranged task'],
     'enemy.4.description': [
-      '発射前に光り、固定方向へ弾を撃つ。弾を横へ避けながら近づこう。',
-      'Flashes before firing a fixed-direction shot. Sidestep the projectile, then approach.',
+      '送信後に応答を待ち、未処理なら間隔を置いて再送。再送するたびに弾が増える。発光の後に撃つため、待機中に近づこう。',
+      'Sends a request, waits, then retries if unprocessed. Retries add projectiles. Approach during the wait between volleys.',
     ],
     'enemy.5.title': ['Fork Bomb', 'Fork Bomb'],
     'enemy.5.type': ['召喚タスク', 'Summoner task'],
     'enemy.5.description': [
-      '小型タスクを繰り返し召喚。本体を処理すると追加召喚が止まる。密集した小型タスクはまとめて処理しよう。',
-      'Repeatedly spawns small tasks. Process the parent to stop spawning; clear the children together.',
+      '自分の小さなコピーを段階的に増やす。親を処理すると、子からの追加生成も止まる。増えたコピーは範囲攻撃や連鎖でまとめて処理。',
+      'Creates smaller copies in stages. Processing the parent stops all further copying; area attacks and chains clear the children.',
     ],
     'nullSafety.title': ['Null Safety', 'Null Safety'],
     'nullSafety.description': [
@@ -458,13 +475,10 @@ class GameText {
       '全能力の強化が完了。メモリを35回復。',
       'Build fully upgraded. Restored 35 memory.',
     ],
-    'shieldReady': ['防壁：準備完了', 'Shield: ready'],
-    'shieldCharging': ['防壁：{seconds}秒', 'Shield: {seconds}s'],
     'resultBuild': ['取得した能力', 'Your build'],
     'profile.label': ['今回の言語プロフィール', 'Your language profile'],
     'profile.custom': ['独自設計の言語', 'An original language'],
     'profile.affinity': ['{language}寄りの言語', 'A {language}-leaning language'],
-    'profile.unspecified': ['型付け未選択', 'No typing policy selected'],
     'profile.description': [
       '主に伸ばした機能：{features}。',
       'Main investments: {features}.',
@@ -590,7 +604,6 @@ class GameText {
     'behavior': ['特徴', 'Behavior'],
     'rush': ['タスク集中！', 'Task rush!'],
     'rushHint': ['大量のタスクを受信中', 'Incoming task burst'],
-    'eliteWarning': ['エリート接続', 'Elite connected'],
     'nextRush': ['次のラッシュ', 'Next rush'],
     'you': ['YOU', 'YOU'],
     'log.ready': ['ランタイムの起動を待っています。', 'Waiting to start the runtime.'],
@@ -606,10 +619,6 @@ class GameText {
     ],
     'log.lost': ['メモリ不足でランタイムが停止しました。', 'Runtime stopped: out of memory.'],
     'log.rush': ['タスクが集中しています！', 'Task traffic is surging!'],
-    'log.elite': [
-      'エリートタスクを受信。突進の予告に注意！',
-      'Elite task received. Watch for its charge warning!',
-    ],
     'garbageCollection.title': ['ガベージコレクション', 'Garbage Collection'],
     'garbageCollection.description': [
       '周囲をまとめて掃除する範囲攻撃。密集したタスクを一度に処理します。',
@@ -646,11 +655,10 @@ class GameText {
     'enemy.0.type': ['通常タスク', 'Standard task'],
     'enemy.1.type': ['高速タスク', 'Fast task'],
     'enemy.2.type': ['高耐久タスク', 'Heavy task'],
-    'enemy.3.type': ['エリートタスク', 'Elite task'],
     'enemy.0.title': ['リクエスト', 'Request'],
     'enemy.0.description': [
-      '基本の処理要求。ゆっくり追いかけてくる。',
-      'A basic request that steadily follows you.',
+      '基本の計算要求。同じ入力が繰り返し届くので、メモ化した結果を再利用できる。',
+      'A basic computation request. Repeated inputs allow memoized results to be reused.',
     ],
     'enemy.1.title': ['割り込み', 'Interrupt'],
     'enemy.1.description': [
@@ -664,8 +672,8 @@ class GameText {
     ],
     'enemy.3.title': ['デッドロック', 'Deadlock'],
     'enemy.3.description': [
-      '方向を予告してから突進するエリート。予告が出たら横へ避けよう。',
-      'An elite that marks its direction before charging. Dodge sideways when it winds up.',
+      '複数のロックを結ぶ障壁で進路を狭める。どれかのロックを処理すると循環が解け、本体への攻撃機会が生まれる。',
+      'Narrows routes with linked locks. Break any lock to release the cycle and expose the core.',
     ],
     'memory.title': ['メモリ増設', 'Memory Expansion'],
     'memory.description': [
@@ -690,10 +698,7 @@ class GameText {
       '処理を最適化し、通常攻撃とFeatureの攻撃間隔を短縮します。',
       'Optimizes execution, shortening base and feature attack intervals.',
     ],
-    'compiler.tradeoff': [
-      '防壁の再充填と被弾後の無敵時間は対象外。',
-      'Does not change shield recharge or hit invulnerability.',
-    ],
+    'compiler.tradeoff': ['なし', 'None'],
   };
 }
 

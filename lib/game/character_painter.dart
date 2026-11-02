@@ -16,6 +16,8 @@ class CharacterPainter {
     Color(0xFFB5BBD0),
     Color(0xFFE9A0ED),
     Color(0xFFA6D7CB),
+    Color(0xFFC5B1E5),
+    Color(0xFFF3CD84),
   ];
   static void draw(
     Canvas canvas, {
@@ -98,6 +100,37 @@ class CharacterPainter {
           ..color = color
           ..strokeWidth = 3,
       );
+    } else if (kind == 11) {
+      // Array brackets and three cells make a batch readable in a formation.
+      final body = RRect.fromRectAndRadius(
+        Rect.fromLTRB(-r, -r, r, r),
+        const Radius.circular(3),
+      );
+      canvas.drawRRect(body, fill);
+      canvas.drawRRect(body, outline);
+      canvas.drawLine(Offset(-r - 4, -r), Offset(-r - 4, r), outline);
+      canvas.drawLine(Offset(r + 4, -r), Offset(r + 4, r), outline);
+      for (final x in [-6.0, 0.0, 6.0]) {
+        canvas.drawCircle(Offset(x, r - 4), 1.4, face);
+      }
+    } else if (kind == 12) {
+      canvas.drawArc(
+        Rect.fromCenter(center: Offset(0, -r + 2), width: r, height: r * 1.3),
+        pi,
+        pi,
+        false,
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 4,
+      );
+      final body = RRect.fromRectAndRadius(
+        Rect.fromLTRB(-r, -r / 2, r, r),
+        const Radius.circular(4),
+      );
+      canvas.drawRRect(body, fill);
+      canvas.drawRRect(body, outline);
+      canvas.drawCircle(const Offset(0, 4), 3, face);
     } else if (kind == 9) {
       // A hollow reference, visibly distinct from an ordinary ranged task.
       canvas.drawCircle(Offset.zero, r + 2, fill);

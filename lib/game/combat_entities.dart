@@ -12,6 +12,19 @@ enum EnemyType {
   armoredAllocation,
   nullReference,
   duplicateRequest,
+  batch,
+  lockNode,
+}
+
+extension EnemyAvailability on EnemyType {
+  bool get isDiscoverable => const {
+    EnemyType.request,
+    EnemyType.interrupt,
+    EnemyType.batch,
+    EnemyType.rpc,
+    EnemyType.forkBomb,
+    EnemyType.deadlock,
+  }.contains(this);
 }
 
 class TaskEnemy {
@@ -22,42 +35,38 @@ class TaskEnemy {
     this.summoned = false,
     this.owner,
     this.inputVariant = 0,
+    this.generation = 0,
   }) : maxHealth = health;
   final Vector2 position;
   final int kind;
   final int inputVariant;
+  final int generation;
+  final formationOffset = Vector2.zero();
+  int retryCount = 0;
+  bool get cacheable => type == EnemyType.request || type == EnemyType.batch;
   int get inputSignature => kind * 3 + inputVariant;
   final bool summoned;
   final TaskEnemy? owner;
   EnemyType get type => EnemyType.values[kind];
-  final facing = Vector2(0, 1);
-  bool supported = false;
   double movementMultiplier = 1;
-  double get attackRate => supported ? 1.15 : 1;
-  double armorFlash = 0;
   double attackCooldown = 1.5;
   double health;
   final double maxHealth;
   double flash = 0;
-  double chargeCooldown = 2.2;
   double telegraphRemaining = 0;
-  double chargeRemaining = 0;
   final chargeDirection = Vector2.zero();
   bool get alive => health > 0;
-  double get radius => kind == 3
-      ? 25
-      : kind == 2 || kind == 8
-      ? 18
+  double get radius => type == EnemyType.deadlock
+      ? 28
+      : type == EnemyType.forkBomb
+      ? (summoned ? 9 : 18)
       : 13;
-  double get speed => switch (kind) {
-    1 => 103,
-    2 => 40,
-    3 => 62,
-    4 => 48,
-    5 => 34,
-    6 => 50,
-    7 => 38,
-    8 => 46,
+  double get speed => switch (type) {
+    EnemyType.interrupt => 103,
+    EnemyType.batch => 48,
+    EnemyType.rpc => 46,
+    EnemyType.forkBomb => summoned ? 68 : 34,
+    EnemyType.lockNode || EnemyType.deadlock => 0,
     _ => 57,
   };
 }
@@ -102,13 +111,11 @@ class RunEffect {
     this.radius = 22,
     this.healing = false,
     this.optimized = false,
-    this.dynamicCheck = false,
   });
   final Vector2 position;
   final bool pulse;
   final bool healing;
   final bool optimized;
-  final bool dynamicCheck;
   final double radius;
   double life = 0.5;
 }
@@ -122,13 +129,11 @@ class LinearProjectile {
     this.hostile = true,
     this.life = 4,
     this.radius = 6,
-    this.nullReference = false,
   });
   final Vector2 position;
   final Vector2 velocity;
   final double damage;
   final bool hostile;
-  final bool nullReference;
   final double radius;
   double life;
   final Set<TaskEnemy> hit = {};

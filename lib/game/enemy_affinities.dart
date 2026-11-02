@@ -1,28 +1,23 @@
 import 'build.dart';
 import 'combat_entities.dart';
 
-/// Explains useful behavior; specialist bonuses never require a weapon.
+/// Recommendations describe geometry and workload, never required counters.
 extension EnemyAffinities on EnemyType {
   List<Upgrade> get compatibleFeatures => switch (this) {
-    EnemyType.request || EnemyType.bufferOverflow => const [],
+    EnemyType.request => const [Upgrade.memoization],
     EnemyType.interrupt => const [Upgrade.lazyEvaluation, Upgrade.concurrency],
-    EnemyType.allocation ||
-    EnemyType.deadlock => const [Upgrade.jitCompilation],
-    EnemyType.rpc => const [Upgrade.patternMatching, Upgrade.oop],
-    EnemyType.nullReference => const [Upgrade.nullSafety],
-    EnemyType.duplicateRequest => const [
-      Upgrade.memoization,
-      Upgrade.concurrency,
-    ],
-    EnemyType.forkBomb => const [
-      Upgrade.garbageCollection,
-      Upgrade.functional,
+    EnemyType.batch => const [
       Upgrade.patternMatching,
-    ],
-    EnemyType.scheduler => const [Upgrade.patternMatching, Upgrade.functional],
-    EnemyType.armoredAllocation => const [
       Upgrade.garbageCollection,
-      Upgrade.oop,
+      Upgrade.memoization,
     ],
+    EnemyType.rpc => const [Upgrade.oop, Upgrade.patternMatching],
+    EnemyType.forkBomb => const [Upgrade.garbageCollection, Upgrade.functional],
+    EnemyType.deadlock => const [
+      Upgrade.concurrency,
+      Upgrade.oop,
+      Upgrade.jitCompilation,
+    ],
+    _ => const [],
   };
 }

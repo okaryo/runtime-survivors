@@ -87,27 +87,13 @@ void main() {
     },
   );
 
-  test('elite locks charge direction, telegraphs, charges then cools down', () {
+  test('scheduled deadlock creates a core and linked lock nodes', () {
     final run = prepared()..elapsed = 74.98;
     run.update(0.03);
-    expect(run.eliteCount, 1);
-    final elite = run.enemies.singleWhere((e) => e.kind == 3);
-    run.enemies.removeWhere((e) => e != elite);
-    elite.position.setValues(200, 0);
-    elite.chargeCooldown = 0;
-    run.update(0.01);
-    expect(elite.telegraphRemaining, greaterThan(0));
-    final direction = elite.chargeDirection.clone();
-    run.player.setValues(0, 150);
-    tick(run, 0.95);
-    expect(elite.chargeRemaining, greaterThan(0));
-    expect(elite.chargeDirection, direction);
-    final before = elite.position.clone();
-    run.update(0.05);
-    expect(elite.position.distanceTo(before), closeTo(23, 0.01));
-    tick(run, 0.8);
-    expect(elite.chargeRemaining, 0);
-    expect(elite.chargeCooldown, greaterThan(0));
+    expect(run.deadlockCount, 1);
+    expect(run.deadlocks.single.core.maxHealth, greaterThan(900));
+    expect(run.deadlocks.single.nodes.length, 3);
+    expect(run.lockBarriers.length, 2);
     expect(run.seenEnemies, contains(3));
   });
 
@@ -120,7 +106,7 @@ void main() {
     run.start();
     expect(run.objects, isEmpty);
     expect(run.rushCount, 0);
-    expect(run.eliteCount, 0);
+    expect(run.deadlockCount, 0);
     expect(run.isRush, isFalse);
     expect(run.maxHealth, 100);
     expect(run.seenUpgrades, contains(Upgrade.oop));

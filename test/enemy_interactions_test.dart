@@ -3,7 +3,6 @@ import 'dart:math';
 import 'package:flame/components.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:runtime_survivors/game/run_state.dart';
-import 'package:runtime_survivors/game/combat_rules.dart';
 import 'package:runtime_survivors/game/spawn_director.dart';
 
 import 'run_state_test.dart' show tick;
@@ -11,98 +10,19 @@ import 'run_state_test.dart' show tick;
 RunState prepared() => RunState(random: Random(9))
   ..start()
   ..enemies.clear();
+
 void main() {
-  test('directional armor mitigates frontal shots, while flanks and area attacks keep full damage', () {
-    final target = TaskEnemy(
-      Vector2.zero(),
-      kind: EnemyType.armoredAllocation.index,
-    )..facing.setValues(1, 0);
-    expect(
-      CombatRules.damage(target, 100, origin: Vector2(20, 0)),
-      closeTo(55, 0.001),
-    );
-    expect(CombatRules.damage(target, 100, origin: Vector2(-20, 0)), 100);
-    expect(CombatRules.damage(target, 100, origin: Vector2(0, 20)), 100);
-    expect(
-      CombatRules.damage(target, 100, origin: Vector2(20, 0), area: true),
-      100,
-    );
-  });
-  test('support auras do not stack and disappear when support dies', () {
-    final run = prepared();
-    final target = TaskEnemy(Vector2(100, 0), health: 99999);
-    final a = TaskEnemy(Vector2(200, 0), kind: 7, health: 99999);
-    final b = TaskEnemy(Vector2(210, 0), kind: 7, health: 99999);
-    run.enemies.addAll([target, a, b]);
-    run.update(0.01);
-    expect(target.movementMultiplier, 1.25);
-    expect(target.attackRate, 1.15);
-    expect(a.supported, isFalse);
-    a.health = 0;
-    b.health = 0;
-    run.update(0.01);
-    expect(target.supported, isFalse);
-    expect(target.movementMultiplier, 1);
-  });
-  test('death blast is telegraphed, pause freezes it, and moving out avoids damage', () {
-    final run = prepared();
-    run.enemies.add(TaskEnemy(Vector2(60, 0), kind: 6, health: 1));
-    tick(run, 0.2);
-    expect(run.hazards.length, 1);
-    final hazard = run.hazards.single;
-    run.pause();
-    final remaining = hazard.remaining;
-    tick(run, 3);
-    expect(hazard.remaining, remaining);
-    run.resume();
-    run.player.setValues(-200, 0);
-    tick(run, 1.2);
-    expect(run.health, 100);
-    expect(run.hazards, isEmpty);
-    run.hazards.add(DangerZone(run.player.clone(), warning: 0.02));
-    run.update(0.03);
-    expect(run.health, 82);
-    run.resetToSetup();
-    expect(run.hazards, isEmpty);
-  });
-  test(
-    'new specialist roles have staged introductions and a shared budget',
-    () {
-      const director = SpawnDirector();
-      final random = Random(6);
-      expect(
-        List.generate(
-          200,
-          (_) => director.choose(60, [], random),
-        ).every((k) => k < 6 || k == 10),
-        isTrue,
-      );
-      final late = List.generate(500, (_) => director.choose(220, [], random));
-      expect(late, containsAll([6, 7, 8]));
-      for (final rule in SpawnDirector.rules) {
-        final capped = [
-          for (var i = 0; i < rule.limit; i++)
-            TaskEnemy(Vector2.zero(), kind: rule.type.index),
-        ];
-        expect(
-          List.generate(
-            100,
-            (_) => director.choose(220, capped, random),
-          ).contains(rule.type.index),
-          isFalse,
-        );
-      }
-    },
-  );
-  test('duplicate requests share an input and director reserves the whole pair budget', () {
-    final run = prepared()..elapsed = 30;
-    run.update(0.01);
-    final pair = run.enemies
-        .where((e) => e.type == EnemyType.duplicateRequest)
-        .toList();
-    expect(pair.length, 2);
-    expect(pair.first.inputSignature, pair.last.inputSignature);
+  test('director offers distinct active tasks, honors batch limits and reserves first encounters', () {
     const director = SpawnDirector();
+    final random = Random(6);
+    expect(List.generate(100, (_) => director.choose(10, [], random)).toSet(), {
+      0,
+    });
+    final late = List.generate(
+      500,
+      (_) => director.choose(220, [], random),
+    ).toSet();
+    expect(late, {0, 1, 4, 5, 11});
     expect(
       SpawnDirector.rules.fold(
         0,
@@ -110,12 +30,101 @@ void main() {
       ),
       lessThanOrEqualTo(18),
     );
+    for (final rule in SpawnDirector.rules) {
+      final capped = [
+        for (var i = 0; i < rule.limit; i++)
+          TaskEnemy(Vector2.zero(), kind: rule.type.index),
+      ];
+      expect(
+        List.generate(100, (_) => director.choose(220, capped, random)),
+        isNot(contains(rule.type.index)),
+      );
+    }
     final occupied = [
       for (var i = 0; i < 3; i++) TaskEnemy(Vector2.zero(), kind: 4),
       for (var i = 0; i < 2; i++) TaskEnemy(Vector2.zero(), kind: 5),
-    ]; // Cost 17 leaves no room for a two-task batch.
-    for (var seed = 0; seed < 100; seed++) {
-      expect(director.choose(220, occupied, Random(seed)), isNot(10));
+    ];
+    expect(
+      List.generate(100, (_) => director.choose(220, occupied, random)),
+      isNot(contains(11)),
+    );
+  });
+  test('batch tasks move in a column and keep pursuing after the leader is processed', () {
+    final run = prepared()..elapsed = 30;
+    run.update(0.01);
+    final batch = run.enemies.where((e) => e.type == EnemyType.batch).toList();
+    expect(batch.length, 4);
+    final leader = batch.first;
+    for (var i = 1; i < batch.length; i++) {
+      expect(
+        batch[i].position.distanceTo(leader.position),
+        closeTo(32.0 * i, 0.001),
+      );
+      expect(batch[i].owner, same(leader));
+      expect(batch[i].cacheable, isTrue);
     }
+    leader.health = 0;
+    final follower = batch[1];
+    final distance = follower.position.distanceTo(run.player);
+    tick(run, 0.2);
+    expect(follower.position.distanceTo(run.player), lessThan(distance));
+    expect(
+      run.enemies.any((e) => e.type == EnemyType.duplicateRequest),
+      isFalse,
+    );
+  });
+  test('RPC sends, waits, then retries with a capped fan and never homes', () {
+    final run = prepared();
+    final rpc = TaskEnemy(Vector2(240, 0), kind: 4, health: 100000)
+      ..attackCooldown = 0;
+    run.enemies.add(rpc);
+    run.update(0.01);
+    final direction = rpc.chargeDirection.clone();
+    run.player.y = 50;
+    tick(run, 0.66);
+    expect(run.projectiles.where((s) => s.hostile).length, 1);
+    expect(
+      run.projectiles.first.velocity.normalized().distanceTo(direction),
+      lessThan(0.0001),
+    );
+    for (final expected in [2, 3, 3]) {
+      run.projectiles.clear();
+      rpc.attackCooldown = 0;
+      tick(run, 0.7);
+      expect(run.projectiles.where((s) => s.hostile).length, expected);
+      expect(rpc.attackCooldown, greaterThan(0));
+    }
+    run.pause();
+    final cooldown = rpc.attackCooldown;
+    tick(run, 3);
+    expect(rpc.attackCooldown, cooldown);
+  });
+  test('fork copies grow in generations, stay bounded and stop copying when the parent dies', () {
+    final run = prepared();
+    final parent = TaskEnemy(Vector2(220, 0), kind: 5, health: 100000)
+      ..attackCooldown = 0;
+    run.enemies.add(parent);
+    tick(run, 1.15);
+    final first = run.enemies.where((e) => e.summoned).toList();
+    expect(first.length, 2);
+    expect(
+      first.every((e) => e.type == EnemyType.forkBomb && e.generation == 1),
+      isTrue,
+    );
+    parent.attackCooldown = 100;
+    for (final child in first) {
+      child.health = 100000;
+      child.attackCooldown = 0;
+    }
+    tick(run, 1.2);
+    expect(run.enemies.any((e) => e.generation == 2), isTrue);
+    expect(run.enemies.where((e) => e.summoned).length, lessThanOrEqualTo(6));
+    parent.health = 0;
+    final count = run.enemies.where((e) => e.summoned).length;
+    tick(run, 1.2);
+    expect(
+      run.enemies.where((e) => e.summoned).length,
+      lessThanOrEqualTo(count),
+    );
   });
 }

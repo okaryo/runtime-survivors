@@ -38,12 +38,7 @@ void main() {
       run.upgrades[Upgrade.nullSafety] = 1;
       run.projectiles.addAll([
         LinearProjectile(Vector2(-80, -30), Vector2(180, 0), damage: 11),
-        LinearProjectile(
-          Vector2(-100, 25),
-          Vector2(180, 0),
-          damage: 11,
-          nullReference: true,
-        ),
+        LinearProjectile(Vector2(-100, 25), Vector2(180, 0), damage: 11),
         LinearProjectile(
           Vector2(70, 30),
           Vector2(640, 0),
@@ -67,7 +62,6 @@ void main() {
       run.upgrades[Upgrade.jitCompilation] = 1;
       run.upgrades[Upgrade.memoization] = 1;
       run.abilities.jitExecutions = 8;
-      run.enemies[1].supported = true;
       run.phase = RunPhase.paused;
       final key = GlobalKey();
       await tester.pumpWidget(
