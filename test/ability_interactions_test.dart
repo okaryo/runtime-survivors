@@ -152,7 +152,7 @@ void main() {
     }
     final run = prepared();
     expect(run.canUpgrade(Upgrade.pipeline), isFalse);
-    expect(run.canUpgrade(Upgrade.spatialIndex), isFalse);
+    expect(run.canUpgrade(Upgrade.spatialIndex), isTrue);
     expect(run.canUpgrade(Upgrade.coprocessor), isFalse);
     final budget = AbilityRuntime();
     expect(budget.claimHealing(10, 6), 6);

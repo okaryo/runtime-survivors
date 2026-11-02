@@ -15,7 +15,6 @@ import 'theme.dart';
 import 'encyclopedia_panel.dart';
 import 'upgrade_choices.dart';
 import 'upgrade_icon.dart';
-import 'policy_picker.dart';
 import 'runtime_hud.dart';
 
 class RuntimeScreen extends StatefulWidget {
@@ -29,7 +28,6 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
   final run = RunState();
   late final game = RuntimeGame(run);
   final focus = FocusNode();
-  TypingPolicy selectedPolicy = TypingPolicy.staticTyping;
   final _choiceFocus = FocusNode();
   final _gameWidgetKey = GlobalKey();
   void restoreFocus() {
@@ -70,7 +68,7 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
     audio.restartMusic();
     audio.unlock();
     game.inputBlocked = _modalOpen;
-    run.start(policy: selectedPolicy);
+    run.start();
     game.refresh();
     restoreFocus();
   }
@@ -89,14 +87,6 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
     game.inputBlocked = false;
     audio.unlock();
     run.choose(upgrade);
-    game.refresh();
-    restoreFocus();
-  }
-
-  void choosePolicy(PolicyUpgrade upgrade) {
-    if (_modalOpen) return;
-    audio.unlock();
-    run.choosePolicy(upgrade);
     game.refresh();
     restoreFocus();
   }
@@ -143,21 +133,7 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
       ),
       builder: (context, _, encyclopedia) => CallbackShortcuts(
         bindings: run.phase == RunPhase.ready
-            ? {
-                const SingleActivator(LogicalKeyboardKey.digit1): () {
-                  if (run.phase == RunPhase.ready) {
-                    setState(() => selectedPolicy = TypingPolicy.staticTyping);
-                  }
-                },
-                const SingleActivator(LogicalKeyboardKey.digit2): () {
-                  if (run.phase == RunPhase.ready) {
-                    setState(() => selectedPolicy = TypingPolicy.dynamicTyping);
-                  }
-                },
-                const SingleActivator(LogicalKeyboardKey.enter): () {
-                  if (run.phase == RunPhase.ready) start();
-                },
-              }
+            ? {const SingleActivator(LogicalKeyboardKey.enter): start}
             : const {},
         child: Scaffold(
           body: LayoutBuilder(
@@ -341,7 +317,6 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
                   run: run,
                   text: text,
                   onChoose: choose,
-                  onChoosePolicy: choosePolicy,
                   focusNode: _choiceFocus,
                   safeInsets: safeInsets,
                 ),
@@ -393,26 +368,6 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
             ),
           ],
         ),
-        if (run.typingPolicy != null) ...[
-          const SizedBox(height: 10),
-          Text(
-            '${text('policyCurrent')}: ${text.policyName(run.typingPolicy!)}',
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-          ),
-          Text(
-            text('policySummary.${run.typingPolicy!.name}', {
-              'count': run.typingPolicy == TypingPolicy.staticTyping
-                  ? run.scanTargets
-                  : run.policyCoverage,
-              'bonus': (run.policyBonus * 100).round(),
-            }),
-            style: const TextStyle(fontSize: 12, height: 1.4, color: muted),
-          ),
-          Text(
-            'Lv.${run.policyRank}',
-            style: const TextStyle(fontSize: 12, color: muted),
-          ),
-        ],
         const SizedBox(height: 12),
         for (final feature in [true, false]) ...[
           badge(
@@ -570,48 +525,25 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
         icon: Icon(icon, size: 20),
         label: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
       );
-  Widget welcome() => LayoutBuilder(
-    builder: (context, constraints) {
-      final intro = Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text(
-            'Hello, runtime.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: darkText,
-              fontSize: 32,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 12),
-          darkBody(text('welcomeBody')),
-          const SizedBox(height: 20),
-          action(text('start'), Icons.play_arrow, start),
-          const SizedBox(height: 14),
-          darkBody(text('controls')),
-        ],
-      );
-      final policy = PolicyPicker(
-        selected: selectedPolicy,
-        text: text,
-        onChanged: (value) => setState(() => selectedPolicy = value),
-      );
-      if (constraints.maxWidth < 650) {
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [intro, const SizedBox(height: 24), policy],
-        );
-      }
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(child: intro),
-          const SizedBox(width: 28),
-          Expanded(child: policy),
-        ],
-      );
-    },
+  Widget welcome() => Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      const Text(
+        'Hello, runtime.',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: darkText,
+          fontSize: 32,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+      const SizedBox(height: 12),
+      darkBody(text('welcomeBody')),
+      const SizedBox(height: 20),
+      action(text('start'), Icons.play_arrow, start),
+      const SizedBox(height: 14),
+      darkBody(text('controls')),
+    ],
   );
   Widget paused() => Column(
     mainAxisSize: MainAxisSize.min,
@@ -629,7 +561,7 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
   );
   Widget result() => LayoutBuilder(
     builder: (context, constraints) {
-      final profile = LanguageProfile.analyze(run.typingPolicy, run.upgrades);
+      final profile = LanguageProfile.analyze(run.upgrades);
       final summary = Column(
         mainAxisSize: MainAxisSize.min,
         children: [

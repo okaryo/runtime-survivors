@@ -13,7 +13,7 @@ void main() {
     ],
     [
       Upgrade.ownership,
-      Upgrade.nullSafety,
+      Upgrade.functional,
       Upgrade.oop,
       Upgrade.jitCompilation,
     ],
@@ -28,8 +28,7 @@ void main() {
     test(
       'five-minute interaction loadout $i stays bounded and resets all ability state',
       () {
-        final run = RunState(random: Random(91 + i))
-          ..start(policy: TypingPolicy.values[i % 2]);
+        final run = RunState(random: Random(91 + i))..start();
         run.upgrades.addAll({for (final feature in loadouts[i]) feature: 4});
         final infrastructure = [
           [
@@ -39,7 +38,7 @@ void main() {
             Upgrade.clock,
           ],
           [
-            Upgrade.coprocessor,
+            Upgrade.spatialIndex,
             Upgrade.memoryProtection,
             Upgrade.memory,
             Upgrade.compiler,
@@ -57,7 +56,6 @@ void main() {
           frame < 6010 && run.phase != RunPhase.won;
           frame++
         ) {
-          if (run.policyChoicePending) run.choosePolicy(PolicyUpgrade.coverage);
           if (run.phase == RunPhase.choosing) run.choose(run.choices.first);
           run.health = run.maxHealth - 10;
           run.update(0.05);
@@ -84,17 +82,16 @@ void main() {
       },
     );
   }
-  for (final policy in TypingPolicy.values) {
+  for (final seed in [45, 82]) {
     test(
-      'seeded five-minute $policy run keeps combat populations bounded and resets cleanly',
+      'seeded five-minute $seed run keeps combat populations bounded and resets cleanly',
       () {
-        final run = RunState(random: Random(45))..start(policy: policy);
+        final run = RunState(random: Random(seed))..start();
         for (
           var frame = 0;
           frame < 6010 && run.phase != RunPhase.won;
           frame++
         ) {
-          if (run.policyChoicePending) run.choosePolicy(PolicyUpgrade.coverage);
           if (run.phase == RunPhase.choosing) run.choose(run.choices.first);
           // Exercise all wave boundaries without ending this simulation on damage.
           run.health = run.maxHealth;
@@ -117,9 +114,8 @@ void main() {
         expect(run.phase, RunPhase.won);
         expect(run.seenEnemies, containsAll([4, 5, 6, 7, 8, 9, 10]));
         expect(run.rushCount, 6);
-        run.start(policy: policy);
+        run.start();
         expect(run.projectiles, isEmpty);
-        expect(run.policyRank, 1);
         expect(run.shieldTimer, 0);
         expect(run.upgrades, isEmpty);
         expect(run.health, 100);

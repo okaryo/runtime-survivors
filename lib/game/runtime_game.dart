@@ -88,16 +88,7 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
           LogicalKeyboardKey.digit2,
           LogicalKeyboardKey.digit3,
         ].indexOf(event.logicalKey);
-        if (run.policyChoicePending &&
-            index >= 0 &&
-            index < PolicyUpgrade.values.length) {
-          run.choosePolicy(PolicyUpgrade.values[index]);
-          refresh();
-          return KeyEventResult.handled;
-        }
-        if (!run.policyChoicePending &&
-            index >= 0 &&
-            index < run.choices.length) {
+        if (index >= 0 && index < run.choices.length) {
           run.choose(run.choices[index]);
           refresh();
           return KeyEventResult.handled;
@@ -436,28 +427,6 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
         alert: enemy.telegraphRemaining > 0 || enemy.chargeRemaining > 0,
         time: run.elapsed + enemy.position.x * 0.01,
       );
-      if (enemy.checked) {
-        final markColor = run.typingPolicy == TypingPolicy.staticTyping
-            ? const Color(0xFFFFD36D)
-            : const Color(0xFF9EDFFF);
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(
-            Rect.fromCircle(center: Offset.zero, radius: enemy.radius + 5),
-            const Radius.circular(4),
-          ),
-          Paint()
-            ..color = markColor
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 1.8,
-        );
-        _text(
-          canvas,
-          run.typingPolicy == TypingPolicy.staticTyping ? '✓' : '◆',
-          Offset(enemy.radius + 2, -enemy.radius - 14),
-          markColor,
-          12,
-        );
-      }
       if (run.rank(Upgrade.memoization) > 0) {
         for (var i = 0; i <= enemy.inputVariant; i++) {
           canvas.drawCircle(

@@ -31,7 +31,9 @@ double processWork(Upgrade? feature) {
 }
 
 void main() {
-  for (final feature in Upgrade.values.where((u) => u.isFeature)) {
+  for (final feature in Upgrade.values.where(
+    (u) => u.isAvailable && u.isFeature,
+  )) {
     test(
       'first $feature increases processing without requiring another Feature',
       () {
@@ -39,14 +41,24 @@ void main() {
       },
     );
   }
-  test('taking any Feature preserves base damage, targeting and memory', () {
-    final baseline = BuildStats.snapshot({});
-    for (final feature in Upgrade.values.where((u) => u.isFeature)) {
-      final stats = BuildStats.snapshot({feature: 1});
-      expect(stats.attackDamage, greaterThanOrEqualTo(baseline.attackDamage));
-      expect(stats.attackInterval, lessThanOrEqualTo(baseline.attackInterval));
-      expect(stats.maxHealth, greaterThanOrEqualTo(baseline.maxHealth));
-      expect(stats.attackRange, greaterThanOrEqualTo(baseline.attackRange));
-    }
-  });
+  test(
+    'feature tradeoffs are explicit without removing targeting or movement',
+    () {
+      final baseline = BuildStats.snapshot({});
+      for (final feature in Upgrade.values.where(
+        (u) => u.isAvailable && u.isFeature,
+      )) {
+        final stats = BuildStats.snapshot({feature: 1});
+        expect(stats.attackRange, baseline.attackRange);
+        expect(stats.speed, baseline.speed);
+      }
+      final concurrency = BuildStats.snapshot({Upgrade.concurrency: 1});
+      expect(concurrency.attackDamage, lessThan(baseline.attackDamage));
+      expect(
+        concurrency.attackDamage * concurrency.targetCount,
+        greaterThan(baseline.attackDamage),
+      );
+      expect(BuildStats.snapshot({Upgrade.memoization: 1}).maxHealth, 92);
+    },
+  );
 }

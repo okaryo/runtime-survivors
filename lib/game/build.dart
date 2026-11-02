@@ -1,7 +1,5 @@
 import 'dart:math';
 
-enum TypingPolicy { staticTyping, dynamicTyping }
-
 enum Upgrade {
   garbageCollection,
   concurrency,
@@ -27,14 +25,13 @@ enum Upgrade {
 extension UpgradeInfo on Upgrade {
   int get maxRank => isFeature ? 4 : 6;
 
-  // Kept as a stable discovery ID; its cooldown role now belongs to Compiler.
-  bool get isAvailable => this != Upgrade.pipeline;
+  // Stable IDs retain discovery records for abilities removed from this prototype.
+  bool get isAvailable =>
+      this != Upgrade.pipeline &&
+      this != Upgrade.coprocessor &&
+      this != Upgrade.nullSafety;
 
-  Set<Upgrade> get requiresAny => switch (this) {
-    Upgrade.spatialIndex => {Upgrade.garbageCollection, Upgrade.lazyEvaluation},
-    Upgrade.coprocessor => {Upgrade.oop},
-    _ => const {},
-  };
+  Set<Upgrade> get requiresAny => const {};
 
   String get symbol => switch (this) {
     Upgrade.garbageCollection => 'GC',
@@ -73,34 +70,25 @@ extension UpgradeInfo on Upgrade {
   };
 }
 
-enum PolicyUpgrade { coverage, potency }
-
 /// Shared stat formulas for live combat and immutable upgrade snapshots.
 class BuildStats {
   BuildStats.live(this._ranks);
-  BuildStats.snapshot(
-    Map<Upgrade, int> ranks, {
-    this.policy,
-    this.policyCoverage = 0,
-    this.policyPotency = 0,
-    this.jitOptimized = false,
-  }) : _ranks = Map.unmodifiable(ranks);
+  BuildStats.snapshot(Map<Upgrade, int> ranks, {this.jitOptimized = false})
+    : _ranks = Map.unmodifiable(ranks);
   final Map<Upgrade, int> _ranks;
-  TypingPolicy? policy;
-  int policyCoverage = 0;
-  int policyPotency = 0;
   bool jitOptimized = false;
   int rank(Upgrade upgrade) => _ranks[upgrade] ?? 0;
-  double get maxHealth => 100 + 25.0 * rank(Upgrade.memory);
+  double get reservedMemory => 8.0 * rank(Upgrade.memoization);
+  double get maxHealth => 100 + 25.0 * rank(Upgrade.memory) - reservedMemory;
   double get speed => 185.0 * (1 + 0.08 * rank(Upgrade.clock));
   double get pickupRadius => 66 + 22.0 * rank(Upgrade.cache);
-  double get attackRange => 300 + 12.0 * rank(Upgrade.cache);
+  double get attackRange => (300 + 12.0 * rank(Upgrade.cache)) * areaScale;
   double get cooldownScale => pow(0.92, rank(Upgrade.compiler)).toDouble();
   double get objectDamage => 16 + rank(Upgrade.oop) * 4.0;
-  double get objectInterval =>
-      max(0.25, 0.9 * pow(0.92, rank(Upgrade.coprocessor)) * cooldownScale);
-  double get chainRadius => 155;
-  double get attackDamage => 24;
+  double get objectInterval => 0.9 * cooldownScale;
+  double get chainRadius => 155 * areaScale;
+  double get objectRange => 235 * areaScale;
+  double get attackDamage => 24.0 * pow(0.92, rank(Upgrade.concurrency));
   double get jitSpeedBonus => 0.25 + rank(Upgrade.jitCompilation) * 0.15;
   double get attackInterval =>
       max(0.12, 0.62 * cooldownScale / (jitOptimized ? 1 + jitSpeedBonus : 1));
@@ -111,13 +99,15 @@ class BuildStats {
   double get nullRadius => 95 + rank(Upgrade.nullSafety) * 8.0;
   double get nullInterval => 1.8 * cooldownScale;
   double get patternDamage => 30.0 + rank(Upgrade.patternMatching) * 12;
-  double get patternRadius => 4.0 + rank(Upgrade.patternMatching) * 2;
+  double get patternRadius =>
+      (4.0 + rank(Upgrade.patternMatching) * 2) * areaScale;
   double get patternInterval => 2.8 * cooldownScale;
   int get targetCount => 1 + rank(Upgrade.concurrency);
   double get areaScale => 1 + 0.10 * rank(Upgrade.spatialIndex);
   double get gcRadius =>
       (115 + rank(Upgrade.garbageCollection) * 18.0) * areaScale;
-  double get gcDamage => 22 + rank(Upgrade.garbageCollection) * 14.0;
+  double get gcDamage => 30 + rank(Upgrade.garbageCollection) * 18.0;
+  double get gcPause => 0.18;
   double get gcInterval => 3 * cooldownScale;
   double get slowRadius =>
       (90 + rank(Upgrade.lazyEvaluation) * 15.0) * areaScale;
@@ -130,12 +120,8 @@ class BuildStats {
   double get ownershipInterval => 1.6 * cooldownScale;
   double get ownershipHeal => 1.0 + rank(Upgrade.ownership);
   double get ownershipCap => 4.0 + rank(Upgrade.ownership) * 2;
-  double get ownershipRadius => 105;
+  double get ownershipRadius => 105 * areaScale;
   double get hitInvulnerability => 0.65 + rank(Upgrade.memoryProtection) * 0.08;
-  int get scanTargets => 2 + policyCoverage * 2;
-  int get dynamicSpread => policyCoverage;
-  double get policyBonus =>
-      (policy == TypingPolicy.staticTyping ? 0.5 : 0.3) + policyPotency * 0.15;
 }
 
 class UpgradePreview {

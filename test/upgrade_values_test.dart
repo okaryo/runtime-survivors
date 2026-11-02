@@ -10,13 +10,13 @@ void main() {
       () {
         final run = RunState()..start();
         final gc = text.comparisons(run.preview(Upgrade.garbageCollection));
-        expect(gc.map((c) => c.values), ['36', '133', '3.00s']);
+        expect(gc.map((c) => c.values), ['48', '133', '0.18s']);
         final oop = text.comparisons(run.preview(Upgrade.oop));
         expect(oop.map((c) => c.values), ['1', '20', '0.90s']);
         final fp = text.comparisons(run.preview(Upgrade.functional));
         expect(fp.map((c) => c.values), ['1']);
         final concurrency = text.comparisons(run.preview(Upgrade.concurrency));
-        expect(concurrency.map((c) => c.values), ['1 → 2']);
+        expect(concurrency.map((c) => c.values), ['1 → 2', '24 → 22.1']);
         for (final upgrade in Upgrade.values.where(
           (u) => u.isAvailable && !u.isFeature,
         )) {
@@ -45,7 +45,7 @@ void main() {
             .comparisons(run.preview(Upgrade.garbageCollection))
             .take(2)
             .map((c) => c.values),
-        ['36 → 50', '133 → 151'],
+        ['48 → 66', '133 → 151'],
       );
       expect(
         text.comparisons(run.preview(Upgrade.oop)).take(2).map((c) => c.values),

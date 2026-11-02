@@ -58,13 +58,6 @@ class RunState {
   double _gcTimer = 3;
   double _patternTimer = 0;
   double shieldTimer = 0;
-  bool policyChoicePending = false;
-  int get policyCoverage => _stats.policyCoverage;
-  int get policyPotency => _stats.policyPotency;
-  int get policyRank => 1 + policyCoverage + policyPotency;
-  double get policyBonus => _stats.policyBonus;
-  int get scanTargets => _stats.scanTargets;
-  TypingPolicy? get typingPolicy => _stats.policy;
   bool get shieldReady => rank(Upgrade.nullSafety) > 0 && shieldTimer <= 0;
   static const featureSlots = 4;
   static const infraSlots = 4;
@@ -102,16 +95,12 @@ class RunState {
     return '${(seconds ~/ 60).toString().padLeft(2, '0')}:${(seconds % 60).toString().padLeft(2, '0')}';
   }
 
-  void resetToSetup() => _initialize(null, RunPhase.ready);
+  void resetToSetup() => _initialize(RunPhase.ready);
 
-  void start({TypingPolicy? policy}) => _initialize(policy, RunPhase.running);
+  void start() => _initialize(RunPhase.running);
 
-  void _initialize(TypingPolicy? policy, RunPhase initialPhase) {
-    _stats.policy = policy;
+  void _initialize(RunPhase initialPhase) {
     _stats.jitOptimized = false;
-    _stats.policyCoverage = 0;
-    _stats.policyPotency = 0;
-    policyChoicePending = false;
     phase = initialPhase;
     player.setZero();
     movement.setZero();
@@ -196,7 +185,6 @@ class RunState {
         xp -= nextLevelXp;
         level++;
         health = min(maxHealth, health + 35);
-        if (_offerPolicyUpgrade()) return;
       }
       log(const RunLog('log.maintenance'));
       cues.add(SoundCue.levelUp);
@@ -225,55 +213,20 @@ class RunState {
     } else {
       choices = available.take(3).toList();
     }
-    _offerPolicyUpgrade();
     log(RunLog('log.level', args: {'level': level}));
     cues.add(SoundCue.levelUp);
-  }
-
-  bool _offerPolicyUpgrade() {
-    if (typingPolicy == null || ![5, 10, 15].contains(level)) return false;
-    policyChoicePending = true;
-    phase = RunPhase.choosing;
-    movement.setZero();
-    cues.add(SoundCue.levelUp);
-    return true;
-  }
-
-  /// A bonus decision: the queued Feature/Infra choice is still awarded.
-  void choosePolicy(PolicyUpgrade upgrade) {
-    if (phase != RunPhase.choosing || !policyChoicePending) return;
-    switch (upgrade) {
-      case PolicyUpgrade.coverage:
-        _stats.policyCoverage++;
-      case PolicyUpgrade.potency:
-        _stats.policyPotency++;
-    }
-    policyChoicePending = false;
-    abilities.scanTimer = 0;
-    log(RunLog('log.policy', args: {'rank': policyRank}));
-    cues.add(SoundCue.select);
-    if (choices.isEmpty) {
-      phase = RunPhase.running;
-      _checkLevel();
-    }
   }
 
   /// Predicts an acquisition without mutating combat, RNG, ranks or HP.
   UpgradePreview preview(Upgrade upgrade) {
     final before = BuildStats.snapshot(
       upgrades,
-      policy: typingPolicy,
-      policyCoverage: policyCoverage,
-      policyPotency: policyPotency,
       jitOptimized: _stats.jitOptimized,
     );
-    final after = BuildStats.snapshot(
-      {...upgrades, upgrade: rank(upgrade) + 1},
-      policy: typingPolicy,
-      policyCoverage: policyCoverage,
-      policyPotency: policyPotency,
-      jitOptimized: _stats.jitOptimized,
-    );
+    final after = BuildStats.snapshot({
+      ...upgrades,
+      upgrade: rank(upgrade) + 1,
+    }, jitOptimized: _stats.jitOptimized);
     return UpgradePreview(
       upgrade: upgrade,
       before: before,
@@ -287,9 +240,7 @@ class RunState {
   }
 
   void choose(Upgrade upgrade) {
-    if (phase != RunPhase.choosing ||
-        policyChoicePending ||
-        !choices.contains(upgrade)) {
+    if (phase != RunPhase.choosing || !choices.contains(upgrade)) {
       return;
     }
     if (!canUpgrade(upgrade)) return;
@@ -391,7 +342,7 @@ class RunState {
     if (phase == RunPhase.lost) return;
     _updateObjects(dt);
     _attackTimer -= dt;
-    if (_attackTimer <= 0) {
+    if (_attackTimer <= 0 && abilities.gcPause <= 0) {
       final targets =
           enemies
               .where(
@@ -512,6 +463,7 @@ class RunState {
           _damage(enemy, gcDamage);
         }
         _gcTimer = _stats.gcInterval;
+        abilities.gcPause = _stats.gcPause;
       }
     }
     enemies.removeWhere((enemy) => !enemy.alive);
@@ -546,27 +498,6 @@ class RunState {
 
   void _updateAbilities(double dt) {
     abilities.advance(dt);
-    if (typingPolicy == TypingPolicy.staticTyping && abilities.scanTimer <= 0) {
-      final candidates =
-          enemies
-              .where(
-                (e) =>
-                    e.alive &&
-                    !e.firstHitConsumed &&
-                    !e.checked &&
-                    e.position.distanceTo(player) <= attackRange,
-              )
-              .toList()
-            ..sort(
-              (a, b) => a.position
-                  .distanceToSquared(player)
-                  .compareTo(b.position.distanceToSquared(player)),
-            );
-      for (final enemy in candidates.take(scanTargets)) {
-        enemy.checked = true;
-      }
-      abilities.scanTimer = 1;
-    }
     if (rank(Upgrade.lazyEvaluation) > 0 &&
         abilities.fieldTimer <= 0 &&
         abilities.fields.length < 3) {
@@ -735,7 +666,8 @@ class RunState {
                 .where(
                   (enemy) =>
                       enemy.alive &&
-                      enemy.position.distanceTo(object.position) <= 235,
+                      enemy.position.distanceTo(object.position) <=
+                          _stats.objectRange,
                 )
                 .toList()
               ..sort(
@@ -947,46 +879,9 @@ class RunState {
 
   void _damage(TaskEnemy enemy, double damage, {Vector2? origin}) {
     if (!enemy.alive) return;
-    var policyMultiplier = 1.0;
-    if (typingPolicy == TypingPolicy.staticTyping) {
-      if (enemy.checked && !enemy.firstHitConsumed) {
-        policyMultiplier += policyBonus;
-        enemy.checked = false;
-        effects.add(
-          RunEffect(enemy.position.clone(), radius: 24, optimized: true),
-        );
-      }
-      enemy.firstHitConsumed = true;
-    } else if (typingPolicy == TypingPolicy.dynamicTyping) {
-      if (enemy.checked) {
-        policyMultiplier += policyBonus;
-        effects.add(
-          RunEffect(enemy.position.clone(), radius: 20, dynamicCheck: true),
-        );
-      } else {
-        enemy.checked = true;
-        final neighbors =
-            enemies
-                .where(
-                  (e) =>
-                      e.alive &&
-                      !e.checked &&
-                      e.position.distanceTo(enemy.position) <= 100,
-                )
-                .toList()
-              ..sort(
-                (a, b) => a.position
-                    .distanceToSquared(enemy.position)
-                    .compareTo(b.position.distanceToSquared(enemy.position)),
-              );
-        for (final neighbor in neighbors.take(_stats.dynamicSpread)) {
-          neighbor.checked = true;
-        }
-      }
-    }
     enemy.health -= CombatRules.damage(
       enemy,
-      damage * policyMultiplier,
+      damage,
       origin: origin,
       area: origin == null,
     );

@@ -14,19 +14,14 @@ class GameText {
     return value;
   }
 
-  String policyName(TypingPolicy policy) => call('policy.${policy.name}.title');
   String profileTitle(LanguageProfile profile) => profile.language == 'custom'
       ? call('profile.custom')
       : call('profile.affinity', {'language': profile.language});
   String profileDescription(LanguageProfile profile) {
-    final policy = profile.policy == null
-        ? call('profile.unspecified')
-        : policyName(profile.policy!);
     final features = profile.dominantFeatures
         .map((u) => '${title(u)} Lv.${profile.investments[u]}')
         .join(' / ');
     return call('profile.description', {
-      'policy': policy,
       'features': features.isEmpty ? call('emptyFeatures') : features,
     });
   }
@@ -73,10 +68,21 @@ class GameText {
       Upgrade.garbageCollection => [
         value('stat.pulseDamage', before.gcDamage, after.gcDamage),
         value('stat.radius', before.gcRadius, after.gcRadius),
-        seconds('stat.abilityInterval', before.gcInterval, after.gcInterval),
+        metric(
+          'stat.gcPause',
+          first ? null : '${before.gcPause.toStringAsFixed(2)}s',
+          '${after.gcPause.toStringAsFixed(2)}s',
+          cost: true,
+        ),
       ],
       Upgrade.concurrency => [
         metric('stat.targets', before.targetCount, after.targetCount),
+        metric(
+          'stat.damage',
+          number(before.attackDamage),
+          number(after.attackDamage),
+          cost: true,
+        ),
       ],
       Upgrade.oop => [
         metric(
@@ -148,6 +154,7 @@ class GameText {
           before.memoDamage * 1.8,
           after.memoDamage * 1.8,
         ),
+        hp(cost: true),
       ],
       Upgrade.jitCompilation => [
         metric(
@@ -170,18 +177,16 @@ class GameText {
         ),
       ],
       Upgrade.spatialIndex => [
-        if (after.rank(Upgrade.garbageCollection) > 0)
-          metric(
-            'stat.radius',
-            number(before.gcRadius),
-            number(after.gcRadius),
-          ),
-        if (after.rank(Upgrade.lazyEvaluation) > 0)
-          metric(
-            'stat.slowRadius',
-            number(before.slowRadius),
-            number(after.slowRadius),
-          ),
+        metric(
+          'stat.range',
+          number(before.attackRange),
+          number(after.attackRange),
+        ),
+        metric(
+          'stat.areaScale',
+          '${(before.areaScale * 100).round()}%',
+          '${(after.areaScale * 100).round()}%',
+        ),
       ],
       Upgrade.coprocessor => [
         seconds(
@@ -240,6 +245,8 @@ class GameText {
   });
 
   static const copy = <String, List<String>>{
+    'stat.gcPause': ['回収時の通常攻撃待機', 'Base pause on collection'],
+    'stat.areaScale': ['攻撃範囲の倍率', 'Attack area scale'],
     'enemy.9.title': ['Null参照', 'Null reference'],
     'enemy.9.description': [
       '中身のない参照からNull弾を放つ。Null Safetyなら強く処理でき、防壁でNull弾や接触を防げる。',
@@ -259,50 +266,6 @@ class GameText {
     'jitAnalyzing': ['JIT 解析中 {count}/8', 'JIT analysis {count}/8'],
     'jitReady': ['JIT 最適化済み', 'JIT optimized'],
     'memoStatus': ['保存済み入力：{count}種類', 'Cached inputs: {count}'],
-    'policySummary.staticTyping': [
-      '事前検査 {count}体・初撃 +{bonus}%',
-      'Pre-check {count} tasks · opening hit +{bonus}%',
-    ],
-    'policySummary.dynamicTyping': [
-      '検査済みへの攻撃 +{bonus}%・伝播 {count}体',
-      'Checked hits +{bonus}% · spread to {count}',
-    ],
-    'policyUpgradeTitle': ['型付けを強化', 'Develop your typing policy'],
-    'policyUpgradeHint': [
-      '追加の設計選択です。この後、通常の能力も選べます。',
-      'A bonus design choice. Your regular upgrade follows.',
-    ],
-    'policyUpgradeControls': ['1 / 2 で選択', '1 / 2 to choose'],
-    'policyUpgrade.coverage': ['検査範囲を広げる', 'Expand checks'],
-    'policyUpgrade.potency': ['検査の効果を高める', 'Empower checks'],
-    'policyUpgrade.coverage.staticTyping': [
-      '事前に印を付ける対象数を増やします。',
-      'Marks more tasks before they are hit.',
-    ],
-    'policyUpgrade.coverage.dynamicTyping': [
-      '命中時の検査を近くの敵にも伝えます。',
-      'Spreads impact checks to nearby tasks.',
-    ],
-    'policyUpgrade.potency.description': [
-      '印の付いた敵へのダメージ加算を高めます。',
-      'Increases the damage bonus against marked tasks.',
-    ],
-    'policyUpgrade.coverage.value': [
-      '検査対象 {before} → {after}体',
-      'Checked tasks {before} → {after}',
-    ],
-    'policyUpgrade.spread.value': [
-      '伝播先 {before} → {after}体',
-      'Spread targets {before} → {after}',
-    ],
-    'policyUpgrade.potency.value': [
-      'ダメージ加算 +{before}% → +{after}%',
-      'Damage bonus +{before}% → +{after}%',
-    ],
-    'log.policy': [
-      '型付けの設計をLv.{rank}へ強化',
-      'Typing design upgraded to Lv.{rank}',
-    ],
     'log.optimized': [
       'JITの解析が完了。通常攻撃を高速化',
       'JIT analysis complete. Rapid fire enabled',
@@ -352,7 +315,7 @@ class GameText {
     ],
     'pipeline.matchup': ['並行処理・連鎖の起点', 'More concurrent volleys and chains'],
     'bandwidth.matchup': ['動く敵に弾を届かせる', 'Deliver shots to moving enemies'],
-    'spatialIndex.matchup': ['GC・遅延評価の範囲', 'GC and Lazy Evaluation areas'],
+    'spatialIndex.matchup': ['射程と複数の攻撃範囲', 'Targeting range and attack areas'],
     'coprocessor.matchup': ['OOPの独立攻撃', 'Independent OOP attacks'],
     'memoryProtection.matchup': [
       '連続被弾からの立て直し',
@@ -373,8 +336,8 @@ class GameText {
       'Stores completed results. Fires stronger, faster cache shots at tasks with the same input.',
     ],
     'memoization.tradeoff': [
-      '初めての入力にも通常の処理弾を撃つ。入力の印が同じなら結果を再利用。',
-      'New inputs still receive normal shots. Matching input marks reuse the result.',
+      '結果の保存領域として、使える最大メモリの一部を予約。',
+      'Reserves part of maximum memory for cached results.',
     ],
     'jitCompilation.title': ['JITコンパイル', 'JIT Compilation'],
     'jitCompilation.description': [
@@ -394,15 +357,12 @@ class GameText {
       '回復には時間あたりの上限があり、召喚雑魚からは回復しない。',
       'Healing is rate-limited; summoned tasks grant no healing.',
     ],
-    'spatialIndex.title': ['空間インデックス', 'Spatial Index'],
+    'spatialIndex.title': ['広域化', 'Spatial Expansion'],
     'spatialIndex.description': [
-      'GCと、新しく設置する遅延評価の攻撃範囲を広げます。',
-      'Expands GC pulses and newly placed Lazy Evaluation traps.',
+      '通常攻撃の射程、範囲攻撃、設置攻撃、連鎖距離や貫通弾の幅を広げます。',
+      'Expands targeting range, area attacks, traps, chain reach and piercing width.',
     ],
-    'spatialIndex.tradeoff': [
-      'GCまたは遅延評価の取得後に出現。',
-      'Offered after GC or Lazy Evaluation.',
-    ],
+    'spatialIndex.tradeoff': ['なし', 'None'],
     'coprocessor.title': ['補助プロセッサ', 'Coprocessor'],
     'coprocessor.description': [
       'OOPのオブジェクトが攻撃する間隔を短縮します。',
@@ -500,38 +460,14 @@ class GameText {
     ],
     'shieldReady': ['防壁：準備完了', 'Shield: ready'],
     'shieldCharging': ['防壁：{seconds}秒', 'Shield: {seconds}s'],
-    'policyTitle': ['型付けの設計方針', 'Typing policy'],
-    'policy.staticTyping.title': ['Static Typing', 'Static Typing'],
-    'policy.dynamicTyping.title': ['Dynamic Typing', 'Dynamic Typing'],
-    'policy.staticTyping.description': [
-      '事前検査で周囲の敵に金色の印を付け、印のある敵への初撃を強化します。',
-      'Pre-checks nearby tasks with gold marks, empowering the first hit on each marked task.',
-    ],
-    'policy.staticTyping.cost': [
-      '初撃に強い設計。途中の設計強化で検査対象数か効果を伸ばせます。',
-      'Strong opening hits. Later design upgrades improve coverage or power.',
-    ],
-    'policy.dynamicTyping.description': [
-      '命中時に敵を検査して青い印を付け、その敵への後続の攻撃を強化します。',
-      'Checks tasks on impact with blue marks, empowering subsequent hits on them.',
-    ],
-    'policy.dynamicTyping.cost': [
-      '継続処理に強い設計。途中の設計強化で検査の伝播か効果を伸ばせます。',
-      'Strong repeated hits. Later design upgrades improve propagation or power.',
-    ],
-    'policyKeys': [
-      '1 / 2 で方針選択 · Enter で起動',
-      '1 / 2 selects a policy · Enter starts the run',
-    ],
-    'policyCurrent': ['設計方針', 'Typing policy'],
     'resultBuild': ['取得した能力', 'Your build'],
     'profile.label': ['今回の言語プロフィール', 'Your language profile'],
     'profile.custom': ['独自設計の言語', 'An original language'],
     'profile.affinity': ['{language}寄りの言語', 'A {language}-leaning language'],
     'profile.unspecified': ['型付け未選択', 'No typing policy selected'],
     'profile.description': [
-      '{policy}を採用。主に伸ばした機能：{features}。',
-      '{policy}. Main investments: {features}.',
+      '主に伸ばした機能：{features}。',
+      'Main investments: {features}.',
     ],
     'newUpgrade': ['New', 'New'],
     'featureBadge': ['言語機能', 'FEATURE'],
@@ -613,7 +549,7 @@ class GameText {
     ],
     'nextRank': ['ランク {from} → {to}', 'Rank {from} → {to}'],
     'change': ['今回の強化', 'This upgrade'],
-    'tradeoff': ['性質・制約', 'Notes'],
+    'tradeoff': ['トレードオフ', 'Tradeoff'],
     'implement': ['実装する', 'Implement'],
     'noTradeoff': ['なし', 'None'],
     'pauseTitle': ['ひと息、つこう。', 'Take a breath.'],
@@ -680,8 +616,8 @@ class GameText {
       'Sweeps the surrounding area, processing crowded tasks together.',
     ],
     'garbageCollection.tradeoff': [
-      '攻撃の合間があるため、近づくタイミングが重要。',
-      'Pulses have downtime; time your approach.',
+      '回収の瞬間、通常攻撃が短く待機。移動や他のFeatureは止まらない。',
+      'Collection briefly pauses base attacks. Movement and other features continue.',
     ],
     'concurrency.title': ['並行処理', 'Concurrency'],
     'concurrency.description': [
@@ -689,8 +625,8 @@ class GameText {
       'Attacks several nearby tasks at the same time.',
     ],
     'concurrency.tradeoff': [
-      '単体への攻撃数は増えない。',
-      'Does not add shots against a single target.',
+      '処理を分散するため、通常弾の単発威力が下がる。',
+      'Spreading work reduces damage per base shot.',
     ],
     'oop.title': ['オブジェクト指向', 'Object-Oriented Programming'],
     'oop.description': [

@@ -27,8 +27,6 @@ class TaskEnemy {
   final int kind;
   final int inputVariant;
   int get inputSignature => kind * 3 + inputVariant;
-  bool checked = false;
-  bool firstHitConsumed = false;
   final bool summoned;
   final TaskEnemy? owner;
   EnemyType get type => EnemyType.values[kind];

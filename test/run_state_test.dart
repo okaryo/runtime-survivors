@@ -64,13 +64,13 @@ void main() {
       Upgrade.garbageCollection,
       Upgrade.lazyEvaluation,
       Upgrade.oop,
-      Upgrade.nullSafety,
+      Upgrade.functional,
     ]) {
       run.upgrades[feature] = 4;
     }
     for (final infra in [
       Upgrade.spatialIndex,
-      Upgrade.coprocessor,
+      Upgrade.compiler,
       Upgrade.bandwidth,
       Upgrade.memoryProtection,
     ]) {
@@ -185,7 +185,7 @@ void main() {
       run.update(0.01);
       expect(run.instructions.length, 2);
       expect(run.instructions.map((s) => s.target).toSet().length, 2);
-      expect(run.attackDamage, 24);
+      expect(run.attackDamage, closeTo(22.08, 0.0001));
     },
   );
 
@@ -218,7 +218,7 @@ void main() {
       run.choices = [Upgrade.memory];
       run.health = 30;
       run.choose(Upgrade.memory);
-      expect(run.maxHealth, 125);
+      expect(run.maxHealth, 93);
       expect(run.health, 65);
     },
   );

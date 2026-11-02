@@ -22,7 +22,7 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       final run = RunState()
-        ..start(policy: TypingPolicy.dynamicTyping)
+        ..start()
         ..enemies.clear();
       for (var kind = 0; kind < EnemyType.values.length; kind++) {
         final enemy = TaskEnemy(
@@ -64,7 +64,6 @@ void main() {
           kind: InstructionKind.cached,
         ),
       );
-      run.enemies.last.checked = true;
       run.upgrades[Upgrade.jitCompilation] = 1;
       run.upgrades[Upgrade.memoization] = 1;
       run.abilities.jitExecutions = 8;

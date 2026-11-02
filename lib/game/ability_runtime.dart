@@ -26,7 +26,7 @@ class AbilityRuntime {
   double memoTimer = 0;
   double nullTimer = 0;
   double ownershipTimer = 0;
-  double scanTimer = 0;
+  double gcPause = 0;
   double healingTimer = 0;
   double _healingSpent = 0;
 
@@ -34,7 +34,7 @@ class AbilityRuntime {
     fields.clear();
     cachedInputs.clear();
     jitExecutions = 0;
-    fieldTimer = memoTimer = nullTimer = ownershipTimer = scanTimer = 0;
+    fieldTimer = memoTimer = nullTimer = ownershipTimer = gcPause = 0;
     healingTimer = 0;
     _healingSpent = 0;
   }
@@ -44,7 +44,7 @@ class AbilityRuntime {
     memoTimer -= dt;
     nullTimer -= dt;
     ownershipTimer -= dt;
-    scanTimer -= dt;
+    gcPause = max(0, gcPause - dt);
     healingTimer -= dt;
     for (final field in fields) {
       field.remaining -= dt;

@@ -10,37 +10,12 @@ RunState prepared() => RunState(random: Random(8))
   ..start()
   ..enemies.clear();
 void main() {
-  test('Null Safety attacks ordinary tasks and guards null hits but not ordinary projectiles', () {
+  test('retired abilities are excluded and shared infrastructure is available initially', () {
     final run = prepared();
-    grant(run, Upgrade.nullSafety);
-    expect(run.maxHealth, 100);
-    final ordinary = TaskEnemy(Vector2(90, 0), health: 1000);
-    final nullTask = TaskEnemy(Vector2(-90, 0), kind: 9, health: 1000);
-    run.enemies.addAll([ordinary, nullTask]);
-    run.update(0.01);
-    expect(ordinary.health, 972);
-    expect(nullTask.health, 958);
-    run.projectiles.add(
-      LinearProjectile(
-        Vector2(-25, 0),
-        Vector2(1000, 0),
-        damage: 11,
-        nullReference: true,
-      ),
-    );
-    run.update(0.05);
-    expect(run.health, 100);
-    expect(run.shieldReady, isFalse);
-    run.invulnerability = 0;
-    run.projectiles.add(
-      LinearProjectile(Vector2(-25, 0), Vector2(1000, 0), damage: 11),
-    );
-    run.update(0.05);
-    expect(run.health, 89);
-    run.pause();
-    final remaining = run.shieldTimer;
-    tick(run, 10);
-    expect(run.shieldTimer, remaining);
+    expect(run.canUpgrade(Upgrade.nullSafety), isFalse);
+    expect(run.canUpgrade(Upgrade.coprocessor), isFalse);
+    expect(run.canUpgrade(Upgrade.spatialIndex), isTrue);
+    expect(run.canUpgrade(Upgrade.compiler), isTrue);
   });
   test('piercing shot hits lined-up tasks once each, without homing or chain recursion', () {
     final run = prepared();

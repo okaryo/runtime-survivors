@@ -105,21 +105,25 @@ class EncyclopediaPanel extends StatelessWidget {
                       icon: feature ? Icons.auto_awesome : Icons.memory,
                     ),
                     const SizedBox(height: 12),
-                    _rows([
-                      for (final upgrade in Upgrade.values.where(
-                        (u) => u.isAvailable && u.isFeature == feature,
-                      ))
-                        _entry(
-                          known: discoveries.contains(
-                            'upgrade.${upgrade.name}',
+                    _rows(
+                      [
+                        for (final upgrade in Upgrade.values.where(
+                          (u) => u.isAvailable && u.isFeature == feature,
+                        ))
+                          _entry(
+                            known: discoveries.contains(
+                              'upgrade.${upgrade.name}',
+                            ),
+                            title: text.title(upgrade),
+                            description: text.description(upgrade),
+                            details: text.tradeoff(upgrade),
+                            unknown: text('unlockUpgrade'),
+                            icon: UpgradeIcon(upgrade: upgrade, size: 42),
                           ),
-                          title: text.title(upgrade),
-                          description: text.description(upgrade),
-                          details: text.tradeoff(upgrade),
-                          unknown: text('unlockUpgrade'),
-                          icon: UpgradeIcon(upgrade: upgrade, size: 42),
-                        ),
-                    ], narrow),
+                      ],
+                      narrow,
+                      showTradeoff: feature,
+                    ),
                     const SizedBox(height: 16),
                   ],
                 ],
@@ -217,6 +221,7 @@ class EncyclopediaPanel extends StatelessWidget {
     List<_EncyclopediaEntry> entries,
     bool narrow, {
     String? affinityLabel,
+    bool showTradeoff = true,
   }) {
     if (narrow) {
       return Column(
@@ -234,7 +239,7 @@ class EncyclopediaPanel extends StatelessWidget {
                   const SizedBox(height: 8),
                   entry.body,
                   const SizedBox(height: 6),
-                  if (affinityLabel == null) ...[
+                  if (affinityLabel == null && showTradeoff) ...[
                     sectionLabel(text('tradeoff')),
                     const SizedBox(height: 4),
                     entry.details,
@@ -252,7 +257,9 @@ class EncyclopediaPanel extends StatelessWidget {
       );
     }
     return Table(
-      columnWidths: affinityLabel == null
+      columnWidths: !showTradeoff
+          ? const {0: FixedColumnWidth(210), 1: FlexColumnWidth()}
+          : affinityLabel == null
           ? const {
               0: FixedColumnWidth(210),
               1: FlexColumnWidth(),
@@ -271,7 +278,10 @@ class EncyclopediaPanel extends StatelessWidget {
             for (final label in [
               text('name'),
               text('behavior'),
-              affinityLabel ?? text('tradeoff'),
+              if (affinityLabel != null)
+                affinityLabel
+              else if (showTradeoff)
+                text('tradeoff'),
             ])
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
@@ -285,7 +295,10 @@ class EncyclopediaPanel extends StatelessWidget {
               for (final cell in [
                 entry.heading,
                 entry.body,
-                if (affinityLabel != null) entry.affinity! else entry.details,
+                if (affinityLabel != null)
+                  entry.affinity!
+                else if (showTradeoff)
+                  entry.details,
               ])
                 Padding(
                   padding: const EdgeInsets.fromLTRB(0, 12, 18, 12),
