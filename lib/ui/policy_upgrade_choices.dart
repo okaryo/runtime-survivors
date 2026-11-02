@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../game/run_state.dart';
 import '../l10n/game_text.dart';
 import 'theme.dart';
+import 'choice_card_surface.dart';
 
 /// A bonus policy decision leaves the regular level-up choice queued.
 class PolicyUpgradeChoices extends StatelessWidget {
@@ -24,6 +25,7 @@ class PolicyUpgradeChoices extends StatelessWidget {
   @override
   Widget build(BuildContext context) => FocusTraversalGroup(
     child: Focus(
+      focusNode: focusNode,
       skipTraversal: true,
       onKeyEvent: (_, event) {
         if (event is KeyDownEvent) {
@@ -103,61 +105,54 @@ class PolicyUpgradeChoices extends StatelessWidget {
           : 'policyUpgrade.potency.value',
       {'before': before, 'after': after},
     );
-    return Material(
+    return ChoiceCardSurface(
+      key: Key('policy-upgrade-${upgrade.name}'),
       color: const Color(0xFFEDF6F1),
-      borderRadius: BorderRadius.circular(12),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        key: Key('policy-upgrade-${upgrade.name}'),
-        focusNode: coverage ? focusNode : null,
-        onTap: () => onChoose(upgrade),
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    coverage ? Icons.radar : Icons.verified_outlined,
-                    color: infraColor,
-                    size: 30,
-                  ),
-                  const Spacer(),
-                  Text(
-                    '${upgrade.index + 1}',
-                    style: const TextStyle(
-                      fontFamily: 'RobotoMono',
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                text('policyUpgrade.${upgrade.name}'),
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
+      borderColor: infraColor,
+      onTap: () => onChoose(upgrade),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  coverage ? Icons.radar : Icons.verified_outlined,
+                  color: infraColor,
+                  size: 30,
                 ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                description,
-                style: const TextStyle(fontSize: 15, height: 1.5),
-              ),
-              const SizedBox(height: 14),
-              Text(
-                values,
-                style: const TextStyle(
-                  fontSize: 14,
-                  height: 1.5,
-                  fontWeight: FontWeight.w800,
+                const Spacer(),
+                Text(
+                  '${upgrade.index + 1}',
+                  style: const TextStyle(
+                    fontFamily: 'RobotoMono',
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              text('policyUpgrade.${upgrade.name}'),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              description,
+              style: const TextStyle(fontSize: 15, height: 1.5),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              values,
+              style: const TextStyle(
+                fontSize: 14,
+                height: 1.5,
+                fontWeight: FontWeight.w800,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

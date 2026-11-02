@@ -36,6 +36,7 @@ class UpgradeChoices extends StatelessWidget {
         )
       : FocusTraversalGroup(
           child: Focus(
+            focusNode: focusNode,
             skipTraversal: true,
             onKeyEvent: (node, event) {
               if (event is KeyDownEvent) {
@@ -122,7 +123,6 @@ class UpgradeChoices extends StatelessWidget {
         );
 
   Widget card(int index) => UpgradeCard(
-    focusNode: index == 0 ? focusNode : null,
     upgrade: run.choices[index],
     index: index,
     run: run,

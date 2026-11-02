@@ -10,6 +10,7 @@ import 'package:runtime_survivors/game/runtime_game.dart';
 import 'support/runtime_fonts.dart';
 
 import 'package:runtime_survivors/ui/upgrade_card.dart';
+import 'package:runtime_survivors/ui/choice_card_surface.dart';
 
 void main() {
   setUpAll(loadRuntimeFonts);
@@ -97,6 +98,23 @@ void main() {
           );
           expect(tester.getRect(find.byKey(const Key('memory-status'))), hud);
           expect(find.byType(UpgradeCard), findsNothing);
+          List<double> outlineWidths() => tester
+              .widgetList<Material>(
+                find.descendant(
+                  of: find.byType(ChoiceCardSurface),
+                  matching: find.byType(Material),
+                ),
+              )
+              .map(
+                (material) =>
+                    (material.shape! as RoundedRectangleBorder).side.width,
+              )
+              .toList();
+          expect(outlineWidths(), [1.2, 1.2]);
+          await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+          await tester.pump();
+          expect(game.run.policyChoicePending, isTrue);
+          expect(outlineWidths(), [1.2, 1.2]);
           for (final upgrade in PolicyUpgrade.values) {
             final rect = tester.getRect(
               find.byKey(Key('policy-upgrade-${upgrade.name}')),
@@ -116,6 +134,10 @@ void main() {
           expect(game.run.policyPotency, 1);
           expect(game.run.health, 37);
           expect(find.byType(UpgradeCard).hitTestable(), findsNWidgets(3));
+          expect(outlineWidths(), [1.2, 1.2, 1.2]);
+          await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+          await tester.pump();
+          expect(outlineWidths(), [2.5, 1.2, 1.2]);
           await tester.sendKeyEvent(LogicalKeyboardKey.tab);
           await tester.sendKeyEvent(LogicalKeyboardKey.enter);
           await tester.pump();
@@ -128,7 +150,13 @@ void main() {
           game.refresh();
           await tester.pump();
           await tester.pump();
+          expect(outlineWidths(), [1.2, 1.2]);
           await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+          await tester.pump();
+          expect(outlineWidths(), [2.5, 1.2]);
+          await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+          await tester.pump();
+          expect(outlineWidths(), [1.2, 2.5]);
           await tester.sendKeyEvent(LogicalKeyboardKey.enter);
           await tester.pump();
           await tester.pump();

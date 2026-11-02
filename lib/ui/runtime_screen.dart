@@ -33,7 +33,8 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
   final _choiceFocus = FocusNode();
   final _gameWidgetKey = GlobalKey();
   void restoreFocus() {
-    // Wait for choice nodes and Web semantics to be attached after transitions.
+    // Focus the selection area, leaving every card neutral until Tab is used.
+    // Wait for focus nodes and Web semantics to attach after transitions.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _modalOpen) return;
       (run.phase == RunPhase.choosing ? _choiceFocus : focus).requestFocus();

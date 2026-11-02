@@ -10,6 +10,7 @@ import 'package:runtime_survivors/game/runtime_game.dart';
 import 'package:runtime_survivors/l10n/game_text.dart';
 import 'package:runtime_survivors/ui/upgrade_card.dart';
 import 'package:runtime_survivors/ui/upgrade_choices.dart';
+import 'package:runtime_survivors/ui/choice_card_surface.dart';
 
 import 'support/runtime_fonts.dart';
 
@@ -42,6 +43,23 @@ void main() {
       game.refresh();
       await tester.pump();
       final panel = find.byType(UpgradeChoices);
+      List<double> outlineWidths() => tester
+          .widgetList<Material>(
+            find.descendant(of: panel, matching: find.byType(Material)),
+          )
+          .map(
+            (material) =>
+                (material.shape! as RoundedRectangleBorder).side.width,
+          )
+          .toList();
+      expect(find.byType(ChoiceCardSurface), findsNWidgets(3));
+      expect(outlineWidths(), [1.2, 1.2, 1.2]);
+      // Enter at the selection-area focus must not acquire a default card.
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      expect(game.run.phase, RunPhase.choosing);
+      expect(game.run.rank(Upgrade.garbageCollection), 1);
+      expect(outlineWidths(), [1.2, 1.2, 1.2]);
       expect(
         find.descendant(of: panel, matching: find.byType(Tooltip)),
         findsNothing,
@@ -95,9 +113,13 @@ void main() {
       );
       expect(game.run.health, 35);
       expect(game.run.phase, RunPhase.choosing);
-      // Focus starts on the first card. Tab + Enter acquires the second card.
+      // Tab enters the first card; another Tab moves to the second card.
       await tester.sendKeyEvent(LogicalKeyboardKey.tab);
       await tester.pump();
+      expect(outlineWidths(), [2.5, 1.2, 1.2]);
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      expect(outlineWidths(), [1.2, 2.5, 1.2]);
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pump();
       expect(game.run.phase, RunPhase.running);
