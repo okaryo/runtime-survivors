@@ -1,30 +1,41 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-
 import 'package:runtime_survivors/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
-
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
+  testWidgets('start, keyboard pause and resume work without layout errors', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(const RuntimeSurvivorsApp());
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('Hello, runtime.'), findsOneWidget);
+    await tester.tap(find.text('ランタイムを起動'));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('● RUNNING'), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pump();
+    expect(find.text('ひと息、つこう。'), findsOneWidget);
+    await tester.tap(find.text('処理を再開'));
+    await tester.pump();
+    expect(find.text('● RUNNING'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+  testWidgets('compact screen has a usable start screen', (tester) async {
+    tester.view.physicalSize = const Size(600, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(const RuntimeSurvivorsApp());
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('ランタイムを起動'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
   });
 }
