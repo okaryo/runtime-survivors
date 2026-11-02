@@ -38,6 +38,47 @@ extension UpgradeInfo on Upgrade {
   };
 }
 
+/// Shared stat formulas for live combat and immutable upgrade snapshots.
+class BuildStats {
+  BuildStats._(this._ranks);
+  BuildStats.snapshot(Map<Upgrade, int> ranks)
+    : _ranks = Map.unmodifiable(ranks);
+  final Map<Upgrade, int> _ranks;
+  int rank(Upgrade upgrade) => _ranks[upgrade] ?? 0;
+  double get maxHealth =>
+      100 + 25.0 * rank(Upgrade.memory) - 5.0 * rank(Upgrade.oop);
+  double get speed => 185.0 * pow(1.12, rank(Upgrade.clock));
+  double get pickupRadius => 66 + 35.0 * rank(Upgrade.cache);
+  double get attackRange =>
+      300 + 20.0 * rank(Upgrade.cache) - 15.0 * rank(Upgrade.functional);
+  double get objectDamage => 16 + rank(Upgrade.oop) * 4.0;
+  double get objectInterval => 0.9;
+  double get chainRadius => 155;
+  double get attackDamage =>
+      24.0 *
+      pow(1.25, rank(Upgrade.compiler)) *
+      pow(0.88, rank(Upgrade.concurrency));
+  double get attackInterval => 0.62 + rank(Upgrade.garbageCollection) * 0.08;
+  int get targetCount => 1 + rank(Upgrade.concurrency);
+  double get gcRadius => 115 + rank(Upgrade.garbageCollection) * 18.0;
+  double get gcDamage => 22 + rank(Upgrade.garbageCollection) * 14.0;
+}
+
+class UpgradePreview {
+  const UpgradePreview({
+    required this.upgrade,
+    required this.before,
+    required this.after,
+    required this.beforeHealth,
+    required this.afterHealth,
+  });
+  final Upgrade upgrade;
+  final BuildStats before;
+  final BuildStats after;
+  final double beforeHealth;
+  final double afterHealth;
+}
+
 class RunLog {
   const RunLog(this.key, {this.args = const {}, this.upgrade});
   final String key;
@@ -128,6 +169,7 @@ class RunState {
   final Set<int> seenEnemies = {};
   final Set<Upgrade> seenUpgrades = {};
   final Map<Upgrade, int> upgrades = {};
+  late final BuildStats _stats = BuildStats._(upgrades);
   final List<RunLog> events = [const RunLog('log.ready')];
   final Set<SoundCue> cues = {};
   List<Upgrade> choices = [];
@@ -152,22 +194,18 @@ class RunState {
 
   int rank(Upgrade upgrade) => upgrades[upgrade] ?? 0;
   int get nextLevelXp => 12 + (level - 1) * 7;
-  double get maxHealth =>
-      100 + 25.0 * rank(Upgrade.memory) - 5.0 * rank(Upgrade.oop);
-  double get speed => 185.0 * pow(1.12, rank(Upgrade.clock));
-  double get pickupRadius => 66 + 35.0 * rank(Upgrade.cache);
-  double get attackRange =>
-      300 + 20.0 * rank(Upgrade.cache) - 15.0 * rank(Upgrade.functional);
-  double get objectDamage => 16 + rank(Upgrade.oop) * 4.0;
-  double get objectInterval => 0.9;
-  double get chainRadius => 155;
-  double get attackDamage =>
-      24.0 *
-      pow(1.25, rank(Upgrade.compiler)) *
-      pow(0.88, rank(Upgrade.concurrency));
-  double get attackInterval => 0.62 + rank(Upgrade.garbageCollection) * 0.08;
-  int get targetCount => 1 + rank(Upgrade.concurrency);
-  double get gcRadius => 115 + rank(Upgrade.garbageCollection) * 18.0;
+  double get maxHealth => _stats.maxHealth;
+  double get speed => _stats.speed;
+  double get pickupRadius => _stats.pickupRadius;
+  double get attackRange => _stats.attackRange;
+  double get objectDamage => _stats.objectDamage;
+  double get objectInterval => _stats.objectInterval;
+  double get chainRadius => _stats.chainRadius;
+  double get attackDamage => _stats.attackDamage;
+  double get attackInterval => _stats.attackInterval;
+  double get gcRadius => _stats.gcRadius;
+  double get gcDamage => _stats.gcDamage;
+  int get targetCount => _stats.targetCount;
   String get timeLabel {
     final seconds = elapsed.floor();
     return '${(seconds ~/ 60).toString().padLeft(2, '0')}:${(seconds % 60).toString().padLeft(2, '0')}';
@@ -252,12 +290,31 @@ class RunState {
     cues.add(SoundCue.levelUp);
   }
 
+  /// Predicts an acquisition without mutating combat, RNG, ranks or HP.
+  UpgradePreview preview(Upgrade upgrade) {
+    final before = BuildStats.snapshot(upgrades);
+    final after = BuildStats.snapshot({
+      ...upgrades,
+      upgrade: rank(upgrade) + 1,
+    });
+    return UpgradePreview(
+      upgrade: upgrade,
+      before: before,
+      after: after,
+      beforeHealth: health,
+      afterHealth: min(
+        after.maxHealth,
+        health + (upgrade == Upgrade.memory ? 35 : 0),
+      ),
+    );
+  }
+
   void choose(Upgrade upgrade) {
     if (phase != RunPhase.choosing || !choices.contains(upgrade)) return;
+    final prediction = preview(upgrade);
     upgrades[upgrade] = rank(upgrade) + 1;
-    if (upgrade == Upgrade.memory) health = min(maxHealth, health + 35);
+    health = prediction.afterHealth;
     if (upgrade == Upgrade.garbageCollection) _gcTimer = min(_gcTimer, 0.6);
-    health = min(health, maxHealth);
     seenUpgrades.add(upgrade);
     log(RunLog('log.upgrade', args: {'rank': rank(upgrade)}, upgrade: upgrade));
     cues.add(SoundCue.select);
@@ -417,7 +474,7 @@ class RunState {
         for (final enemy in enemies.where(
           (e) => e.alive && e.position.distanceTo(player) <= gcRadius,
         )) {
-          _damage(enemy, 22 + rank(Upgrade.garbageCollection) * 14.0);
+          _damage(enemy, gcDamage);
         }
         _gcTimer = 3;
       }
