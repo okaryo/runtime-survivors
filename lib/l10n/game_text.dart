@@ -263,11 +263,13 @@ class GameText {
   });
 
   static const copy = <String, List<String>>{
-    'hud.memory': ['メモリ', 'mem'],
-    'hud.uptime': ['稼働', 'uptime'],
-    'hud.tasks': ['処理', 'tasks'],
     'matchup': ['使いどころ', 'Best use'],
-    'enemyMatchup': ['対処のヒント', 'How to respond'],
+    'enemyAffinity': ['相性の良い言語機能', 'Compatible features'],
+    'noSpecificAffinity': ['特になし', 'No specific affinity'],
+    'armorAffinityNote': [
+      'GCは範囲攻撃、OOPは側背面からの命中時に正面防御を回避。',
+      'GC area damage and OOP shots from the sides or rear bypass frontal armor.',
+    ],
     'garbageCollection.matchup': [
       '密集・正面装甲への範囲攻撃',
       'Crowds; bypasses frontal armor',
@@ -311,37 +313,6 @@ class GameText {
       '連続被弾からの立て直し',
       'Recover from consecutive hits',
     ],
-    'enemy.0.matchup': [
-      '通常攻撃で処理。接近されたら移動',
-      'Use base shots; move when approached',
-    ],
-    'enemy.1.matchup': ['減速や同時攻撃で接近を抑える', 'Slow it or use concurrent attacks'],
-    'enemy.2.matchup': ['集中・再攻撃で継続的に削る', 'Sustained focus and repeated shots'],
-    'enemy.3.matchup': [
-      '突進予告の横へ回避。減速は最大20%',
-      'Dodge sideways; slow capped at 20%',
-    ],
-    'enemy.4.matchup': [
-      '射線を避けて接近。Null Safetyで敵弾を防ぐ',
-      'Sidestep and approach; shield its shots',
-    ],
-    'enemy.5.matchup': [
-      '範囲・連鎖で雑魚を処理し本体を狙う',
-      'Clear children with area or chains, then target the parent',
-    ],
-    'enemy.6.matchup': [
-      '撃破後は爆発範囲から離れる。防壁は無効',
-      'Leave the blast area after a kill; shields do not block it',
-    ],
-    'enemy.7.matchup': [
-      '貫通・連鎖で群れの奥の本体を狙う',
-      'Reach it behind crowds with piercing or chains',
-    ],
-    'enemy.8.matchup': [
-      'GC・側背面攻撃で正面防御を回避',
-      'Bypass frontal armor with GC or flanking',
-    ],
-
     'lazyEvaluation.title': ['遅延評価', 'Lazy Evaluation'],
     'lazyEvaluation.description': [
       '5秒ごとに減速領域を設置。3.5秒持続し、領域内の敵の移動を遅くします。',

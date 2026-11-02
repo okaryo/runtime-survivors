@@ -8,6 +8,7 @@ import 'package:runtime_survivors/game/runtime_game.dart';
 import 'package:runtime_survivors/l10n/game_text.dart';
 import 'package:runtime_survivors/settings.dart';
 import 'package:runtime_survivors/ui/upgrade_card.dart';
+import 'package:runtime_survivors/ui/encyclopedia_panel.dart';
 
 import 'support/runtime_fonts.dart';
 
@@ -79,12 +80,41 @@ void main() {
       expect(find.text(const GameText('en')('enemy.0.title')), findsOneWidget);
       expect(find.text(const GameText('en')('enemy.3.title')), findsNothing);
       expect(find.text('???'), findsWidgets);
+      final encyclopedia = find.byType(EncyclopediaPanel);
+      expect(find.byKey(const Key('enemy-affinity-request')), findsOneWidget);
+      expect(find.byKey(const Key('enemy-affinity-deadlock')), findsNothing);
       expect(
-        find.text(const GameText('en')('enemy.0.matchup')),
+        find.descendant(of: encyclopedia, matching: find.text('Best use')),
+        findsNothing,
+      );
+      expect(
+        find.descendant(
+          of: encyclopedia,
+          matching: find.text(const GameText('en').matchup(selected)),
+        ),
+        findsNothing,
+      );
+      settings.discover(['enemy.8']);
+      await tester.pump();
+      final armorAffinity = find.byKey(
+        const Key('enemy-affinity-armoredAllocation'),
+      );
+      expect(
+        find.descendant(
+          of: armorAffinity,
+          matching: find.text(
+            const GameText('en').title(Upgrade.garbageCollection),
+          ),
+        ),
         findsOneWidget,
       );
-      expect(find.text(const GameText('en')('enemy.3.matchup')), findsNothing);
-      expect(find.text(const GameText('en').matchup(selected)), findsOneWidget);
+      expect(
+        find.descendant(
+          of: armorAffinity,
+          matching: find.text(const GameText('en').title(Upgrade.oop)),
+        ),
+        findsOneWidget,
+      );
       expect(find.textContaining('Tradeoff:'), findsNothing);
       await tester.sendKeyEvent(LogicalKeyboardKey.keyP);
       await tester.pump();

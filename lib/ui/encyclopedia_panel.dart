@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../game/run_state.dart';
 import '../game/character_painter.dart';
+import '../game/enemy_affinities.dart';
 import '../l10n/game_text.dart';
 import 'theme.dart';
 import 'upgrade_icon.dart';
@@ -10,7 +11,7 @@ typedef _EncyclopediaEntry = ({
   Widget heading,
   Widget body,
   Widget details,
-  Widget matchup,
+  Widget? affinity,
 });
 
 class EncyclopediaPanel extends StatelessWidget {
@@ -84,7 +85,7 @@ class EncyclopediaPanel extends StatelessWidget {
                           title: text('enemy.$kind.title'),
                           description: text('enemy.$kind.description'),
                           details: text('enemy.$kind.type'),
-                          matchup: text('enemy.$kind.matchup'),
+                          affinity: _featureList(EnemyType.values[kind]),
                           unknown: text('unlockEnemy'),
                           icon: SizedBox(
                             width: 42,
@@ -95,7 +96,7 @@ class EncyclopediaPanel extends StatelessWidget {
                     ],
                     narrow,
                     detailLabel: text('type'),
-                    matchupLabel: text('enemyMatchup'),
+                    affinityLabel: text('enemyAffinity'),
                   ),
                   const SizedBox(height: 22),
                   for (final feature in [true, false]) ...[
@@ -116,7 +117,6 @@ class EncyclopediaPanel extends StatelessWidget {
                           title: text.title(upgrade),
                           description: text.description(upgrade),
                           details: text.tradeoff(upgrade),
-                          matchup: text.matchup(upgrade),
                           unknown: text('unlockUpgrade'),
                           icon: UpgradeIcon(upgrade: upgrade, size: 42),
                         ),
@@ -132,12 +132,47 @@ class EncyclopediaPanel extends StatelessWidget {
     ),
   );
 
+  Widget _featureList(EnemyType type) => Column(
+    key: Key('enemy-affinity-${type.name}'),
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      if (type.compatibleFeatures.isEmpty)
+        Text(
+          text('noSpecificAffinity'),
+          style: const TextStyle(fontSize: 13, color: muted),
+        ),
+      for (final feature in type.compatibleFeatures)
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 3),
+          child: Row(
+            children: [
+              UpgradeIcon(upgrade: feature, size: 22),
+              const SizedBox(width: 7),
+              Expanded(
+                child: Text(
+                  text.title(feature),
+                  style: const TextStyle(fontSize: 13, color: ink),
+                ),
+              ),
+            ],
+          ),
+        ),
+      if (type == EnemyType.armoredAllocation) ...[
+        const SizedBox(height: 4),
+        Text(
+          text('armorAffinityNote'),
+          style: const TextStyle(fontSize: 12, height: 1.5, color: muted),
+        ),
+      ],
+    ],
+  );
+
   _EncyclopediaEntry _entry({
     required bool known,
     required String title,
     required String description,
     required String details,
-    required String matchup,
+    Widget? affinity,
     required String unknown,
     required Widget icon,
   }) => (
@@ -165,10 +200,14 @@ class EncyclopediaPanel extends StatelessWidget {
       known ? description : unknown,
       style: const TextStyle(fontSize: 13, height: 1.7, color: muted),
     ),
-    matchup: Text(
-      known ? matchup : text('undiscovered'),
-      style: const TextStyle(fontSize: 13, height: 1.6, color: infraColor),
-    ),
+    affinity: affinity == null
+        ? null
+        : known
+        ? affinity
+        : Text(
+            text('undiscovered'),
+            style: const TextStyle(fontSize: 13, color: muted),
+          ),
     details: Text(
       known ? details : text('undiscovered'),
       style: const TextStyle(fontSize: 12, height: 1.6, color: muted),
@@ -179,7 +218,7 @@ class EncyclopediaPanel extends StatelessWidget {
     List<_EncyclopediaEntry> entries,
     bool narrow, {
     String? detailLabel,
-    String? matchupLabel,
+    String? affinityLabel,
   }) {
     if (narrow) {
       return Column(
@@ -200,10 +239,12 @@ class EncyclopediaPanel extends StatelessWidget {
                   sectionLabel(detailLabel ?? text('tradeoff')),
                   const SizedBox(height: 4),
                   entry.details,
-                  const SizedBox(height: 8),
-                  sectionLabel(matchupLabel ?? text('matchup')),
-                  const SizedBox(height: 4),
-                  entry.matchup,
+                  if (affinityLabel != null) ...[
+                    const SizedBox(height: 8),
+                    sectionLabel(affinityLabel),
+                    const SizedBox(height: 4),
+                    entry.affinity!,
+                  ],
                 ],
               ),
             ),
@@ -211,12 +252,18 @@ class EncyclopediaPanel extends StatelessWidget {
       );
     }
     return Table(
-      columnWidths: const {
-        0: FixedColumnWidth(210),
-        1: FlexColumnWidth(2),
-        2: FlexColumnWidth(),
-        3: FlexColumnWidth(1.3),
-      },
+      columnWidths: affinityLabel == null
+          ? const {
+              0: FixedColumnWidth(210),
+              1: FlexColumnWidth(),
+              2: FixedColumnWidth(240),
+            }
+          : const {
+              0: FixedColumnWidth(210),
+              1: FlexColumnWidth(2),
+              2: FlexColumnWidth(),
+              3: FlexColumnWidth(1.3),
+            },
       defaultVerticalAlignment: TableCellVerticalAlignment.middle,
       border: const TableBorder(horizontalInside: BorderSide(color: line)),
       children: [
@@ -226,7 +273,7 @@ class EncyclopediaPanel extends StatelessWidget {
               text('name'),
               text('behavior'),
               detailLabel ?? text('tradeoff'),
-              matchupLabel ?? text('matchup'),
+              ?affinityLabel,
             ])
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
@@ -241,7 +288,7 @@ class EncyclopediaPanel extends StatelessWidget {
                 entry.heading,
                 entry.body,
                 entry.details,
-                entry.matchup,
+                if (affinityLabel != null) entry.affinity!,
               ])
                 Padding(
                   padding: const EdgeInsets.fromLTRB(0, 12, 18, 12),
