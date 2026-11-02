@@ -8,9 +8,11 @@ import 'package:runtime_survivors/game/runtime_game.dart';
 import 'package:runtime_survivors/l10n/game_text.dart';
 import 'package:runtime_survivors/ui/upgrade_card.dart';
 import 'package:runtime_survivors/ui/upgrade_choices.dart';
-import 'package:runtime_survivors/ui/selection_build.dart';
+
+import 'support/runtime_fonts.dart';
 
 void main() {
+  setUpAll(loadRuntimeFonts);
   for (final scenario in [
     (const Size(1280, 640), 'en', 1.0),
     (const Size(1280, 720), 'ja', 1.25),
@@ -34,7 +36,6 @@ void main() {
         final arena = tester.getRect(find.byType(GameWidget<RuntimeGame>));
         expect(arena.bottom, lessThanOrEqualTo(scenario.$1.height));
       }
-      await tester.ensureVisible(find.text(text('start')));
       await tester.tap(find.text(text('start')));
       await tester.pump();
       final game = tester
@@ -44,6 +45,19 @@ void main() {
         for (final upgrade in Upgrade.values) upgrade: 1,
       });
       game.run.health = 35;
+      game.refresh();
+      await tester.pump();
+      final arenaBefore = tester.getRect(find.byType(GameWidget<RuntimeGame>));
+      final memoryBefore = tester.getRect(
+        find.byKey(const Key('memory-status')),
+      );
+      final sidebarBefore = tester.getRect(
+        find.byKey(const Key('design-panel')),
+      );
+      final acquiredBefore = {
+        for (final upgrade in Upgrade.values)
+          upgrade: tester.getRect(find.byKey(Key('acquired-${upgrade.name}'))),
+      };
       game.run.addExperience(game.run.nextLevelXp);
       game.run.choices = [
         Upgrade.oop,
@@ -58,22 +72,26 @@ void main() {
         findsNothing,
       );
       expect(find.byType(UpgradeCard).hitTestable(), findsNWidgets(3));
-      for (final upgrade in Upgrade.values) {
-        expect(
-          find.byKey(Key('acquired-${upgrade.name}')).hitTestable(),
-          findsOneWidget,
-        );
-      }
       final arenaRect = tester.getRect(find.byType(GameWidget<RuntimeGame>));
       final panelRect = tester.getRect(panel);
       expect(panelRect, arenaRect);
+      expect(arenaRect, arenaBefore);
       final hpRect = tester.getRect(find.byKey(const Key('memory-status')));
       expect(hpRect.top, greaterThanOrEqualTo(0));
       expect(hpRect.bottom, lessThanOrEqualTo(scenario.$1.height));
-      expect(hpRect.left, greaterThan(panelRect.right));
-      final buildRect = tester.getRect(find.byType(SelectionBuild));
-      expect(buildRect.top, greaterThanOrEqualTo(0));
-      expect(buildRect.bottom, lessThanOrEqualTo(scenario.$1.height));
+      expect(hpRect, memoryBefore);
+      expect(hpRect.bottom, lessThan(panelRect.top));
+      final sidebarAfter = tester.getRect(
+        find.byKey(const Key('design-panel')),
+      );
+      expect(sidebarAfter.topLeft, sidebarBefore.topLeft);
+      expect(sidebarAfter.width, sidebarBefore.width);
+      for (final upgrade in Upgrade.values) {
+        expect(
+          tester.getRect(find.byKey(Key('acquired-${upgrade.name}'))),
+          acquiredBefore[upgrade],
+        );
+      }
       expect(
         find.descendant(of: panel, matching: find.byType(FittedBox)),
         findsNothing,

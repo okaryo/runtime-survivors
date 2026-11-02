@@ -4,6 +4,7 @@ import '../game/run_state.dart';
 import '../game/character_painter.dart';
 import '../l10n/game_text.dart';
 import 'theme.dart';
+import 'upgrade_icon.dart';
 
 class CodexPanel extends StatelessWidget {
   const CodexPanel({
@@ -113,14 +114,7 @@ class CodexPanel extends StatelessWidget {
                             details:
                                 '${text('tradeoff')}: ${text.tradeoff(upgrade)}',
                             unknown: text('unlockUpgrade'),
-                            icon: Text(
-                              upgrade.symbol,
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w800,
-                                color: feature ? featureColor : infraColor,
-                              ),
-                            ),
+                            icon: UpgradeIcon(upgrade: upgrade, size: 42),
                           ),
                       ], narrow),
                       const SizedBox(height: 16),

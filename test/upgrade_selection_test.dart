@@ -10,9 +10,11 @@ import 'package:runtime_survivors/game/runtime_game.dart';
 import 'package:runtime_survivors/l10n/game_text.dart';
 import 'package:runtime_survivors/ui/upgrade_card.dart';
 import 'package:runtime_survivors/ui/upgrade_choices.dart';
-import 'package:runtime_survivors/ui/selection_build.dart';
+
+import 'support/runtime_fonts.dart';
 
 void main() {
+  setUpAll(loadRuntimeFonts);
   testWidgets(
     'all card details stay visible; keyboard selects without inspection',
     (tester) async {
@@ -55,7 +57,7 @@ void main() {
       expect(change('change-memory-0'), 'メモリ 35/100 → 70/125');
       expect(change('change-garbageCollection-2'), contains('0.70s → 0.78s'));
       expect(change('change-oop-2'), 'メモリ 35/100 → 35/95');
-      final build = find.byType(SelectionBuild);
+      final build = find.byKey(const Key('design-panel'));
       final buildBefore = tester
           .widgetList<Text>(
             find.descendant(of: build, matching: find.byType(Text)),

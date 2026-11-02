@@ -102,7 +102,7 @@ class _Artwork {
       58,
       58,
       fill: feature ? const Color(0xFFFFE3BB) : const Color(0xFFD5EDE0),
-      r: feature ? 13 : 7,
+      r: 13,
     );
     switch (upgrade) {
       case Upgrade.garbageCollection:

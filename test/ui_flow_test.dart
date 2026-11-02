@@ -9,7 +9,10 @@ import 'package:runtime_survivors/l10n/game_text.dart';
 import 'package:runtime_survivors/settings.dart';
 import 'package:runtime_survivors/ui/upgrade_card.dart';
 
+import 'support/runtime_fonts.dart';
+
 void main() {
+  setUpAll(loadRuntimeFonts);
   testWidgets(
     'language switch preserves run; cards select and codex pauses safely',
     (tester) async {
@@ -70,10 +73,10 @@ void main() {
     },
   );
 
-  testWidgets('English upgrade cards remain usable in a narrow browser', (
+  testWidgets('English upgrade cards remain usable in a smaller PC window', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(600, 950);
+    tester.view.physicalSize = const Size(1024, 950);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);

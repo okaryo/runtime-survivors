@@ -18,7 +18,6 @@ class GameText {
   String tradeoff(Upgrade upgrade) => call('${upgrade.name}.tradeoff');
   String category(Upgrade upgrade) =>
       call(upgrade.isFeature ? 'feature' : 'infra');
-  String shortTitle(Upgrade upgrade) => call('${upgrade.name}.short');
   List<UpgradeComparison> comparisons(UpgradePreview preview) {
     final before = preview.before;
     final after = preview.after;
@@ -29,10 +28,10 @@ class GameText {
         : value.toStringAsFixed(1);
     UpgradeComparison metric(
       String label,
-      Object from,
+      Object? from,
       Object to, {
       bool cost = false,
-    }) => UpgradeComparison(call(label), '$from', '$to', cost: cost);
+    }) => UpgradeComparison(call(label), from?.toString(), '$to', cost: cost);
     UpgradeComparison hp({bool cost = false}) => metric(
       'stat.memory',
       '${number(preview.beforeHealth)}/${number(before.maxHealth)}',
@@ -43,12 +42,12 @@ class GameText {
       Upgrade.garbageCollection => [
         metric(
           'stat.pulseDamage',
-          first ? '—' : number(before.gcDamage),
+          first ? null : number(before.gcDamage),
           number(after.gcDamage),
         ),
         metric(
           'stat.radius',
-          first ? '—' : number(before.gcRadius),
+          first ? null : number(before.gcRadius),
           number(after.gcRadius),
         ),
         metric(
@@ -68,16 +67,24 @@ class GameText {
         ),
       ],
       Upgrade.oop => [
-        metric('stat.objects', before.rank(upgrade), after.rank(upgrade)),
+        metric(
+          'stat.objects',
+          first ? null : before.rank(upgrade),
+          after.rank(upgrade),
+        ),
         metric(
           'stat.objectDamage',
-          first ? '—' : number(before.objectDamage),
+          first ? null : number(before.objectDamage),
           number(after.objectDamage),
         ),
         hp(cost: true),
       ],
       Upgrade.functional => [
-        metric('stat.jumps', before.rank(upgrade), after.rank(upgrade)),
+        metric(
+          'stat.jumps',
+          first ? null : before.rank(upgrade),
+          after.rank(upgrade),
+        ),
         metric(
           'stat.range',
           number(before.attackRange),
@@ -117,7 +124,6 @@ class GameText {
   });
 
   static const copy = <String, List<String>>{
-    'currentBuild': ['現在のビルド', 'Current build'],
     'newUpgrade': ['新規', 'NEW'],
     'featureBadge': ['言語機能', 'FEATURE'],
     'infraBadge': ['基盤強化', 'INFRA'],
@@ -134,14 +140,6 @@ class GameText {
     'stat.range': ['索敵範囲', 'Target range'],
     'stat.speed': ['移動速度', 'Move speed'],
     'stat.pickup': ['経験値の回収範囲', 'Pickup radius'],
-    'garbageCollection.short': ['GC', 'GC'],
-    'concurrency.short': ['並行処理', 'Concurrency'],
-    'oop.short': ['オブジェクト指向', 'OOP'],
-    'functional.short': ['関数型', 'Functional'],
-    'memory.short': ['メモリ', 'Memory'],
-    'clock.short': ['クロック', 'Clock'],
-    'cache.short': ['キャッシュ', 'Cache'],
-    'compiler.short': ['最適化', 'Compiler'],
     'tagline': [
       'タスクを処理し、自分だけの言語を設計しよう。',
       'Survive the tasks. Design your language.',
@@ -182,8 +180,6 @@ class GameText {
     'designHint': ['選んだ機能が、戦い方を変える。', 'Your choices shape the way you fight.'],
     'feature': ['言語機能 / FEATURE', 'LANGUAGE FEATURE'],
     'infra': ['基盤強化 / INFRA', 'INFRASTRUCTURE'],
-    'featureShort': ['言語機能', 'Features'],
-    'infraShort': ['基盤強化', 'Infrastructure'],
     'featureHint': ['攻撃方法や振る舞いを変える', 'Changes attacks and behavior'],
     'infraHint': ['基本性能を引き上げる', 'Improves your base stats'],
     'emptyFeatures': ['機能はまだありません', 'No features yet'],
@@ -385,8 +381,8 @@ class UpgradeComparison {
     this.cost = false,
   });
   final String label;
-  final String before;
+  final String? before;
   final String after;
   final bool cost;
-  String get values => '$before → $after';
+  String get values => before == null ? after : '$before → $after';
 }

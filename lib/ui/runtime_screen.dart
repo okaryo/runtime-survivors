@@ -12,7 +12,7 @@ import '../settings.dart';
 import 'theme.dart';
 import 'codex_panel.dart';
 import 'upgrade_choices.dart';
-import 'selection_build.dart';
+import 'upgrade_icon.dart';
 
 class RuntimeScreen extends StatefulWidget {
   const RuntimeScreen({super.key, required this.settings});
@@ -26,7 +26,6 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
   late final game = RuntimeGame(run);
   final focus = FocusNode();
   final _choiceFocus = FocusNode();
-  final _pageScroll = ScrollController();
   final _gameWidgetKey = GlobalKey();
   void restoreFocus() {
     // Wait for choice nodes and Web semantics to be attached after transitions.
@@ -49,7 +48,6 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
     game.onPhaseChanged = (phase) {
       audio.setMusicPlaying(phase == RunPhase.running);
       if (phase == RunPhase.choosing) {
-        if (_pageScroll.hasClients) _pageScroll.jumpTo(0);
         restoreFocus();
       }
     };
@@ -99,7 +97,6 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
     game.onPhaseChanged = null;
     game.onDiscover = null;
     audio.dispose();
-    _pageScroll.dispose();
     _choiceFocus.dispose();
     focus.dispose();
     super.dispose();
@@ -132,19 +129,16 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
         valueListenable: game.revision,
         builder: (context, _, _) => LayoutBuilder(
           builder: (context, constraints) {
-            final selecting = run.phase == RunPhase.choosing;
             final beside = constraints.maxWidth >= 1180;
             final compact = constraints.maxWidth < 720;
-            final arenaHeight = selecting
-                ? compact
-                      ? 1100.0
-                      : max(620.0, constraints.maxHeight - 230)
-                : max(320.0, min(740.0, constraints.maxHeight - 310));
+            final arenaHeight = max(
+              320.0,
+              min(740.0, constraints.maxHeight - 290),
+            );
             return SingleChildScrollView(
-              controller: _pageScroll,
               padding: EdgeInsets.fromLTRB(
                 compact ? 16 : 30,
-                selecting ? 12 : 22,
+                22,
                 compact ? 16 : 30,
                 20,
               ),
@@ -154,68 +148,23 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      if (selecting && beside) ...[
-                        SizedBox(
-                          height: constraints.maxHeight - 24,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              header(false),
-                              const SizedBox(height: 12),
-                              Expanded(
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Expanded(
-                                      child: LayoutBuilder(
-                                        builder: (context, available) => arena(
-                                          max(0, available.maxHeight - 48),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 16),
-                                    SizedBox(
-                                      width: 240,
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.stretch,
-                                        children: [
-                                          selectionMemory(),
-                                          const SizedBox(height: 12),
-                                          SelectionBuild(run: run, text: text),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ] else ...[
-                        header(compact),
-                        const SizedBox(height: 22),
-                        stats(compact),
-                        const SizedBox(height: 18),
-                        if (beside)
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(child: arena(arenaHeight)),
-                              const SizedBox(width: 20),
-                              SizedBox(
-                                width: constraints.maxWidth < 1180 ? 260 : 300,
-                                child: designPanel(),
-                              ),
-                            ],
-                          )
-                        else ...[
-                          arena(arenaHeight),
-                          const SizedBox(height: 16),
-                          selecting
-                              ? SelectionBuild(run: run, text: text)
-                              : designPanel(),
-                        ],
+                      header(compact),
+                      const SizedBox(height: 22),
+                      stats(compact),
+                      const SizedBox(height: 18),
+                      if (beside)
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(child: arena(arenaHeight)),
+                            const SizedBox(width: 20),
+                            SizedBox(width: 300, child: designPanel()),
+                          ],
+                        )
+                      else ...[
+                        arena(arenaHeight),
+                        const SizedBox(height: 16),
+                        designPanel(),
                       ],
                       const SizedBox(height: 14),
                       Text(
@@ -244,37 +193,6 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
       ),
     );
   }
-
-  Widget selectionMemory() => Container(
-    key: const Key('memory-status'),
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-    decoration: BoxDecoration(
-      color: const Color(0xFFFAFAF5),
-      border: Border.all(color: line),
-      borderRadius: BorderRadius.circular(7),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          text('memory'),
-          style: const TextStyle(fontSize: 14, color: muted),
-        ),
-        const SizedBox(height: 5),
-        Text(
-          '${run.health.ceil()}/${run.maxHealth.toInt()}',
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
-        ),
-        const SizedBox(height: 8),
-        LinearProgressIndicator(
-          value: (run.health / run.maxHealth).clamp(0, 1),
-          color: orange,
-          backgroundColor: line,
-          minHeight: 6,
-        ),
-      ],
-    ),
-  );
 
   Widget header(bool compact) => Wrap(
     alignment: WrapAlignment.spaceBetween,
@@ -642,6 +560,7 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
   );
 
   Widget designPanel() => Container(
+    key: const Key('design-panel'),
     padding: const EdgeInsets.all(20),
     decoration: BoxDecoration(
       color: const Color(0xFFE9EDE2),
@@ -696,23 +615,13 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
               message:
                   '${text.description(entry.key)}\n${text.tradeoff(entry.key)}',
               child: Padding(
+                key: Key('acquired-${entry.key.name}'),
                 padding: const EdgeInsets.only(bottom: 9),
                 child: Row(
                   children: [
-                    SizedBox(
-                      width: 37,
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          entry.key.symbol,
-                          style: TextStyle(
-                            fontSize: 17,
-                            color: feature ? featureColor : infraColor,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 9),
+                      child: UpgradeIcon(upgrade: entry.key, size: 28),
                     ),
                     Expanded(
                       child: Text(

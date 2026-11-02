@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../game/run_state.dart';
 import '../l10n/game_text.dart';
 import 'theme.dart';
+import 'upgrade_icon.dart';
 
 class UpgradeCard extends StatelessWidget {
   const UpgradeCard({
@@ -30,7 +31,7 @@ class UpgradeCard extends StatelessWidget {
           ? const Color(0xFFFFF3E5)
           : const Color(0xFFEDF6F1),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(upgrade.isFeature ? 12 : 4),
+        borderRadius: BorderRadius.circular(12),
         side: BorderSide(color: color.withValues(alpha: 0.55), width: 1.2),
       ),
       clipBehavior: Clip.antiAlias,
@@ -45,11 +46,7 @@ class UpgradeCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Icon(
-                    upgrade.isFeature ? Icons.auto_awesome : Icons.memory,
-                    size: 18,
-                    color: color,
-                  ),
+                  UpgradeIcon(upgrade: upgrade, size: 36),
                   const SizedBox(width: 7),
                   Expanded(
                     child: Text(
