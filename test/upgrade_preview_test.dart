@@ -18,6 +18,10 @@ void main() {
       if (upgrade.isFeature && run.rank(upgrade) == 0) {
         run.upgrades.remove(Upgrade.functional);
       }
+      if (!upgrade.isFeature && run.rank(upgrade) == 0) {
+        run.upgrades.remove(Upgrade.compiler);
+      }
+      expect(run.canUpgrade(upgrade), isTrue);
       run.health = 37.5;
       run.phase = RunPhase.choosing;
       run.choices = [upgrade];
@@ -31,6 +35,7 @@ void main() {
       expect(run.enemies, enemies);
       expect(run.cues, cues);
       run.choose(upgrade);
+      expect(run.rank(upgrade), prediction.after.rank(upgrade));
       expect(run.health, prediction.afterHealth);
       expect(run.maxHealth, prediction.after.maxHealth);
       expect(run.speed, prediction.after.speed);

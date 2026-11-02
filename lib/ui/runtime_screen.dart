@@ -409,11 +409,15 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
             (e) => e.key.isFeature == feature,
           ))
             acquiredSlot(entry.key, entry.value),
-          if (feature)
-            for (var i = run.featureCount; i < RunState.featureSlots; i++)
-              emptySlot(Key('empty-feature-$i'), text('emptyFeatureSlot'))
-          else
-            emptySlot(const Key('empty-infra-slot'), text('addInfraSlot')),
+          for (
+            var i = feature ? run.featureCount : run.infraCount;
+            i < (feature ? RunState.featureSlots : RunState.infraSlots);
+            i++
+          )
+            emptySlot(
+              Key('empty-${feature ? 'feature' : 'infra'}-$i'),
+              text('emptyUpgradeSlot'),
+            ),
           const SizedBox(height: 20),
         ],
         sectionLabel(text('log')),

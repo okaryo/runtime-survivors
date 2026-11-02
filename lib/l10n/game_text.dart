@@ -390,8 +390,11 @@ class GameText {
     'stat.patternDamage': ['貫通攻撃の威力', 'Piercing damage'],
     'stat.patternWidth': ['貫通弾の幅', 'Shot width'],
     'stat.projectileSpeed': ['弾速', 'Projectile speed'],
-    'emptyFeatureSlot': ['未採用', 'Empty feature slot'],
-    'addInfraSlot': ['基盤を追加（上限なし）', 'Add infrastructure · no limit'],
+    'emptyUpgradeSlot': ['未実装', 'Unimplemented'],
+    'log.maintenance': [
+      '全能力の強化が完了。メモリを35回復。',
+      'Build fully upgraded. Restored 35 memory.',
+    ],
     'shieldReady': ['防壁：準備完了', 'Shield: ready'],
     'shieldCharging': ['防壁：{seconds}秒', 'Shield: {seconds}s'],
     'policyTitle': ['型付けの設計方針', 'Typing policy'],

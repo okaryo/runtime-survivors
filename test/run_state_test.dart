@@ -19,6 +19,79 @@ void grant(RunState run, Upgrade upgrade) {
 }
 
 void main() {
+  test(
+    'four infrastructure types exclude new types but allow invested upgrades',
+    () {
+      final run = freshRun();
+      for (final infra in [
+        Upgrade.memory,
+        Upgrade.clock,
+        Upgrade.cache,
+        Upgrade.compiler,
+      ]) {
+        grant(run, infra);
+      }
+      expect(run.infraCount, RunState.infraSlots);
+      for (var i = 0; i < 20; i++) {
+        run.addExperience(run.nextLevelXp);
+        expect(run.choices.length, 3);
+        expect(run.choices.toSet().length, 3);
+        expect(
+          run.choices.every((u) => u.isFeature || run.rank(u) > 0),
+          isTrue,
+        );
+        final oldHealth = run.health;
+        run.choices = [Upgrade.pipeline];
+        run.choose(Upgrade.pipeline);
+        expect(run.rank(Upgrade.pipeline), 0);
+        expect(run.health, oldHealth);
+        expect(run.phase, RunPhase.choosing);
+        run.choices = [Upgrade.memory];
+        run.choose(Upgrade.memory);
+      }
+      expect(run.rank(Upgrade.memory), 21);
+      run.resetToSetup();
+      expect(run.infraCount, 0);
+      expect(run.canUpgrade(Upgrade.pipeline), isTrue);
+    },
+  );
+
+  test('saturated builds offer remaining choices then recover memory without blocking', () {
+    final run = freshRun();
+    for (final feature in [
+      Upgrade.garbageCollection,
+      Upgrade.lazyEvaluation,
+      Upgrade.oop,
+      Upgrade.nullSafety,
+    ]) {
+      run.upgrades[feature] = 4;
+    }
+    for (final infra in [
+      Upgrade.spatialIndex,
+      Upgrade.coprocessor,
+      Upgrade.bandwidth,
+      Upgrade.memoryProtection,
+    ]) {
+      run.upgrades[infra] = infra.maxRank!;
+    }
+    run.upgrades[Upgrade.spatialIndex] = Upgrade.spatialIndex.maxRank! - 1;
+    run.upgrades[Upgrade.bandwidth] = Upgrade.bandwidth.maxRank! - 1;
+    run.addExperience(run.nextLevelXp);
+    expect(run.choices.toSet(), {Upgrade.spatialIndex, Upgrade.bandwidth});
+    run.choose(Upgrade.spatialIndex);
+    run.addExperience(run.nextLevelXp);
+    expect(run.choices, [Upgrade.bandwidth]);
+    run.choose(Upgrade.bandwidth);
+    run.health = 1;
+    final oldLevel = run.level;
+    run.addExperience(run.nextLevelXp + (run.nextLevelXp + 7) + 5);
+    expect(run.level, oldLevel + 2);
+    expect(run.xp, 5);
+    expect(run.health, run.maxHealth);
+    expect(run.phase, RunPhase.running);
+    expect(run.choices, isEmpty);
+  });
+
   test('diagonal movement has the same speed and pause freezes combat', () {
     final run = freshRun()..movement.setValues(1, 1);
     run.update(0.05);

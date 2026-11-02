@@ -31,12 +31,27 @@ void main() {
         final run = RunState(random: Random(91 + i))
           ..start(policy: TypingPolicy.values[i % 2]);
         run.upgrades.addAll({for (final feature in loadouts[i]) feature: 4});
-        for (final infra in Upgrade.values.where((u) => !u.isFeature)) {
-          if (infra.requiresAny.isEmpty ||
-              infra.requiresAny.any((f) => run.rank(f) > 0)) {
-            run.upgrades[infra] = 2;
-          }
-        }
+        final infrastructure = [
+          [
+            Upgrade.spatialIndex,
+            Upgrade.pipeline,
+            Upgrade.memory,
+            Upgrade.clock,
+          ],
+          [
+            Upgrade.coprocessor,
+            Upgrade.memoryProtection,
+            Upgrade.memory,
+            Upgrade.pipeline,
+          ],
+          [
+            Upgrade.bandwidth,
+            Upgrade.compiler,
+            Upgrade.pipeline,
+            Upgrade.clock,
+          ],
+        ];
+        run.upgrades.addAll({for (final infra in infrastructure[i]) infra: 2});
         for (
           var frame = 0;
           frame < 6010 && run.phase != RunPhase.won;
@@ -81,7 +96,8 @@ void main() {
           run.update(0.05);
           expect(run.enemies.length, lessThanOrEqualTo(240));
           expect(run.projectiles.length, lessThanOrEqualTo(108));
-          expect(run.featureCount, lessThanOrEqualTo(4));
+          expect(run.featureCount, lessThanOrEqualTo(RunState.featureSlots));
+          expect(run.infraCount, lessThanOrEqualTo(RunState.infraSlots));
           expect(
             run.instructions.length,
             lessThanOrEqualTo(RunState.instructionLimit),

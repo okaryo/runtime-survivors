@@ -67,8 +67,11 @@ class RunState {
       typingPolicy == TypingPolicy.staticTyping ? 0.45 : 0;
   bool get shieldReady => rank(Upgrade.nullSafety) > 0 && shieldTimer <= 0;
   static const featureSlots = 4;
+  static const infraSlots = 4;
   int get featureCount =>
       upgrades.keys.where((u) => u.isFeature && rank(u) > 0).length;
+  int get infraCount =>
+      upgrades.keys.where((u) => !u.isFeature && rank(u) > 0).length;
   double get projectileSpeed => _stats.projectileSpeed;
   double invulnerability = 0;
   double _nextRush = 45;
@@ -174,21 +177,33 @@ class RunState {
     _checkLevel();
   }
 
+  bool canUpgrade(Upgrade upgrade) =>
+      (upgrade.maxRank == null || rank(upgrade) < upgrade.maxRank!) &&
+      (upgrade.requiresAny.isEmpty ||
+          upgrade.requiresAny.any((required) => rank(required) > 0)) &&
+      (rank(upgrade) > 0 ||
+          (upgrade.isFeature
+              ? featureCount < featureSlots
+              : infraCount < infraSlots));
+
   void _checkLevel() {
     if (phase != RunPhase.running || xp < nextLevelXp) return;
+    final available = Upgrade.values.where(canUpgrade).toList();
+    if (available.isEmpty) {
+      // A fully capped build must not get stuck on an empty choice screen.
+      while (xp >= nextLevelXp) {
+        xp -= nextLevelXp;
+        level++;
+        health = min(maxHealth, health + 35);
+      }
+      log(const RunLog('log.maintenance'));
+      cues.add(SoundCue.levelUp);
+      return;
+    }
     xp -= nextLevelXp;
     level++;
     phase = RunPhase.choosing;
     movement.setZero();
-    final available = Upgrade.values
-        .where(
-          (u) =>
-              (u.maxRank == null || rank(u) < u.maxRank!) &&
-              (u.requiresAny.isEmpty ||
-                  u.requiresAny.any((required) => rank(required) > 0)) &&
-              (!u.isFeature || rank(u) > 0 || featureCount < featureSlots),
-        )
-        .toList();
     // Weighted sampling without replacement; later choices favor invested features.
     final keys = {
       for (final u in available)
@@ -203,7 +218,7 @@ class RunState {
       final firstTwo = [features.first, infrastructure.first];
       choices = [
         ...firstTwo,
-        available.firstWhere((u) => !firstTwo.contains(u)),
+        ...available.where((u) => !firstTwo.contains(u)).take(1),
       ]..shuffle(random);
     } else {
       choices = available.take(3).toList();
@@ -238,14 +253,7 @@ class RunState {
 
   void choose(Upgrade upgrade) {
     if (phase != RunPhase.choosing || !choices.contains(upgrade)) return;
-    if ((upgrade.requiresAny.isNotEmpty &&
-            !upgrade.requiresAny.any((feature) => rank(feature) > 0)) ||
-        (upgrade.maxRank != null && rank(upgrade) >= upgrade.maxRank!) ||
-        (upgrade.isFeature &&
-            rank(upgrade) == 0 &&
-            featureCount >= featureSlots)) {
-      return;
-    }
+    if (!canUpgrade(upgrade)) return;
     final prediction = preview(upgrade);
     upgrades[upgrade] = rank(upgrade) + 1;
     health = prediction.afterHealth;
