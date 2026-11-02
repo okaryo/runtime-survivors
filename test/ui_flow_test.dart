@@ -24,10 +24,8 @@ void main() {
       final settings = GameSettings();
       await tester.pumpWidget(RuntimeSurvivorsApp(settings: settings));
       await tester.pump(const Duration(milliseconds: 100));
-      expect(
-        find.text('未実装'),
-        findsNWidgets(RunState.featureSlots + RunState.infraSlots),
-      );
+      expect(find.text('未実装'), findsNWidgets(RunState.featureSlots));
+      expect(find.text('未拡張'), findsNWidgets(RunState.infraSlots));
       expect(find.byKey(const Key('encyclopedia-heading')), findsOneWidget);
       expect(
         tester.getRect(find.byKey(const Key('empty-infra-3'))).bottom,
@@ -41,7 +39,8 @@ void main() {
       game.run.kills = 7;
       await tester.tap(find.byKey(const Key('language-toggle')));
       await tester.pump();
-      expect(find.text('Running'), findsOneWidget);
+      expect(game.run.phase, RunPhase.running);
+      expect(find.byTooltip('Pause'), findsOneWidget);
       expect(game.run.kills, 7);
       await tester.sendKeyDownEvent(LogicalKeyboardKey.keyH);
       await tester.pump();
@@ -64,12 +63,11 @@ void main() {
       expect(find.byKey(const Key('empty-feature-3')), findsOneWidget);
       expect(
         find.text('Unimplemented'),
-        findsNWidgets(
-          RunState.featureSlots +
-              RunState.infraSlots -
-              game.run.featureCount -
-              game.run.infraCount,
-        ),
+        findsNWidgets(RunState.featureSlots - game.run.featureCount),
+      );
+      expect(
+        find.text('Not expanded'),
+        findsNWidgets(RunState.infraSlots - game.run.infraCount),
       );
       expect(find.byKey(const Key('empty-infra-3')), findsOneWidget);
       expect(find.byKey(const Key('encyclopedia-toggle')), findsNothing);

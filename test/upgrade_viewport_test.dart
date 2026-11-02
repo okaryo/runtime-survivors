@@ -101,9 +101,21 @@ void main() {
       expect(hpRect, memoryBefore);
       final hudRect = tester.getRect(find.byKey(const Key('runtime-hud')));
       expect(hudRect.contains(hpRect.center), isTrue);
-      expect(hudRect.bottom, lessThanOrEqualTo(arenaRect.top));
-      expect(arenaRect.height, greaterThan(scenario.$1.height - 290));
-      expect(hpRect.bottom, lessThan(panelRect.top));
+      expect(hudRect, arenaRect);
+      expect(arenaRect.height, greaterThan(scenario.$1.height - 150));
+      final timerRect = tester.getRect(find.byKey(const Key('remaining-time')));
+      final rushRect = tester.getRect(find.byKey(const Key('rush-status')));
+      final xpRect = tester.getRect(find.byKey(const Key('experience-status')));
+      expect(hpRect.right, lessThan(timerRect.left));
+      expect(timerRect.right, lessThan(rushRect.left));
+      expect(xpRect.top, greaterThan(hpRect.bottom));
+      for (final card in find.byType(UpgradeCard).evaluate()) {
+        final rect = tester.getRect(find.byWidget(card.widget));
+        expect(rect.top, greaterThan(hpRect.bottom));
+        expect(rect.top, greaterThan(timerRect.bottom));
+        expect(rect.top, greaterThan(rushRect.bottom));
+        expect(rect.bottom, lessThan(xpRect.top));
+      }
       final sidebarAfter = tester.getRect(
         find.byKey(const Key('design-panel')),
       );

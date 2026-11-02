@@ -62,6 +62,7 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
   void pause() {
     run.pause();
     game.refresh();
+    restoreFocus();
   }
 
   void start() {
@@ -156,7 +157,7 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
               final compact = constraints.maxWidth < 720;
               final arenaHeight = max(
                 500.0,
-                min(960.0, constraints.maxHeight - 132),
+                min(960.0, constraints.maxHeight - 120),
               );
               return SingleChildScrollView(
                 padding: EdgeInsets.fromLTRB(
@@ -311,37 +312,48 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
       borderRadius: BorderRadius.circular(8),
     ),
     clipBehavior: Clip.antiAlias,
-    child: Column(
-      children: [
-        RuntimeHud(run: run, text: text, onPause: pause, onResume: resume),
-        Expanded(
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: ClipRect(
-                  child: GameWidget(
-                    key: _gameWidgetKey,
-                    game: game,
-                    focusNode: focus,
-                  ),
+    child: LayoutBuilder(
+      builder: (context, constraints) {
+        final safeInsets = RuntimeHud.safeInsets(context, constraints.maxWidth);
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: ClipRect(
+                child: GameWidget(
+                  key: _gameWidgetKey,
+                  game: game,
+                  focusNode: focus,
                 ),
               ),
-              if (run.phase == RunPhase.choosing)
-                Positioned.fill(
-                  child: UpgradeChoices(
-                    run: run,
-                    text: text,
-                    onChoose: choose,
-                    focusNode: _choiceFocus,
-                  ),
+            ),
+            if (run.phase == RunPhase.choosing)
+              Positioned.fill(
+                child: UpgradeChoices(
+                  run: run,
+                  text: text,
+                  onChoose: choose,
+                  focusNode: _choiceFocus,
+                  safeInsets: safeInsets,
                 ),
-              if (run.phase != RunPhase.running &&
-                  run.phase != RunPhase.choosing)
-                Positioned.fill(child: overlay()),
-            ],
-          ),
-        ),
-      ],
+              ),
+            if (run.phase != RunPhase.running && run.phase != RunPhase.choosing)
+              Positioned.fill(
+                child: ColoredBox(
+                  color: const Color(0xFF102022).withValues(alpha: 0.93),
+                  child: Padding(padding: safeInsets, child: overlay()),
+                ),
+              ),
+            Positioned.fill(
+              child: RuntimeHud(
+                run: run,
+                text: text,
+                onPause: pause,
+                onResume: resume,
+              ),
+            ),
+          ],
+        );
+      },
     ),
   );
 
@@ -406,7 +418,7 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
           )
             emptySlot(
               Key('empty-${feature ? 'feature' : 'infra'}-$i'),
-              text('emptyUpgradeSlot'),
+              text(feature ? 'emptyUpgradeSlot' : 'emptyInfraSlot'),
             ),
           const SizedBox(height: 12),
         ],
@@ -478,22 +490,19 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
     ),
   );
 
-  Widget overlay() => ColoredBox(
-    color: const Color(0xFF102022).withValues(alpha: 0.93),
-    child: Padding(
-      padding: const EdgeInsets.all(24),
-      child: LayoutBuilder(
-        builder: (context, constraints) => Center(
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: SizedBox(
-              width: min(900, constraints.maxWidth),
-              child: switch (run.phase) {
-                RunPhase.ready => welcome(),
-                RunPhase.paused => paused(),
-                _ => result(),
-              },
-            ),
+  Widget overlay() => Padding(
+    padding: const EdgeInsets.all(24),
+    child: LayoutBuilder(
+      builder: (context, constraints) => Center(
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: SizedBox(
+            width: min(900, constraints.maxWidth),
+            child: switch (run.phase) {
+              RunPhase.ready => welcome(),
+              RunPhase.paused => paused(),
+              _ => result(),
+            },
           ),
         ),
       ),

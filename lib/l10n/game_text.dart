@@ -442,6 +442,11 @@ class GameText {
     'stat.patternWidth': ['貫通弾の幅', 'Shot width'],
     'stat.projectileSpeed': ['弾速', 'Projectile speed'],
     'emptyUpgradeSlot': ['未実装', 'Unimplemented'],
+    'emptyInfraSlot': ['未拡張', 'Not expanded'],
+    'hudMemory': ['メモリ', 'Memory'],
+    'remainingTime': ['残り時間', 'Time left'],
+    'rushIn': ['ラッシュまで {time}', 'Rush in {time}'],
+    'processedTasks': ['処理済 {count}', 'Processed {count}'],
     'log.maintenance': [
       '全能力の強化が完了。メモリを35回復。',
       'Build fully upgraded. Restored 35 memory.',

@@ -14,11 +14,13 @@ class UpgradeChoices extends StatelessWidget {
     required this.text,
     required this.onChoose,
     this.focusNode,
+    this.safeInsets = EdgeInsets.zero,
   });
   final RunState run;
   final GameText text;
   final ValueChanged<Upgrade> onChoose;
   final FocusNode? focusNode;
+  final EdgeInsets safeInsets;
 
   @override
   Widget build(BuildContext context) => FocusTraversalGroup(
@@ -42,7 +44,9 @@ class UpgradeChoices extends StatelessWidget {
         key: const Key('upgrade-choices'),
         color: const Color(0xFF102022).withValues(alpha: 0.94),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding:
+              safeInsets +
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
