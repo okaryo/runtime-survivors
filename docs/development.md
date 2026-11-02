@@ -25,6 +25,8 @@ SDKを更新する際は、`pubspec.yaml` の指定とローカルのFlutterを�
 | `lib/main.dart` | アプリの起動とロケール設定 |
 | `lib/game/run_state.dart` | 戦闘・能力の実行、経験値、ラン状態のシミュレーション |
 | `lib/game/build.dart` | 能力・設計方針の定義と、戦闘・カードで共有するステータス計算 |
+| `lib/game/ability_runtime.dart` | 減速領域・再攻撃・集中・回復予算のラン内状態 |
+| `lib/game/combat_rules.dart` | 方向防御と範囲・側背面攻撃の共通判定 |
 | `lib/game/combat_entities.dart` | 敵、弾、オブジェクト、軌道の衝突判定 |
 | `lib/game/spawn_director.dart` | 時間帯と出現コストによる編成管理 |
 | `lib/game/language_profile.dart` | 戦闘バランスから独立した言語傾向の判定 |
@@ -53,6 +55,10 @@ flutter build web --release --base-href /runtime-survivors/ --no-web-resources-c
 
 UIの表示テストではFlutter SDKに同梱されたRobotoフォントを読み込み、PCブラウザの英文に近い文字幅でレイアウトを検証します。音声のネイティブテストでは無音のバックエンドを使用します。
 
+5分間の統合テストでは両設計方針に加え、範囲・減速・回復、OOP・防壁・集中、同時攻撃・再攻撃・集中・貫通の組み合わせを実行します。生存時間全体を検証するため、このテストではメモリを補充します。難易度評価や実プレイの代替ではありません。
+
+新しい敵のIDは列挙型の末尾に追加し、既存の発見記録との互換性を維持します。出現時期・比率・上限・コストは `SpawnDirector.rules`、Infraの前提とランク上限は `UpgradeInfo`、言語判定の重みは `language_profile.dart` にあります。
+
 ## アセットの生成
 
 ### BGM
@@ -69,7 +75,7 @@ Pythonの標準ライブラリだけで `assets/audio/runtime_loop.wav` を生�
 flutter test tool/generate_upgrade_icons.dart
 ```
 
-ベクター描画のソースから `assets/icons/upgrades/` に12種類の256×256 PNGを生成します。カード・サイドバー・図鑑は共通の `UpgradeIcon` ウィジェットで同じアセットを参照します。
+ベクター描画のソースから `assets/icons/upgrades/` に19種類の256×256 PNGを生成します。カード・サイドバー・図鑑は共通の `UpgradeIcon` ウィジェットで同じアセットを参照します。
 
 ## CIとGitHub Pages
 
