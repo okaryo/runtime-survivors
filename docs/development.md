@@ -25,7 +25,7 @@ SDKを更新する際は、`pubspec.yaml` の指定とローカルのFlutterを�
 | `lib/main.dart` | アプリの起動とロケール設定 |
 | `lib/game/run_state.dart` | 戦闘・能力の実行、経験値、ラン状態のシミュレーション |
 | `lib/game/build.dart` | 能力とトレードオフの定義と、戦闘・カードで共有するステータス計算 |
-| `lib/game/ability_runtime.dart` | 設置攻撃・入力キャッシュ・JITゲージ・ストリーム接続・回復予算のラン内状態 |
+| `lib/game/ability_runtime.dart` | 設置攻撃・例外処理の再準備・JITゲージ・ストリーム接続・回復予算のラン内状態 |
 | `lib/game/deadlock_encounter.dart` | ロックノード・障壁・解除時間・再構成の管理 |
 | `lib/game/workload_hazards.dart` | メモリリークのセル形状と寿命、タイマーパルスの移動と衝突 |
 | `lib/game/workload_painter.dart` | 漏出領域・タイマーパルス・ストリームの描画 |
@@ -100,7 +100,7 @@ Pythonの標準ライブラリだけで `assets/audio/runtime_loop.wav` を生�
 flutter test tool/generate_upgrade_icons.dart
 ```
 
-ベクター描画のソースから `assets/icons/upgrades/` に20種類の256×256 PNGを生成します（現役17種類と、取得候補から外したNull Safety・補助プロセッサ・命令パイプライン）。カード・サイドバー・図鑑は共通の `UpgradeIcon` ウィジェットで同じアセットを参照します。
+ベクター描画のソースから `assets/icons/upgrades/` に21種類の256×256 PNGを生成します（現役17種類と、取得候補から外したNull Safety・補助プロセッサ・命令パイプライン・メモ化）。カード・サイドバー・図鑑は共通の `UpgradeIcon` ウィジェットで同じアセットを参照します。
 
 ### OGPとREADMEのヘッダ画像
 
