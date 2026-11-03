@@ -29,7 +29,7 @@ SDKを更新する際は、`pubspec.yaml` の指定とローカルのFlutterを�
 | `lib/game/deadlock_encounter.dart` | ロックノード・障壁・解除時間・再構成の管理 |
 | `lib/game/workload_hazards.dart` | メモリリークのセル形状と寿命、タイマーパルスの移動と衝突 |
 | `lib/game/workload_painter.dart` | 漏出領域・タイマーパルス・ストリームの描画 |
-| `lib/game/combat_entities.dart` | 敵、弾、オブジェクト、軌道の衝突判定 |
+| `lib/game/combat_entities.dart` | 敵、弾、オブジェクト、軌道の衝突判定、実回復量を持つ表示エフェクト |
 | `lib/game/spawn_director.dart` | 時間帯・ラッシュテーマ・終盤の負荷と出現コストによる編成管理 |
 | `lib/game/language_profile.dart` | 戦闘バランスから独立した言語傾向の判定 |
 | `lib/game/runtime_game.dart` | Flameの更新・描画・キーボード入力 |
@@ -38,7 +38,8 @@ SDKを更新する際は、`pubspec.yaml` の指定とローカルのFlutterを�
 | `lib/l10n/game_text.dart` | 日本語・英語の文言と能力説明 |
 | `lib/audio/` | Web AudioによるBGM・効果音 |
 | `lib/settings.dart` | 設定と発見記録のローカル保存 |
-| `assets/` | BGM音源と能力アイコン |
+| `assets/` | BGM音源・能力アイコン・同梱フォントとライセンス |
+| `web/` | Webの起動HTML、共有メタ情報、OGP画像、アプリアイコン |
 | `test/` | 戦闘・成長・音声状態・入力・UIのテスト |
 | `tool/` | オリジナルアセットの生成処理 |
 
@@ -98,6 +99,18 @@ flutter test tool/generate_upgrade_icons.dart
 ```
 
 ベクター描画のソースから `assets/icons/upgrades/` に20種類の256×256 PNGを生成します（現役17種類と、取得候補から外したNull Safety・補助プロセッサ・命令パイプライン）。カード・サイドバー・図鑑は共通の `UpgradeIcon` ウィジェットで同じアセットを参照します。
+
+### OGPとREADMEのヘッダ画像
+
+`web/ogp.png` は1200×630のPNGで、READMEと[Open Graph](https://ogp.me/)の両方から参照します。ゲーム内の `CharacterPainter` と既存の能力アイコンを使ったオリジナルの描画で、画像の再生成は次のコマンドです。
+
+```sh
+flutter test tool/generate_social_image.dart
+```
+
+タイトル・キャラ・能力を小さいプレビューでも見分けられるように構成しています。`web/index.html` にOGPと大きな画像のTwitter Cardメタ情報、画像サイズ・代替テキスト・canonical URLを設定。Flutter起動前に読み取れる静的HTMLです。`web/` の画像はビルド時にWeb成果物のルートへコピーされます。
+
+共有先のURLは現在のGitHub Pages（`https://okaryo.github.io/runtime-survivors/`）です。ホスト先を変える場合はcanonical・og:url・og:image・twitter:imageとREADMEのリンクを更新してください。画像やメタ情報の公開には通常のpush・CI配信が必要です。GitHubリポジトリ自体のSocial preview設定は別で、ここでは変更しません。
 
 ## CIとGitHub Pages
 
