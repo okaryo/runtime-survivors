@@ -25,12 +25,12 @@ SDKを更新する際は、`pubspec.yaml` の指定とローカルのFlutterを�
 | `lib/main.dart` | アプリの起動とロケール設定 |
 | `lib/game/run_state.dart` | 戦闘・能力の実行、経験値、ラン状態のシミュレーション |
 | `lib/game/build.dart` | 能力とトレードオフの定義と、戦闘・カードで共有するステータス計算 |
-| `lib/game/ability_runtime.dart` | 設置攻撃・入力キャッシュ・JIT解析・ストリーム接続・回復予算のラン内状態 |
+| `lib/game/ability_runtime.dart` | 設置攻撃・入力キャッシュ・JITゲージ・ストリーム接続・回復予算のラン内状態 |
 | `lib/game/deadlock_encounter.dart` | ロックノード・障壁・解除時間・再構成の管理 |
 | `lib/game/workload_hazards.dart` | メモリリークのセル形状と寿命、タイマーパルスの移動と衝突 |
 | `lib/game/workload_painter.dart` | 漏出領域・タイマーパルス・ストリームの描画 |
 | `lib/game/combat_entities.dart` | 敵、弾、オブジェクト、軌道の衝突判定 |
-| `lib/game/spawn_director.dart` | 時間帯と出現コストによる編成管理 |
+| `lib/game/spawn_director.dart` | 時間帯・ラッシュテーマ・終盤の負荷と出現コストによる編成管理 |
 | `lib/game/language_profile.dart` | 戦闘バランスから独立した言語傾向の判定 |
 | `lib/game/runtime_game.dart` | Flameの更新・描画・キーボード入力 |
 | `lib/game/character_painter.dart` | キャラクターの図形描画 |
