@@ -35,6 +35,10 @@ class SlowField {
   double remaining = 7;
   double arming = 0.35;
   bool triggered = false;
+  static const activeDuration = 2.4;
+  static const tickInterval = 0.6;
+  double tickTimer = tickInterval;
+  double flash = 0;
 }
 
 /// Per-run state for abilities; never stored in catalog definitions or previews.
@@ -42,7 +46,7 @@ class AbilityRuntime {
   static const jitDecay = 9.0;
   static const jitKillGain = 9.0;
   final List<SlowField> fields = [];
-  final stream = AsyncStreamRuntime();
+  final streams = [AsyncStreamRuntime()];
   // A signature includes both the operation and its visible input variant.
   final Set<int> cachedInputs = {};
   double jitCharge = 0;
@@ -55,7 +59,9 @@ class AbilityRuntime {
 
   void reset() {
     fields.clear();
-    stream.reset();
+    streams
+      ..clear()
+      ..add(AsyncStreamRuntime());
     cachedInputs.clear();
     jitCharge = 0;
     fieldTimer = memoTimer = ownershipTimer = gcPause = 0;
@@ -73,6 +79,8 @@ class AbilityRuntime {
     for (final field in fields) {
       field.remaining -= dt;
       field.arming -= dt;
+      field.flash = max(0, field.flash - dt);
+      if (field.triggered) field.tickTimer -= dt;
     }
     fields.removeWhere((f) => f.remaining <= 0);
   }

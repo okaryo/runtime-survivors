@@ -299,7 +299,9 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
     clipBehavior: Clip.antiAlias,
     child: LayoutBuilder(
       builder: (context, constraints) {
-        final safeInsets = RuntimeHud.safeInsets(context, constraints.maxWidth);
+        final safeInsets = run.phase == RunPhase.ready
+            ? EdgeInsets.zero
+            : RuntimeHud.safeInsets(context, constraints.maxWidth);
         return Stack(
           children: [
             Positioned.fill(
@@ -328,14 +330,15 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
                   child: Padding(padding: safeInsets, child: overlay()),
                 ),
               ),
-            Positioned.fill(
-              child: RuntimeHud(
-                run: run,
-                text: text,
-                onPause: pause,
-                onResume: resume,
+            if (run.phase != RunPhase.ready)
+              Positioned.fill(
+                child: RuntimeHud(
+                  run: run,
+                  text: text,
+                  onPause: pause,
+                  onResume: resume,
+                ),
               ),
-            ),
           ],
         );
       },

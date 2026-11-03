@@ -19,4 +19,7 @@ Future<void> loadRuntimeFonts() async {
   final mono = FontLoader('RobotoMono')
     ..addFont(rootBundle.load('assets/fonts/roboto_mono/RobotoMono.ttf'));
   await mono.load();
+  final japanese = FontLoader('RuntimeSansJP')
+    ..addFont(rootBundle.load('assets/fonts/noto_sans_jp/RuntimeSansJP.ttf'));
+  await japanese.load();
 }

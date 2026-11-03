@@ -70,7 +70,7 @@ void main() {
         RunEffect(run.player.clone(), collection: true, radius: run.gcRadius)
           ..life = 0.6,
       );
-      run.abilities.stream.connect(target, 0.7);
+      run.abilities.streams.first.connect(target, 0.7);
       run.phase = RunPhase.paused;
       run.elapsed = 275.3;
       final boundaryKey = GlobalKey();
@@ -86,8 +86,8 @@ void main() {
       );
       await tester.pump(const Duration(milliseconds: 100));
       expect(tester.takeException(), isNull);
-      run.abilities.stream.preparation = 0;
-      run.abilities.stream.flash = 0.1;
+      run.abilities.streams.first.preparation = 0;
+      run.abilities.streams.first.flash = 0.1;
       await tester.pump(const Duration(milliseconds: 30));
       expect(tester.takeException(), isNull);
       if (Platform.environment['RUNTIME_CAPTURE'] == '1') {

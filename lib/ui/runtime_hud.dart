@@ -45,6 +45,8 @@ class RuntimeHud extends StatelessWidget {
       final compact = width < 680;
       final encounter = run.deadlocks.where((e) => e.core.alive).firstOrNull;
       final insets = safeInsets(context, width);
+      final headerHeight =
+          34.0 * max(1.0, MediaQuery.textScalerOf(context).scale(17) / 17);
       final remaining = clock(RunState.duration - run.elapsed);
       final showRush = switch (run.phase) {
         RunPhase.running || RunPhase.choosing || RunPhase.paused => true,
@@ -67,34 +69,44 @@ class RuntimeHud extends StatelessWidget {
                 child: Column(
                   key: const Key('deadlock-status'),
                   children: [
-                    Text(
-                      text('enemy.3.title'),
-                      style: const TextStyle(
-                        color: _amber,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        shadows: _shadow,
+                    SizedBox(
+                      height: headerHeight,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            text('enemy.3.title'),
+                            style: const TextStyle(
+                              color: _amber,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              shadows: _shadow,
+                            ),
+                          ),
+                          Text(
+                            text(
+                              encounter.exposed
+                                  ? 'bossExposedShort'
+                                  : 'bossLockedShort',
+                            ),
+                            style: const TextStyle(
+                              color: _amber,
+                              fontSize: 11,
+                              shadows: _shadow,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    Text(
-                      text(
-                        encounter.exposed
-                            ? 'bossExposedShort'
-                            : 'bossLockedShort',
-                      ),
-                      style: const TextStyle(
-                        color: _amber,
-                        fontSize: 11,
-                        shadows: _shadow,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
                     LinearProgressIndicator(
+                      key: const Key('deadlock-bar'),
                       value: (encounter.core.health / encounter.core.maxHealth)
                           .clamp(0, 1),
                       color: _amber,
                       backgroundColor: const Color(0xFF51432C),
-                      minHeight: 4,
+                      minHeight: 6,
+                      borderRadius: BorderRadius.circular(3),
                     ),
                   ],
                 ),
@@ -144,7 +156,7 @@ class RuntimeHud extends StatelessWidget {
             left: 16,
             top: 14,
             width: min(232.0, width * (compact ? 0.43 : 0.28)),
-            child: IgnorePointer(child: memory()),
+            child: IgnorePointer(child: memory(headerHeight)),
           ),
           Positioned(
             left: compact ? null : (width - 120) / 2,
@@ -238,52 +250,56 @@ class RuntimeHud extends StatelessWidget {
     },
   );
 
-  Widget memory() {
+  Widget memory(double headerHeight) {
     final color = run.health / run.maxHealth < 0.3 ? _amber : mint;
     return Column(
       key: const Key('memory-status'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Icon(
-              Icons.memory_outlined,
-              size: 24,
-              color: color,
-              shadows: _shadow,
-            ),
-            const SizedBox(width: 9),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    text('hudMemory'),
-                    style: const TextStyle(
-                      color: darkMuted,
-                      fontSize: 11,
-                      height: 1.1,
-                      shadows: _shadow,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${run.health.ceil()} / ${run.maxHealth.toInt()} MB',
-                    style: TextStyle(
-                      color: color,
-                      fontSize: 17,
-                      height: 1.1,
-                      fontWeight: FontWeight.w700,
-                      shadows: _shadow,
-                    ),
-                  ),
-                ],
+        SizedBox(
+          height: headerHeight,
+          child: Row(
+            children: [
+              Icon(
+                Icons.memory_outlined,
+                size: 24,
+                color: color,
+                shadows: _shadow,
               ),
-            ),
-          ],
+              const SizedBox(width: 9),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      text('hudMemory'),
+                      style: const TextStyle(
+                        color: darkMuted,
+                        fontSize: 11,
+                        height: 1.1,
+                        shadows: _shadow,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${run.health.ceil()} / ${run.maxHealth.toInt()} MB',
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 17,
+                        height: 1.1,
+                        fontWeight: FontWeight.w700,
+                        shadows: _shadow,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 6),
         LinearProgressIndicator(
+          key: const Key('memory-bar'),
           value: (run.health / run.maxHealth).clamp(0, 1),
           minHeight: 6,
           color: color,

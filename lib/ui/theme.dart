@@ -14,12 +14,15 @@ const darkMuted = Color(0xFFB2C5BB);
 final gameTheme = ThemeData(
   useMaterial3: true,
   scaffoldBackgroundColor: paper,
+  fontFamily: 'Roboto',
+  fontFamilyFallback: const ['RuntimeSansJP'],
   colorScheme: ColorScheme.fromSeed(
     seedColor: ink,
     primary: ink,
     surface: paper,
   ),
   textTheme: ThemeData.light().textTheme.apply(
+    fontFamilyFallback: const ['RuntimeSansJP'],
     bodyColor: ink,
     displayColor: ink,
   ),

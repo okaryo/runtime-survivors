@@ -55,6 +55,10 @@ void main() {
           final timer = tester.getRect(find.byKey(const Key('remaining-time')));
           expect(memory.overlaps(boss), isFalse);
           expect(timer.overlaps(boss), isFalse);
+          final memoryBar = tester.getRect(find.byKey(const Key('memory-bar')));
+          final bossBar = tester.getRect(find.byKey(const Key('deadlock-bar')));
+          expect(bossBar.top, closeTo(memoryBar.top, 0.01));
+          expect(bossBar.height, memoryBar.height);
           Future<void> capture(String path) async {
             if (Platform.environment['RUNTIME_CAPTURE'] != '1' ||
                 language != 'ja' ||

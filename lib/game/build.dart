@@ -127,6 +127,7 @@ class BuildStats {
   double get slowMultiplier => 0.75 - rank(Upgrade.lazyEvaluation) * 0.05;
   double get lazyDamage => 48 + rank(Upgrade.lazyEvaluation) * 20.0;
   double get lazyInterval => 4 * cooldownScale;
+  double get lazyTickDamage => lazyDamage * 0.2;
   double get memoDamage => 18 + rank(Upgrade.memoization) * 12.0;
   double get memoInterval => 1.5 * cooldownScale;
   double get ownershipDamage => 26 + rank(Upgrade.ownership) * 14.0;
@@ -136,8 +137,12 @@ class BuildStats {
   double get ownershipRadius => 105 * areaScale;
   double get streamDamage => 10 + rank(Upgrade.asyncStream) * 4.0;
   double get streamInterval => 0.25 * cooldownScale;
+  int get streamConnections =>
+      1 +
+      (rank(Upgrade.asyncStream) >= 2 ? 1 : 0) +
+      (rank(Upgrade.asyncStream) >= 4 ? 1 : 0);
   double get streamPreparation =>
-      (0.8 - rank(Upgrade.asyncStream) * 0.1) * cooldownScale;
+      (0.26 - rank(Upgrade.asyncStream) * 0.04) * cooldownScale;
   double get hitInvulnerability => 0.65 + rank(Upgrade.memoryProtection) * 0.08;
 }
 

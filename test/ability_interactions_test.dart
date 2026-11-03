@@ -11,7 +11,27 @@ RunState prepared() => RunState(random: Random(8))
   ..start()
   ..enemies.clear();
 void main() {
-  test('deferred traps wait for nearby work, burst once, then slow survivors and freeze on pause', () {
+  test(
+    'triggered deferred work damages later arrivals inside its fixed area',
+    () {
+      final run = prepared()..upgrades[Upgrade.lazyEvaluation] = 1;
+      final trigger = TaskEnemy(Vector2(40, 0), kind: 3, health: 1000);
+      run.enemies.add(trigger);
+      tick(run, 0.4);
+      expect(run.abilities.fields.single.triggered, isTrue);
+      run.player.setValues(-800, 0);
+      final arrival = TaskEnemy(Vector2(50, 0), kind: 3, health: 1000);
+      final outside = TaskEnemy(Vector2(200, 0), kind: 3, health: 1000);
+      run.enemies.addAll([arrival, outside]);
+      tick(run, 0.65);
+      expect(arrival.health, closeTo(986.4, 0.001));
+      expect(outside.health, 1000);
+      arrival.position.setValues(300, 0);
+      tick(run, 0.65);
+      expect(arrival.health, closeTo(986.4, 0.001));
+    },
+  );
+  test('deferred traps wait for nearby work, burst, then damage and slow survivors and freeze on pause', () {
     final run = prepared()..upgrades[Upgrade.lazyEvaluation] = 1;
     run.update(0.01);
     final field = run.abilities.fields.single;
@@ -33,9 +53,14 @@ void main() {
     tick(run, 8);
     expect(field.remaining, remaining);
     run.resume();
-    tick(run, 1.6);
+    tick(run, 0.7);
+    expect(run.abilities.fields, isNotEmpty);
+    expect(elite.health, lessThan(damagedHealth));
+    tick(run, 1.8);
     expect(run.abilities.fields, isEmpty);
-    expect(elite.health, damagedHealth); // The trap cannot burst twice.
+    final finalHealth = elite.health;
+    tick(run, 0.7);
+    expect(elite.health, finalHealth); // Expired fields cannot continue to hit.
   });
   test('memoization stores operation plus input and reuses only matching completed results', () {
     final run = prepared()..upgrades[Upgrade.memoization] = 1;

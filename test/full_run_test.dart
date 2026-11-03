@@ -98,7 +98,7 @@ void main() {
         expect(run.hazards, isEmpty);
         expect(run.leakPatches, isEmpty);
         expect(run.timerPulses, isEmpty);
-        expect(run.abilities.stream.target, isNull);
+        expect(run.abilities.streams.first.target, isNull);
       },
     );
   }

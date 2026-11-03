@@ -563,7 +563,8 @@ class RunState {
                 e.position.distanceTo(field.position) <= field.radius * 0.65,
           )) {
         field.triggered = true;
-        field.remaining = 1.5;
+        field.remaining = SlowField.activeDuration;
+        field.flash = 0.12;
         effects.add(
           RunEffect(field.position.clone(), pulse: true, radius: field.radius),
         );
@@ -574,6 +575,20 @@ class RunState {
         )) {
           _damage(enemy, field.damage);
         }
+      }
+    }
+    for (final field in abilities.fields.where(
+      (f) => f.triggered && f.tickTimer <= 0,
+    )) {
+      field.tickTimer = SlowField.tickInterval;
+      field.flash = 0.12;
+      for (final enemy in enemies.where(
+        (e) =>
+            e.alive &&
+            e.position.distanceToSquared(field.position) <=
+                field.radius * field.radius,
+      )) {
+        _damage(enemy, field.damage * 0.2);
       }
     }
     if (rank(Upgrade.ownership) > 0 && abilities.ownershipTimer <= 0) {
@@ -629,31 +644,50 @@ class RunState {
   }
 
   void _updateStream(double dt) {
-    final stream = abilities.stream;
+    final channels = abilities.streams;
     if (rank(Upgrade.asyncStream) == 0) {
-      stream.reset();
+      if (channels.length > 1) channels.removeRange(1, channels.length);
+      channels.first.reset();
       return;
     }
-    final target = stream.target;
-    if (target == null ||
-        !target.alive ||
-        !enemies.contains(target) ||
-        target.position.distanceTo(player) > attackRange) {
-      stream.reset();
-      final next = _nearestEnemy(player, attackRange);
-      if (next != null) stream.connect(next, _stats.streamPreparation);
-      return;
+    while (channels.length < _stats.streamConnections) {
+      channels.add(AsyncStreamRuntime());
     }
-    stream.flash = max(0, stream.flash - dt);
-    if (stream.preparation > 0) {
-      stream.preparation = max(0, stream.preparation - dt);
-      return;
+    if (channels.length > _stats.streamConnections) {
+      channels.removeRange(_stats.streamConnections, channels.length);
     }
-    stream.tickTimer -= dt;
-    if (stream.tickTimer <= 0) {
-      _damage(target, _stats.streamDamage);
-      stream.tickTimer = _stats.streamInterval;
-      stream.flash = 0.10;
+    bool valid(TaskEnemy? target) =>
+        target != null &&
+        target.alive &&
+        enemies.contains(target) &&
+        target.position.distanceTo(player) <= attackRange;
+    final assigned = channels
+        .map((c) => c.target)
+        .whereType<TaskEnemy>()
+        .where(valid)
+        .toSet();
+    for (final channel in channels) {
+      final target = channel.target;
+      if (!valid(target)) {
+        channel.reset();
+        final next = _nearestEnemy(player, attackRange, excluding: assigned);
+        if (next != null) {
+          assigned.add(next);
+          channel.connect(next, _stats.streamPreparation);
+        }
+        continue;
+      }
+      channel.flash = max(0, channel.flash - dt);
+      if (channel.preparation > 0) {
+        channel.preparation = max(0, channel.preparation - dt);
+        if (channel.preparation > 0) continue;
+      }
+      channel.tickTimer -= dt;
+      if (channel.tickTimer <= 0) {
+        _damage(target!, _stats.streamDamage);
+        channel.tickTimer = _stats.streamInterval;
+        channel.flash = 0.10;
+      }
     }
   }
 
@@ -791,12 +825,18 @@ class RunState {
     }
   }
 
-  TaskEnemy? _nearestEnemy(Vector2 origin, double range) {
+  TaskEnemy? _nearestEnemy(
+    Vector2 origin,
+    double range, {
+    Set<TaskEnemy>? excluding,
+  }) {
     TaskEnemy? result;
     var distance = range * range;
     for (final enemy in enemies) {
       final d = enemy.position.distanceToSquared(origin);
-      if (enemy.alive && d <= distance) {
+      if (enemy.alive &&
+          d <= distance &&
+          !(excluding?.contains(enemy) ?? false)) {
         result = enemy;
         distance = d;
       }

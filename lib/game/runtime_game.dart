@@ -212,8 +212,9 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
         p,
         field.radius,
         Paint()
-          ..color = const Color(0xFFB6A9EF)
-              .withValues(alpha: min(0.1, field.remaining * 0.05)),
+          ..color = const Color(0xFFB6A9EF).withValues(
+            alpha: min(field.flash > 0 ? 0.18 : 0.08, field.remaining * 0.06),
+          ),
       );
       canvas.drawCircle(
         p,
@@ -224,6 +225,19 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2,
       );
+      if (field.triggered) {
+        canvas.drawArc(
+          Rect.fromCircle(center: p, radius: field.radius * 0.82),
+          run.elapsed * 2,
+          pi * 1.4,
+          false,
+          Paint()
+            ..color = const Color(0xFFB6A9EF)
+                .withValues(alpha: min(0.55, field.remaining * 0.4))
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = field.flash > 0 ? 3 : 1.5,
+        );
+      }
       _text(
         canvas,
         field.triggered ? '!' : '...',
@@ -485,12 +499,9 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
       }
       canvas.restore();
     }
-    WorkloadPainter.stream(
-      canvas,
-      run.abilities.stream,
-      run.player,
-      run.elapsed,
-    );
+    for (final channel in run.abilities.streams) {
+      WorkloadPainter.stream(canvas, channel, run.player, run.elapsed);
+    }
     for (final shot in run.instructions) {
       final shotColor = switch (shot.kind) {
         InstructionKind.base =>
@@ -602,7 +613,7 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
           color: color,
           fontSize: size,
           fontFamily: 'RobotoMono',
-          fontFamilyFallback: const ['Roboto'],
+          fontFamilyFallback: const ['RuntimeSansJP', 'Roboto'],
           fontWeight: bold ? FontWeight.bold : FontWeight.normal,
         ),
       ),

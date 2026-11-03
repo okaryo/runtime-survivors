@@ -148,12 +148,12 @@ class GameText {
       ],
       Upgrade.lazyEvaluation => [
         value('stat.trapDamage', before.lazyDamage, after.lazyDamage),
-        value('stat.slowRadius', before.slowRadius, after.slowRadius),
-        metric(
-          'stat.slowAmount',
-          first ? null : '${((1 - before.slowMultiplier) * 100).round()}%',
-          '${((1 - after.slowMultiplier) * 100).round()}%',
+        value(
+          'stat.lazyTickDamage',
+          before.lazyTickDamage,
+          after.lazyTickDamage,
         ),
+        value('stat.slowRadius', before.slowRadius, after.slowRadius),
       ],
       Upgrade.memoization => [
         value('stat.memoDamage', before.memoDamage, after.memoDamage),
@@ -192,10 +192,10 @@ class GameText {
       ],
       Upgrade.asyncStream => [
         value('stat.streamDamage', before.streamDamage, after.streamDamage),
-        seconds(
-          'stat.streamInterval',
-          before.streamInterval,
-          after.streamInterval,
+        metric(
+          'stat.streamConnections',
+          first ? null : before.streamConnections,
+          after.streamConnections,
         ),
         metric(
           'stat.streamPreparation',
@@ -274,13 +274,15 @@ class GameText {
   });
 
   static const copy = <String, List<String>>{
+    'stat.streamConnections': ['同時接続数', 'Stream connections'],
+    'stat.lazyTickDamage': ['持続攻撃の威力', 'Lingering tick damage'],
     'stat.streamDamage': ['継続処理の威力', 'Stream tick damage'],
     'stat.streamInterval': ['継続処理の間隔', 'Stream tick interval'],
     'stat.streamPreparation': ['接続の準備時間', 'Connection setup'],
     'asyncStream.title': ['非同期ストリーム', 'Async Stream'],
     'asyncStream.description': [
-      'タスクへ接続し、データ片を流して継続攻撃。移動しながら同じ対象を処理し続けます。',
-      'Connects to one task and streams continuous attacks while you move.',
+      '短い準備で接続し、データ片を流して継続攻撃。強化すると別のタスクへの接続も増えます。',
+      'Quickly connects and streams continuous attacks. Upgrades add connections to distinct tasks.',
     ],
     'asyncStream.tradeoff': [
       '接続ごとに準備が必要。対象の撃破や射程外への移動で接続が切れるため、頻繁な切り替えは苦手。',
@@ -371,7 +373,7 @@ class GameText {
       'Crowds, batches and forked copies',
     ],
     'concurrency.matchup': ['分散した複数の敵', 'Several spread-out enemies'],
-    'oop.matchup': ['分散したタスク・ロックノード', 'Spread-out tasks and lock nodes'],
+    'oop.matchup': ['分散した敵・ロック', 'Spread-out tasks and lock nodes'],
     'functional.matchup': ['コピーの群れ・近接したタスク', 'Forked crowds and nearby tasks'],
     'nullSafety.matchup': [
       '近距離の群れ・Null参照の処理',
@@ -411,8 +413,8 @@ class GameText {
     ],
     'lazyEvaluation.title': ['遅延評価', 'Lazy Evaluation'],
     'lazyEvaluation.description': [
-      '足元で処理を待機。敵が近づくと強力な範囲攻撃が起動し、残った敵を減速します。',
-      'Waits at your position, then unleashes a powerful area burst when tasks approach, slowing survivors.',
+      '足元で処理を待機。敵が近づくと範囲攻撃が起動し、しばらく持続攻撃と減速が残ります。',
+      'Waits where placed. Approaching tasks trigger a burst, followed by lingering attacks and slowing.',
     ],
     'lazyEvaluation.tradeoff': [
       '設置位置は動かず、敵が近づかなければ起動しない。',
@@ -549,7 +551,7 @@ class GameText {
     'resultBuild': ['取得した能力', 'Your build'],
     'profile.label': ['今回の言語プロフィール', 'Your language profile'],
     'profile.custom': ['独自設計の言語', 'An original language'],
-    'profile.affinity': ['{language}寄りの言語', 'A {language}-leaning language'],
+    'profile.affinity': ['{language}っぽい言語', 'A {language}-like language'],
     'profile.description': [
       '主に伸ばした機能：{features}。',
       'Main investments: {features}.',
@@ -710,7 +712,7 @@ class GameText {
     ],
     'oop.title': ['オブジェクト指向', 'Object-Oriented Programming'],
     'oop.description': [
-      'オブジェクトへ処理を委譲。周囲を回るオブジェクトが、それぞれ強力な独立攻撃を行います。',
+      '周囲のオブジェクトへ処理を委譲。それぞれが独立して攻撃します。',
       'Delegates work to orbiting objects, each firing strong independent attacks.',
     ],
     'oop.tradeoff': [
