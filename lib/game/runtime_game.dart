@@ -404,6 +404,10 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
       canvas.restore();
     }
     for (final effect in run.effects) {
+      if (effect.recoveredMemory > 0) {
+        WorkloadPainter.recovery(canvas, effect, run.player);
+        continue;
+      }
       if (effect.collection) {
         WorkloadPainter.collection(canvas, effect);
         continue;
@@ -529,6 +533,16 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
       );
     }
     final position = point(run.player);
+    if (run.recoveredMemory > 0) {
+      _text(
+        canvas,
+        run.recoveryLabel,
+        position + const Offset(-25, -50),
+        const Color(0xFFB8FFB2),
+        13,
+        bold: true,
+      );
+    }
     if (run.rank(Upgrade.jitCompilation) > 0) {
       final rect = Rect.fromLTWH(position.dx - 30, position.dy + 47, 60, 5);
       canvas.drawRect(rect, Paint()..color = const Color(0xFF4D4835));

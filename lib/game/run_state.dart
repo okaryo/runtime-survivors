@@ -96,6 +96,10 @@ class RunState {
   double get attackInterval => _stats.attackInterval;
   double get gcRadius => _stats.gcRadius;
   double get gcDamage => _stats.gcDamage;
+  double get recoveredMemory =>
+      effects.fold(0, (sum, effect) => sum + effect.recoveredMemory);
+  String get recoveryLabel =>
+      '+${recoveredMemory.toStringAsFixed(recoveredMemory == recoveredMemory.roundToDouble() ? 0 : 1)} MB';
   int get targetCount => _stats.targetCount;
   double get jitCharge => abilities.jitCharge;
   double get jitFireRate => 1 + _stats.jitSpeedBonus * jitCharge / 100;
@@ -718,7 +722,7 @@ class RunState {
       }
       return;
     }
-    if (delta.length > 220) {
+    if (delta.length > 280) {
       enemy.position.add(
         delta.normalized() * enemy.speed * enemy.movementMultiplier * dt,
       );
@@ -951,15 +955,17 @@ class RunState {
     }
     if (delta.length >
         (ranged
-            ? 240
+            ? 320
             : enemy.summoned
             ? 0
             : 260)) {
       enemy.position.add(
         delta.normalized() * enemy.speed * enemy.movementMultiplier * dt,
       );
-    } else if (ranged && delta.length > 1 && delta.length < 150) {
-      enemy.position.add(delta.normalized() * -enemy.speed * dt);
+    } else if (ranged && delta.length > 1 && delta.length < 230) {
+      enemy.position.add(
+        delta.normalized() * -enemy.speed * enemy.movementMultiplier * dt,
+      );
     }
     enemy.attackCooldown -= dt;
     if (enemy.attackCooldown <= 0 &&
@@ -1007,11 +1013,11 @@ class RunState {
                         : type == EnemyType.memoryLeak
                         ? 1.8
                         : type == EnemyType.timerEvent
-                        ? 1.5
+                        ? 3.2
                         : type == EnemyType.forkBomb
                         ? 2.5
                         : type == EnemyType.rpc
-                        ? 1.6
+                        ? 3.6
                         : type == EnemyType.batch
                         ? 1.15
                         : 1)) *
@@ -1077,7 +1083,15 @@ class RunState {
         );
         health += healed;
         if (healed > 0) {
-          effects.add(RunEffect(player.clone(), healing: true, radius: 28));
+          effects.add(
+            RunEffect(
+              player.clone(),
+              healing: true,
+              radius: 28,
+              recoveredMemory: healed,
+              source: enemy.position.clone(),
+            ),
+          );
         }
       }
       if (enemy.type == EnemyType.lockNode) {

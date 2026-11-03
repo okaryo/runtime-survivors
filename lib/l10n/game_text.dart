@@ -440,8 +440,8 @@ class GameText {
     ],
     'ownership.title': ['所有権', 'Ownership'],
     'ownership.description': [
-      '近距離のタスクを強く処理。近くでの撃破時にメモリを回収します。',
-      'Hits nearby tasks hard and reclaims memory from nearby kills.',
+      '近距離のタスクを強く処理。撃破時にメモリを回収し、緑の粒子と回復量で表示します。',
+      'Hits nearby tasks hard and reclaims memory, shown as green packets and a recovery amount.',
     ],
     'ownership.tradeoff': [
       '近づいて戦う必要がある。回復に上限があり、コピーやロックノードは回復対象外。',
@@ -495,7 +495,7 @@ class GameText {
     'enemy.4.title': ['タイムアウトRPC', 'Timeout RPC'],
     'enemy.4.type': ['射撃タスク', 'Ranged task'],
     'enemy.4.description': [
-      '送信後に応答を待ち、未処理なら間隔を置いて再送。再送するたびに弾が増える。発光の後に撃つため、待機中に近づこう。',
+      '距離を保って要求弾を送信し、未処理なら弾を増やして再送。頑丈なので、他のタスクに阻まれる前に近づいて処理しよう。',
       'Sends a request, waits, then retries if unprocessed. Retries add projectiles. Approach during the wait between volleys.',
     ],
     'enemy.5.title': ['Fork Bomb', 'Fork Bomb'],

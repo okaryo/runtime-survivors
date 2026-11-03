@@ -11,6 +11,25 @@ RunState prepared() => RunState(random: Random(8))
   ..start()
   ..enemies.clear();
 void main() {
+  test('ownership feedback reports actual recovery only and expires with game time', () {
+    final run = prepared()..upgrades[Upgrade.ownership] = 1;
+    run.enemies.add(TaskEnemy(Vector2(50, 0), health: 1));
+    run.update(0.01);
+    expect(run.recoveredMemory, 0); // A full-memory attack is not a recovery.
+    run.health = 99.5;
+    run.abilities.ownershipTimer = 0;
+    run.enemies.add(TaskEnemy(Vector2(50, 0), health: 1));
+    run.update(0.01);
+    expect(run.health, 100);
+    expect(run.recoveredMemory, 0.5);
+    expect(run.recoveryLabel, '+0.5 MB');
+    run.pause();
+    tick(run, 2);
+    expect(run.recoveredMemory, 0.5);
+    run.resume();
+    tick(run, 1);
+    expect(run.recoveredMemory, 0);
+  });
   test(
     'triggered deferred work damages later arrivals inside its fixed area',
     () {
@@ -116,11 +135,20 @@ void main() {
     run.enemies.add(TaskEnemy(Vector2(90, 0), health: 1, summoned: true));
     run.update(0.05);
     expect(run.health, 56);
+    expect(run.recoveredMemory, 6);
+    expect(run.recoveryLabel, '+6 MB');
+    expect(
+      run.effects
+          .where((e) => e.recoveredMemory > 0)
+          .every((e) => e.source != null),
+      isTrue,
+    );
     expect(run.kills, 7);
     expect(run.pickupRadius, 66);
     run.update(0.01);
     expect(run.kills, 7);
     run.resetToSetup();
+    expect(run.recoveredMemory, 0);
     expect(run.abilities.fields, isEmpty);
     expect(run.abilities.cachedInputs, isEmpty);
   });

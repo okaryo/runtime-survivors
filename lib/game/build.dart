@@ -142,7 +142,7 @@ class BuildStats {
       (rank(Upgrade.asyncStream) >= 2 ? 1 : 0) +
       (rank(Upgrade.asyncStream) >= 4 ? 1 : 0);
   double get streamPreparation =>
-      (0.26 - rank(Upgrade.asyncStream) * 0.04) * cooldownScale;
+      (0.34 - rank(Upgrade.asyncStream) * 0.04) * cooldownScale;
   double get hitInvulnerability => 0.65 + rank(Upgrade.memoryProtection) * 0.08;
 }
 

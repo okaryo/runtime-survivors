@@ -128,13 +128,21 @@ class RunEffect {
     this.healing = false,
     this.optimized = false,
     this.collection = false,
+    this.recoveredMemory = 0,
+    this.source,
   });
   final Vector2 position;
   final bool pulse;
   final bool healing;
   final bool optimized;
   final bool collection;
-  double get duration => collection ? 0.75 : 0.5;
+  final double recoveredMemory;
+  final Vector2? source;
+  double get duration => recoveredMemory > 0
+      ? 0.9
+      : collection
+      ? 0.75
+      : 0.5;
   final double radius;
   late double life = duration;
 }

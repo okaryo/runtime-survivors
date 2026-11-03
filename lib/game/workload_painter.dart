@@ -13,6 +13,45 @@ class WorkloadPainter {
   static const timerColor = Color(0xFFB9C9FF);
   static const streamColor = Color(0xFF77DCF0);
 
+  static void recovery(Canvas canvas, RunEffect effect, Vector2 player) {
+    const color = Color(0xFFB8FFB2);
+    final from = effect.source ?? effect.position;
+    final progress = 1 - effect.life / effect.duration;
+    for (var i = 0; i < 3; i++) {
+      final t = (progress - i * 0.10) / 0.7;
+      if (t < 0 || t > 1) continue;
+      final position = from + (player - from) * t;
+      final p = Offset(position.x, position.y - sin(t * pi) * 14);
+      canvas.drawRect(
+        Rect.fromCenter(center: p, width: 6, height: 6),
+        Paint()..color = color.withValues(alpha: 1 - progress * 0.6),
+      );
+    }
+    final center = Offset(player.x, player.y);
+    canvas.drawCircle(
+      center,
+      22 + progress * 12,
+      Paint()
+        ..color = color.withValues(alpha: (1 - progress) * 0.7)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2,
+    );
+    final cross = center + const Offset(24, -22);
+    final paint = Paint()
+      ..color = color.withValues(alpha: 1 - progress)
+      ..strokeWidth = 2;
+    canvas.drawLine(
+      cross - const Offset(4, 0),
+      cross + const Offset(4, 0),
+      paint,
+    );
+    canvas.drawLine(
+      cross - const Offset(0, 4),
+      cross + const Offset(0, 4),
+      paint,
+    );
+  }
+
   static void leak(Canvas canvas, MemoryLeakPatch patch, double time) {
     final deploying = patch.age < MemoryLeakPatch.armingTime;
     final opacity = (patch.remaining / 1.5).clamp(0.3, 1.0);

@@ -16,6 +16,58 @@ import 'support/runtime_fonts.dart';
 
 void main() {
   setUpAll(loadRuntimeFonts);
+  for (final arrow in [
+    LogicalKeyboardKey.arrowUp,
+    LogicalKeyboardKey.arrowDown,
+  ]) {
+    testWidgets('held $arrow cannot scroll the page when choices take focus', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1280, 720);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final settings = GameSettings();
+      await tester.pumpWidget(RuntimeSurvivorsApp(settings: settings));
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      final game = tester
+          .widget<GameWidget<RuntimeGame>>(find.byType(GameWidget<RuntimeGame>))
+          .game!;
+      final scroll = tester
+          .state<ScrollableState>(find.byType(Scrollable).first)
+          .position;
+      scroll.jumpTo(100);
+      await tester.sendKeyDownEvent(arrow);
+      game.run.addExperience(game.run.nextLevelXp);
+      game.run.choices = [Upgrade.memory, Upgrade.clock, Upgrade.compiler];
+      game.refresh();
+      await tester.pump();
+      await tester.pump();
+      await tester.sendKeyRepeatEvent(arrow);
+      await tester.pump(const Duration(milliseconds: 250));
+      expect(scroll.pixels, 100);
+      expect(game.run.phase, RunPhase.choosing);
+      expect(game.run.movement.length2, 0);
+      // The same guard also applies after Tab focuses a card.
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      final afterTab = scroll.pixels;
+      await tester.sendKeyRepeatEvent(arrow);
+      await tester.sendKeyUpEvent(arrow);
+      await tester.pump(const Duration(milliseconds: 250));
+      expect(scroll.pixels, afterTab);
+      expect(game.run.phase, RunPhase.choosing);
+      await tester.sendKeyEvent(LogicalKeyboardKey.digit1);
+      await tester.pump();
+      expect(game.run.rank(Upgrade.memory), 1);
+      expect(game.run.phase, RunPhase.running);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      settings.dispose();
+    });
+  }
   testWidgets(
     'all card details stay visible; keyboard selects without inspection',
     (tester) async {

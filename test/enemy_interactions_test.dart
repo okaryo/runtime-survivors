@@ -12,6 +12,33 @@ RunState prepared() => RunState(random: Random(9))
   ..enemies.clear();
 
 void main() {
+  test(
+    'RPC maintains a firing distance beyond base range but can be pursued',
+    () {
+      final run = prepared()..spawnRadius = 10000;
+      final rpc = TaskEnemy(
+        Vector2(340, 0),
+        kind: EnemyType.rpc.index,
+        health: 1000,
+      );
+      run.enemies.add(rpc);
+      tick(run, 2.2);
+      expect(rpc.position.distanceTo(run.player), greaterThan(run.attackRange));
+      expect(rpc.health, 1000);
+      expect(run.projectiles.where((shot) => shot.hostile), isNotEmpty);
+      run.movement.setValues(1, 0);
+      tick(run, 1);
+      expect(rpc.health, lessThan(1000));
+    },
+  );
+  test('spawned ranged tasks withstand multiple base shots', () {
+    final run = prepared()..elapsed = 65;
+    tick(run, 2.5);
+    final rpc = run.enemies.firstWhere((e) => e.type == EnemyType.rpc);
+    final timer = run.enemies.firstWhere((e) => e.type == EnemyType.timerEvent);
+    expect(rpc.maxHealth, greaterThan(run.attackDamage * 3));
+    expect(timer.maxHealth, greaterThan(run.attackDamage * 3));
+  });
   test('director offers distinct active tasks, honors batch limits and reserves first encounters', () {
     const director = SpawnDirector();
     final random = Random(6);

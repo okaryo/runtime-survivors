@@ -271,14 +271,32 @@ class RuntimeHud extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      text('hudMemory'),
-                      style: const TextStyle(
-                        color: darkMuted,
-                        fontSize: 11,
-                        height: 1.1,
-                        shadows: _shadow,
-                      ),
+                    Row(
+                      children: [
+                        Text(
+                          text('hudMemory'),
+                          style: const TextStyle(
+                            color: darkMuted,
+                            fontSize: 11,
+                            height: 1.1,
+                            shadows: _shadow,
+                          ),
+                        ),
+                        if (run.recoveredMemory > 0) ...[
+                          const SizedBox(width: 8),
+                          Text(
+                            run.recoveryLabel,
+                            key: const Key('memory-recovery'),
+                            style: const TextStyle(
+                              color: Color(0xFFB8FFB2),
+                              fontSize: 11,
+                              height: 1.1,
+                              fontWeight: FontWeight.w800,
+                              shadows: _shadow,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     const SizedBox(height: 2),
                     Text(

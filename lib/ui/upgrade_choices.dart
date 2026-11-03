@@ -28,6 +28,16 @@ class UpgradeChoices extends StatelessWidget {
       focusNode: focusNode,
       skipTraversal: true,
       onKeyEvent: (node, event) {
+        // Keep held movement keys from becoming ScrollIntents or browser scrolls
+        // after focus moves from the game to the selection area (including repeats).
+        if (const [
+          LogicalKeyboardKey.arrowUp,
+          LogicalKeyboardKey.arrowDown,
+          LogicalKeyboardKey.arrowLeft,
+          LogicalKeyboardKey.arrowRight,
+        ].contains(event.logicalKey)) {
+          return KeyEventResult.handled;
+        }
         if (event is KeyDownEvent) {
           final index = [
             LogicalKeyboardKey.digit1,

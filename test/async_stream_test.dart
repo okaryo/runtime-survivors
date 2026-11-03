@@ -40,7 +40,7 @@ void main() {
         ),
       );
       run.enemies.addAll(targets);
-      channelTime(run, 0.25);
+      channelTime(run, 0.32);
       expect(run.abilities.streams.length, 2);
       expect(run.abilities.streams.map((c) => c.target).toSet().length, 2);
       expect(targets.where((e) => e.health < 1000).length, 2);
@@ -52,7 +52,7 @@ void main() {
       expect(run.abilities.streams.length, 3);
       expect(run.abilities.streams.map((c) => c.target).toSet().length, 3);
       expect(run.abilities.streams.last.ready, isFalse);
-      channelTime(run, 0.15);
+      channelTime(run, 0.22);
       expect(run.abilities.streams.every((c) => c.ready), isTrue);
       expect(targets.every((e) => e.health < 1000), isTrue);
       run.start();
@@ -68,16 +68,17 @@ void main() {
     expect(run.abilities.streams.first.target, same(target));
     expect(run.abilities.streams.first.ready, isFalse);
     expect(target.health, 1000);
-    channelTime(run, 0.05);
+    channelTime(run, 0.13);
     expect(run.abilities.streams.first.ready, isTrue);
     expect(target.health, 986);
     channelTime(run, 0.26);
     expect(target.health, 972);
+    final beforeMovement = target.health;
     run.movement.setValues(0, 1);
     tick(run, 0.3);
     expect(run.player.y, greaterThan(0));
     expect(run.attackInterval, 0.62);
-    expect(run.instructions.any((s) => s.kind == InstructionKind.base), isTrue);
+    expect(target.health, lessThanOrEqualTo(beforeMovement - run.attackDamage));
   });
 
   test('a subscription stays on its target and pays setup again after completion or range loss', () {
@@ -92,13 +93,13 @@ void main() {
     target.health = 0;
     run.update(0.01);
     expect(run.abilities.streams.first.target, same(closer));
-    expect(run.abilities.streams.first.preparation, closeTo(0.22, 0.001));
+    expect(run.abilities.streams.first.preparation, closeTo(0.30, 0.001));
     closer.position.setValues(1000, 0);
     run.update(0.01);
     expect(run.abilities.streams.first.target, isNull);
     closer.position.setValues(200, 0);
     run.update(0.01);
-    expect(run.abilities.streams.first.preparation, closeTo(0.22, 0.001));
+    expect(run.abilities.streams.first.preparation, closeTo(0.30, 0.001));
   });
 
   test('stream setup and active ticks freeze during pause and choices, and restart clears the subscription', () {
@@ -137,13 +138,13 @@ void main() {
     for (final language in ['ja', 'en']) {
       final text = GameText(language);
       final first = text.comparisons(run.preview(Upgrade.asyncStream));
-      expect(first.map((c) => c.values), ['14', '1', '0.22s']);
+      expect(first.map((c) => c.values), ['14', '1', '0.30s']);
       expect(first.last.cost, isTrue);
     }
     run.upgrades[Upgrade.asyncStream] = 1;
     final next = const GameText('ja')
         .comparisons(run.preview(Upgrade.asyncStream));
-    expect(next.map((c) => c.values), ['14 → 18', '1 → 2', '0.22s → 0.18s']);
+    expect(next.map((c) => c.values), ['14 → 18', '1 → 2', '0.30s → 0.26s']);
     run.upgrades[Upgrade.spatialIndex] = 1;
     run.enemies.clear();
     final target = TaskEnemy(Vector2(320, 0), health: 1000);

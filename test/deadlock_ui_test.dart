@@ -59,6 +59,19 @@ void main() {
           final bossBar = tester.getRect(find.byKey(const Key('deadlock-bar')));
           expect(bossBar.top, closeTo(memoryBar.top, 0.01));
           expect(bossBar.height, memoryBar.height);
+          game.run.upgrades[Upgrade.ownership] = 1;
+          game.run.health = 98;
+          game.run.enemies.add(
+            TaskEnemy(game.run.player + Vector2(40, 0), health: 1),
+          );
+          game.run.update(0.01);
+          game.refresh();
+          await tester.pump();
+          expect(find.text('+2 MB'), findsOneWidget);
+          expect(
+            tester.getRect(find.byKey(const Key('memory-bar'))),
+            memoryBar,
+          );
           Future<void> capture(String path) async {
             if (Platform.environment['RUNTIME_CAPTURE'] != '1' ||
                 language != 'ja' ||
