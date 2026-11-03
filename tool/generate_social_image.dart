@@ -4,10 +4,12 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:ui' as ui;
 
+import 'package:flame/components.dart' show Vector2;
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:runtime_survivors/game/character_painter.dart';
 import 'package:runtime_survivors/game/build.dart';
+import 'package:runtime_survivors/game/combat_entities.dart';
 
 import '../test/support/runtime_fonts.dart';
 
@@ -52,10 +54,16 @@ void machine(
 }) {
   canvas.save();
   canvas.translate(at.dx, at.dy);
+  // Scale the complete in-game drawing, including its face and appendages.
+  // Increasing radius alone stretches only the body and changes its likeness.
+  final nativeRadius = player
+      ? 16.0
+      : TaskEnemy(Vector2.zero(), kind: kind).radius;
+  canvas.scale(radius / nativeRadius);
   CharacterPainter.draw(
     canvas,
     kind: kind,
-    radius: radius,
+    radius: nativeRadius,
     player: player,
     time: 1.2,
   );
@@ -246,6 +254,8 @@ void main() {
       machine(canvas, 11, Offset(999 + i * 33, 410 + i * 35), 22);
     }
     machine(canvas, 14, const Offset(717, 413), 24);
+    machine(canvas, 5, const Offset(704, 524), 23);
+    machine(canvas, 13, const Offset(944, 520), 22);
     machine(canvas, 0, player, 37, player: true);
     label(
       canvas,

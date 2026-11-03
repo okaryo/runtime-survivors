@@ -108,6 +108,8 @@ flutter test tool/generate_upgrade_icons.dart
 flutter test tool/generate_social_image.dart
 ```
 
+キャラクターはゲーム本体と同じ半径で描画した後、Canvas全体を拡大します。体の半径だけを増やすと目・口・手足との比率が変わるため、顔・輪郭・付属物を含めて拡大します。プレイヤーの半径は16、敵は `TaskEnemy.radius` を参照します。
+
 タイトル・キャラ・能力を小さいプレビューでも見分けられるように構成しています。`web/index.html` にOGPと大きな画像のTwitter Cardメタ情報、画像サイズ・代替テキスト・canonical URLを設定。Flutter起動前に読み取れる静的HTMLです。`web/` の画像はビルド時にWeb成果物のルートへコピーされます。
 
 共有先のURLは現在のGitHub Pages（`https://okaryo.github.io/runtime-survivors/`）です。ホスト先を変える場合はcanonical・og:url・og:image・twitter:imageとREADMEのリンクを更新してください。画像やメタ情報の公開には通常のpush・CI配信が必要です。GitHubリポジトリ自体のSocial preview設定は別で、ここでは変更しません。
