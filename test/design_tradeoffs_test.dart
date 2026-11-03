@@ -58,6 +58,29 @@ void main() {
     },
   );
   test(
+    'object and cache reservations stack, match previews and reset together',
+    () {
+      final run = RunState()..start();
+      for (var rank = 0; rank < 4; rank++) {
+        for (final feature in [Upgrade.oop, Upgrade.memoization]) {
+          final preview = run.preview(feature);
+          expect(const GameText('ja').comparisons(preview).last.cost, isTrue);
+          grant(run, feature);
+          expect(run.health, preview.afterHealth);
+          expect(run.maxHealth, preview.after.maxHealth);
+        }
+      }
+      expect(run.maxHealth, 44);
+      expect(run.health, 44);
+      grant(run, Upgrade.memory);
+      expect(run.maxHealth, 69);
+      expect(run.health, 69);
+      run.start();
+      expect(run.maxHealth, 100);
+      expect(run.health, 100);
+    },
+  );
+  test(
     'spatial expansion benefits base range and every geometric attack family',
     () {
       final before = BuildStats.snapshot({});

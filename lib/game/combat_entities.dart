@@ -20,6 +20,7 @@ extension EnemyAvailability on EnemyType {
   bool get isDiscoverable => const {
     EnemyType.request,
     EnemyType.interrupt,
+    EnemyType.allocation,
     EnemyType.batch,
     EnemyType.rpc,
     EnemyType.forkBomb,
@@ -58,11 +59,14 @@ class TaskEnemy {
   bool get alive => health > 0;
   double get radius => type == EnemyType.deadlock
       ? 28
+      : type == EnemyType.allocation
+      ? 21
       : type == EnemyType.forkBomb
       ? (summoned ? 9 : 18)
       : 13;
   double get speed => switch (type) {
     EnemyType.interrupt => 103,
+    EnemyType.allocation => 40,
     EnemyType.batch => 48,
     EnemyType.rpc => 46,
     EnemyType.forkBomb => summoned ? 68 : 34,

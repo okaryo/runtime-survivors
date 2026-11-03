@@ -61,7 +61,7 @@ void main() {
       );
       run.upgrades[Upgrade.jitCompilation] = 1;
       run.upgrades[Upgrade.memoization] = 1;
-      run.abilities.jitExecutions = 8;
+      run.abilities.jitExecutions = BuildStats.jitRequiredExecutions;
       run.phase = RunPhase.paused;
       final key = GlobalKey();
       await tester.pumpWidget(

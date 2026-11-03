@@ -112,7 +112,7 @@ void main() {
           expect(run.hazards.length, lessThanOrEqualTo(24));
         }
         expect(run.phase, RunPhase.won);
-        expect(run.seenEnemies, containsAll([4, 5, 11]));
+        expect(run.seenEnemies, containsAll([2, 4, 5, 11]));
         expect(run.rushCount, 6);
         run.start();
         expect(run.projectiles, isEmpty);

@@ -472,7 +472,7 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
       canvas.drawArc(
         Rect.fromCircle(center: position, radius: 36),
         -pi / 2,
-        2 * pi * run.abilities.jitExecutions / 8,
+        2 * pi * run.abilities.jitExecutions / run.jitRequiredExecutions,
         false,
         Paint()
           ..color = const Color(0xFFFFD36D)
@@ -483,6 +483,7 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
         canvas,
         text(run.abilities.jitOptimized ? 'jitReady' : 'jitAnalyzing', {
           'count': run.abilities.jitExecutions,
+          'total': run.jitRequiredExecutions,
         }),
         position + const Offset(-38, 42),
         const Color(0xFFFFD36D),

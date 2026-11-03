@@ -218,7 +218,7 @@ void main() {
       run.choices = [Upgrade.memory];
       run.health = 30;
       run.choose(Upgrade.memory);
-      expect(run.maxHealth, 93);
+      expect(run.maxHealth, 69); // OOP and memoization both reserve memory.
       expect(run.health, 65);
     },
   );

@@ -64,12 +64,12 @@ void main() {
     expect(run.preview(Upgrade.memory).afterHealth, 70);
   });
 
-  test('OOP preserves memory in its preview', () {
+  test('OOP reserves memory without deducting it twice from low memory', () {
     final run = RunState()..start();
-    expect(run.preview(Upgrade.oop).afterHealth, 100);
+    expect(run.preview(Upgrade.oop).afterHealth, 94);
     run.health = 35;
     final prediction = run.preview(Upgrade.oop);
     expect(prediction.afterHealth, 35);
-    expect(prediction.after.maxHealth, 100);
+    expect(prediction.after.maxHealth, 94);
   });
 }

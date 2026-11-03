@@ -27,26 +27,29 @@ void main() {
     },
   );
 
-  test('OOP objects orbit, attack independently without reducing memory', () {
-    final run = prepared();
-    grant(run, Upgrade.oop);
-    expect(run.maxHealth, 100);
-    expect(run.health, 100);
-    final target = TaskEnemy(Vector2(200, 0), health: 1000);
-    run.enemies.add(target);
-    tick(run, 0.1);
-    expect(run.objects.length, 1);
-    expect(
-      run.objects.first.position.distanceTo(run.player),
-      closeTo(72, 0.01),
-    );
-    expect(
-      run.instructions.any((s) => s.kind == InstructionKind.object),
-      isTrue,
-    );
-    tick(run, 0.3);
-    expect(target.health, lessThan(1000 - run.attackDamage));
-  });
+  test(
+    'OOP objects reserve memory and attack independently while orbiting',
+    () {
+      final run = prepared();
+      grant(run, Upgrade.oop);
+      expect(run.maxHealth, 94);
+      expect(run.health, 94);
+      final target = TaskEnemy(Vector2(200, 0), health: 1000);
+      run.enemies.add(target);
+      tick(run, 0.1);
+      expect(run.objects.length, 1);
+      expect(
+        run.objects.first.position.distanceTo(run.player),
+        closeTo(72, 0.01),
+      );
+      expect(
+        run.instructions.any((s) => s.kind == InstructionKind.object),
+        isTrue,
+      );
+      tick(run, 0.3);
+      expect(target.health, lessThan(1000 - run.attackDamage));
+    },
+  );
 
   test(
     'functional attacks chain with damage falloff and never revisit a task',
@@ -59,7 +62,7 @@ void main() {
       run.enemies.addAll([first, second, far]);
       tick(run, 0.45);
       expect(first.health, closeTo(1000 - run.attackDamage, 0.001));
-      expect(second.health, closeTo(1000 - run.attackDamage * 0.7, 0.001));
+      expect(second.health, closeTo(1000 - run.attackDamage * 0.85, 0.001));
       expect(far.health, 1000);
       expect(run.attackRange, 300);
     },

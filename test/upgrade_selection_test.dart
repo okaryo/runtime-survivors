@@ -90,7 +90,7 @@ void main() {
           tester.widget<Text>(find.byKey(Key(key))).textSpan!.toPlainText();
       expect(change('change-memory-0'), 'メモリ 35/100 → 70/125');
       expect(find.byKey(const Key('change-garbageCollection-2')), findsNothing);
-      expect(change('change-oop-2'), 'オブジェクトの間隔 0.90s');
+      expect(change('change-oop-2'), 'メモリ 35/100 → 35/94');
       final build = find.byKey(const Key('design-panel'));
       final buildBefore = tester
           .widgetList<Text>(

@@ -7,7 +7,7 @@ class CharacterPainter {
   static const colors = [
     Color(0xFFF4A08B),
     Color(0xFFF1D685),
-    Color(0xFFC5B1E5),
+    Color(0xFFC69B70),
     Color(0xFFF49AB5),
     Color(0xFF8CC9F2),
     Color(0xFF9ED99C),

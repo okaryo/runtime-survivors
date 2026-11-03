@@ -12,9 +12,9 @@ void main() {
         final gc = text.comparisons(run.preview(Upgrade.garbageCollection));
         expect(gc.map((c) => c.values), ['48', '133', '0.18s']);
         final oop = text.comparisons(run.preview(Upgrade.oop));
-        expect(oop.map((c) => c.values), ['1', '20', '0.90s']);
+        expect(oop.map((c) => c.values), ['1', '26', '100/100 → 94/94']);
         final fp = text.comparisons(run.preview(Upgrade.functional));
-        expect(fp.map((c) => c.values), ['1']);
+        expect(fp.map((c) => c.values), ['1', '85%', '0.62s → 0.66s']);
         final concurrency = text.comparisons(run.preview(Upgrade.concurrency));
         expect(concurrency.map((c) => c.values), ['1 → 2', '24 → 22.1']);
         for (final upgrade in Upgrade.values.where(
@@ -49,7 +49,7 @@ void main() {
       );
       expect(
         text.comparisons(run.preview(Upgrade.oop)).take(2).map((c) => c.values),
-        ['1 → 2', '20 → 24'],
+        ['1 → 2', '26 → 32'],
       );
       expect(
         text.comparisons(run.preview(Upgrade.functional)).first.values,

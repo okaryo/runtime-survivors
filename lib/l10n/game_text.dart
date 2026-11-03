@@ -91,17 +91,24 @@ class GameText {
           after.rank(upgrade),
         ),
         value('stat.objectDamage', before.objectDamage, after.objectDamage),
-        seconds(
-          'stat.objectInterval',
-          before.objectInterval,
-          after.objectInterval,
-        ),
+        hp(cost: true),
       ],
       Upgrade.functional => [
         metric(
           'stat.jumps',
           first ? null : before.rank(upgrade),
           after.rank(upgrade),
+        ),
+        metric(
+          'stat.chainRetention',
+          first ? null : '${(before.chainRetention * 100).round()}%',
+          '${(after.chainRetention * 100).round()}%',
+        ),
+        metric(
+          'stat.interval',
+          '${before.attackInterval.toStringAsFixed(2)}s',
+          '${after.attackInterval.toStringAsFixed(2)}s',
+          cost: true,
         ),
       ],
       Upgrade.nullSafety => [
@@ -162,6 +169,13 @@ class GameText {
           first ? null : '×${(1 + before.jitSpeedBonus).toStringAsFixed(2)}',
           '×${(1 + after.jitSpeedBonus).toStringAsFixed(2)}',
         ),
+        if (first)
+          metric(
+            'stat.jitWarmup',
+            null,
+            BuildStats.jitRequiredExecutions,
+            cost: true,
+          ),
       ],
       Upgrade.ownership => [
         value(
@@ -245,6 +259,8 @@ class GameText {
   });
 
   static const copy = <String, List<String>>{
+    'stat.chainRetention': ['連鎖時の威力維持', 'Damage retained per jump'],
+    'stat.jitWarmup': ['解析に必要な通常攻撃', 'Base volleys to optimize'],
     'bossLockedShort': ['ロックを処理', 'Break a lock'],
     'bossExposedShort': ['本体を処理', 'Core exposed'],
     'enemy.11.title': ['バッチ処理', 'Batch job'],
@@ -280,7 +296,7 @@ class GameText {
     'stat.cacheDamage': ['保存済み入力の威力', 'Cached-input damage'],
     'stat.jitSpeed': ['最適化後の通常攻撃速度', 'Optimized base fire rate'],
     'stat.cooldownScale': ['攻撃間隔の倍率', 'Attack interval scale'],
-    'jitAnalyzing': ['JIT 解析中 {count}/8', 'JIT analysis {count}/8'],
+    'jitAnalyzing': ['JIT 解析中 {count}/{total}', 'JIT analysis {count}/{total}'],
     'jitReady': ['JIT 最適化済み', 'JIT optimized'],
     'memoStatus': ['保存済み入力：{count}種類', 'Cached inputs: {count}'],
     'log.optimized': [
@@ -340,8 +356,8 @@ class GameText {
     ],
     'lazyEvaluation.title': ['遅延評価', 'Lazy Evaluation'],
     'lazyEvaluation.description': [
-      '必要になるまで処理を待機。設置した領域に敵が近づくと範囲攻撃が起動し、その後しばらく敵を減速します。',
-      'Defers work until needed. A placed trap bursts when tasks approach, then briefly slows survivors.',
+      '足元で処理を待機。敵が近づくと強力な範囲攻撃が起動し、残った敵を減速します。',
+      'Waits at your position, then unleashes a powerful area burst when tasks approach, slowing survivors.',
     ],
     'lazyEvaluation.tradeoff': [
       '設置位置は動かず、敵が近づかなければ起動しない。',
@@ -362,17 +378,17 @@ class GameText {
       'Base volleys advance analysis, then unlock rapid fire. Optimization persists across target changes.',
     ],
     'jitCompilation.tradeoff': [
-      '取得直後は解析中。最適化後はラン終了まで有効。',
-      'Needs a warm-up. Once optimized, stays active for the rest of the run.',
+      '解析が終わるまでは高速化しない。長い準備を終えると、ラン終了まで強力な連射を維持。',
+      'No speed boost during analysis. A longer warm-up unlocks strong rapid fire for the rest of the run.',
     ],
     'ownership.title': ['所有権', 'Ownership'],
     'ownership.description': [
-      '近くのタスクを攻撃し、処理完了とともにメモリを回収。近距離の撃破でメモリが回復します。',
-      'Attacks nearby tasks and reclaims memory as their work ends. Nearby kills restore memory.',
+      '近距離のタスクを強く処理。近くでの撃破時にメモリを回収します。',
+      'Hits nearby tasks hard and reclaims memory from nearby kills.',
     ],
     'ownership.tradeoff': [
-      '回復には時間あたりの上限があり、召喚雑魚からは回復しない。',
-      'Healing is rate-limited; summoned tasks grant no healing.',
+      '近づいて戦う必要がある。回復に上限があり、コピーやロックノードは回復対象外。',
+      'Requires close combat. Healing is capped; copies and lock nodes grant none.',
     ],
     'spatialIndex.title': ['広域化', 'Spatial Expansion'],
     'spatialIndex.description': [
@@ -639,18 +655,21 @@ class GameText {
     ],
     'oop.title': ['オブジェクト指向', 'Object-Oriented Programming'],
     'oop.description': [
-      'オブジェクトに処理を委譲。周囲を回るオブジェクトが、それぞれ近くのタスクを攻撃します。',
-      'Delegates work to orbiting objects, each attacking nearby tasks independently.',
+      'オブジェクトへ処理を委譲。周囲を回るオブジェクトが、それぞれ強力な独立攻撃を行います。',
+      'Delegates work to orbiting objects, each firing strong independent attacks.',
     ],
-    'oop.tradeoff': ['各オブジェクトが独立して対象を選ぶ。', 'Objects choose their own targets.'],
+    'oop.tradeoff': [
+      'オブジェクトを保持するため、使える最大メモリの一部を予約。',
+      'Reserves part of maximum memory to keep objects alive.',
+    ],
     'functional.title': ['関数型プログラミング', 'Functional Programming'],
     'functional.description': [
-      '処理を次の処理へつなぐ連鎖攻撃。命中した通常弾が近くの別のタスクへ移ります。',
-      'Composes work into a chain. Base shots jump from a hit task to another nearby task.',
+      '準備した合成処理で、通常弾が次々と近くの別タスクへ連鎖します。',
+      'Composes a prepared attack that chains through nearby tasks.',
     ],
     'functional.tradeoff': [
-      '連鎖するたびに威力が下がる。同じ連鎖は同じ敵を再処理しない。',
-      'Damage fades with each jump. A chain never revisits the same task.',
+      '合成の準備で通常攻撃の間隔が長くなる。連鎖するたびに威力も減衰。',
+      'Composition slows base fire. Each chain jump also loses damage.',
     ],
     'enemy.0.type': ['通常タスク', 'Standard task'],
     'enemy.1.type': ['高速タスク', 'Fast task'],
@@ -667,8 +686,8 @@ class GameText {
     ],
     'enemy.2.title': ['メモリ確保', 'Allocation'],
     'enemy.2.description': [
-      '大きく頑丈なタスク。移動は遅いが処理に時間がかかる。',
-      'A bulky, slow task that takes longer to process.',
+      '大きなメモリ領域を要求する、頑丈で遅いタスク。周囲を先に処理するか、継続攻撃で要求を完了しよう。',
+      'A large memory request: sturdy and slow. Clear nearby tasks first, or sustain fire to complete the allocation.',
     ],
     'enemy.3.title': ['デッドロック', 'Deadlock'],
     'enemy.3.description': [

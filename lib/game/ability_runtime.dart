@@ -2,9 +2,11 @@ import 'dart:math';
 
 import 'package:flame/components.dart';
 
+import 'build.dart';
+
 /// Deferred work stays at its placement point until a task needs processing.
 class SlowField {
-  SlowField(this.position, this.radius, this.multiplier, {this.damage = 46});
+  SlowField(this.position, this.radius, this.multiplier, {this.damage = 68});
   final Vector2 position;
   final double radius;
   final double multiplier;
@@ -16,7 +18,7 @@ class SlowField {
 
 /// Per-run state for abilities; never stored in catalog definitions or previews.
 class AbilityRuntime {
-  static const jitRequiredExecutions = 8;
+  static const jitRequiredExecutions = BuildStats.jitRequiredExecutions;
   final List<SlowField> fields = [];
   // A signature includes both the operation and its visible input variant.
   final Set<int> cachedInputs = {};

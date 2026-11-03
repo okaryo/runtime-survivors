@@ -72,26 +72,34 @@ extension UpgradeInfo on Upgrade {
 
 /// Shared stat formulas for live combat and immutable upgrade snapshots.
 class BuildStats {
+  static const jitRequiredExecutions = 18;
   BuildStats.live(this._ranks);
   BuildStats.snapshot(Map<Upgrade, int> ranks, {this.jitOptimized = false})
     : _ranks = Map.unmodifiable(ranks);
   final Map<Upgrade, int> _ranks;
   bool jitOptimized = false;
   int rank(Upgrade upgrade) => _ranks[upgrade] ?? 0;
-  double get reservedMemory => 8.0 * rank(Upgrade.memoization);
+  double get reservedMemory =>
+      8.0 * rank(Upgrade.memoization) + 6.0 * rank(Upgrade.oop);
   double get maxHealth => 100 + 25.0 * rank(Upgrade.memory) - reservedMemory;
   double get speed => 185.0 * (1 + 0.08 * rank(Upgrade.clock));
   double get pickupRadius => 66 + 22.0 * rank(Upgrade.cache);
   double get attackRange => (300 + 12.0 * rank(Upgrade.cache)) * areaScale;
   double get cooldownScale => pow(0.92, rank(Upgrade.compiler)).toDouble();
-  double get objectDamage => 16 + rank(Upgrade.oop) * 4.0;
+  double get objectDamage => 20 + rank(Upgrade.oop) * 6.0;
   double get objectInterval => 0.9 * cooldownScale;
   double get chainRadius => 155 * areaScale;
+  double get chainRetention => 0.85;
+  double get compositionDelay => rank(Upgrade.functional) * 0.04;
   double get objectRange => 235 * areaScale;
   double get attackDamage => 24.0 * pow(0.92, rank(Upgrade.concurrency));
-  double get jitSpeedBonus => 0.25 + rank(Upgrade.jitCompilation) * 0.15;
-  double get attackInterval =>
-      max(0.12, 0.62 * cooldownScale / (jitOptimized ? 1 + jitSpeedBonus : 1));
+  double get jitSpeedBonus => 0.50 + rank(Upgrade.jitCompilation) * 0.20;
+  double get attackInterval => max(
+    0.12,
+    (0.62 + compositionDelay) *
+        cooldownScale /
+        (jitOptimized ? 1 + jitSpeedBonus : 1),
+  );
   double get projectileSpeed =>
       min(1600.0, 640.0 * pow(1.15, rank(Upgrade.bandwidth)));
   double get shieldCooldown => 9.0 - rank(Upgrade.nullSafety);
@@ -112,11 +120,11 @@ class BuildStats {
   double get slowRadius =>
       (90 + rank(Upgrade.lazyEvaluation) * 15.0) * areaScale;
   double get slowMultiplier => 0.75 - rank(Upgrade.lazyEvaluation) * 0.05;
-  double get lazyDamage => 30 + rank(Upgrade.lazyEvaluation) * 16.0;
+  double get lazyDamage => 48 + rank(Upgrade.lazyEvaluation) * 20.0;
   double get lazyInterval => 4 * cooldownScale;
   double get memoDamage => 18 + rank(Upgrade.memoization) * 12.0;
   double get memoInterval => 1.5 * cooldownScale;
-  double get ownershipDamage => 20 + rank(Upgrade.ownership) * 12.0;
+  double get ownershipDamage => 26 + rank(Upgrade.ownership) * 14.0;
   double get ownershipInterval => 1.6 * cooldownScale;
   double get ownershipHeal => 1.0 + rank(Upgrade.ownership);
   double get ownershipCap => 4.0 + rank(Upgrade.ownership) * 2;

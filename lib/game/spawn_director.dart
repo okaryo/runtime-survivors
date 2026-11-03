@@ -23,6 +23,7 @@ class SpawnDirector {
   const SpawnDirector();
   static const rules = [
     EncounterRule(EnemyType.batch, 30, 0.20, 20, 1),
+    EncounterRule(EnemyType.allocation, 40, 0.16, 6, 2),
     EncounterRule(EnemyType.rpc, 50, 0.13, 4, 3),
     EncounterRule(EnemyType.forkBomb, 100, 0.10, 2, 4),
   ];

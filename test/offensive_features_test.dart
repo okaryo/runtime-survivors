@@ -5,10 +5,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:runtime_survivors/game/run_state.dart';
 
 // A stationary workload checks that every first Feature is useful on its own.
+// Sixteen seconds includes JIT's warm-up and its subsequent payoff.
 // This does not assert a survival rate or substitute for playing the game.
 double processWork(Upgrade? feature) {
   final run = RunState(random: Random(21))
     ..start()
+    ..spawnRadius =
+        10000 // Keep incidental waves outside this fixed workload.
     ..enemies.clear();
   if (feature != null) run.upgrades[feature] = 1;
   final targets = [
@@ -17,7 +20,7 @@ double processWork(Upgrade? feature) {
     TaskEnemy(Vector2(135, 0), health: 100000),
   ];
   run.enemies.addAll(targets);
-  for (var frame = 0; frame < 480; frame++) {
+  for (var frame = 0; frame < 960; frame++) {
     for (var i = 0; i < targets.length; i++) {
       targets[i].position.setValues(55.0 + i * 40, 0);
     }
@@ -59,6 +62,15 @@ void main() {
         greaterThan(baseline.attackDamage),
       );
       expect(BuildStats.snapshot({Upgrade.memoization: 1}).maxHealth, 92);
+      expect(BuildStats.snapshot({Upgrade.oop: 1}).maxHealth, 94);
+      final composed = BuildStats.snapshot({Upgrade.functional: 1});
+      expect(composed.attackInterval, greaterThan(baseline.attackInterval));
+      expect(composed.chainRetention, greaterThan(0.7));
+      final reserved = BuildStats.snapshot({
+        Upgrade.oop: 4,
+        Upgrade.memoization: 4,
+      });
+      expect(reserved.maxHealth, 44);
     },
   );
 }

@@ -395,6 +395,7 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
           Text(
             text(run.abilities.jitOptimized ? 'jitReady' : 'jitAnalyzing', {
               'count': run.abilities.jitExecutions,
+              'total': run.jitRequiredExecutions,
             }),
             style: const TextStyle(fontSize: 12, color: muted),
           ),

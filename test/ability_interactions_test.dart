@@ -21,8 +21,8 @@ void main() {
     run.enemies.addAll([enemy, elite]);
     tick(run, 0.36);
     expect(field.triggered, isTrue);
-    expect(enemy.health, lessThanOrEqualTo(1000 - 46));
-    expect(elite.health, lessThanOrEqualTo(954));
+    expect(enemy.health, lessThanOrEqualTo(1000 - 68));
+    expect(elite.health, lessThanOrEqualTo(932));
     final damagedHealth = elite.health;
     expect(enemy.movementMultiplier, closeTo(0.7, 0.0001));
     expect(elite.movementMultiplier, 0.8);
@@ -90,9 +90,14 @@ void main() {
     run.enemies.add(TaskEnemy(Vector2(-250, 0), health: 99999));
     tick(run, 1.3);
     expect(run.abilities.jitExecutions, greaterThan(3));
-    tick(run, 2.2);
+    tick(run, 7.7);
+    expect(run.abilities.jitExecutions, 17);
+    expect(run.abilities.jitOptimized, isFalse);
+    expect(run.attackInterval, 0.62);
+    tick(run, 0.6);
+    expect(run.abilities.jitExecutions, run.jitRequiredExecutions);
     expect(run.abilities.jitOptimized, isTrue);
-    expect(run.attackInterval, closeTo(0.62 / 1.4, 0.0001));
+    expect(run.attackInterval, closeTo(0.62 / 1.7, 0.0001));
     final preview = run.preview(Upgrade.compiler);
     expect(preview.before.attackInterval, run.attackInterval);
     expect(

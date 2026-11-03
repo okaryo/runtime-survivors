@@ -90,6 +90,7 @@ class RunState {
   double get gcRadius => _stats.gcRadius;
   double get gcDamage => _stats.gcDamage;
   int get targetCount => _stats.targetCount;
+  int get jitRequiredExecutions => AbilityRuntime.jitRequiredExecutions;
   String get timeLabel {
     final seconds = elapsed.floor();
     return '${(seconds ~/ 60).toString().padLeft(2, '0')}:${(seconds % 60).toString().padLeft(2, '0')}';
@@ -332,7 +333,13 @@ class RunState {
       if (enemy.type != EnemyType.lockNode &&
           enemy.position.distanceTo(player) < enemy.radius + 13 &&
           invulnerability <= 0) {
-        _damagePlayer(enemy.type == EnemyType.deadlock ? 22 : 9);
+        _damagePlayer(
+          enemy.type == EnemyType.deadlock
+              ? 22
+              : enemy.type == EnemyType.allocation
+              ? 15
+              : 9,
+        );
         if (phase == RunPhase.lost) return;
       }
     }
@@ -435,7 +442,7 @@ class RunState {
               Instruction(
                 shot.target.position.clone(),
                 next,
-                shot.damage * 0.7,
+                shot.damage * _stats.chainRetention,
                 kind: InstructionKind.chain,
                 jumps: shot.jumps - 1,
                 visited: {...shot.visited, next},
@@ -824,7 +831,9 @@ class RunState {
       health: type == EnemyType.deadlock
           ? 820 + elapsed * 2
           : (22 + elapsed / 18) *
-                (type == EnemyType.forkBomb
+                (type == EnemyType.allocation
+                    ? 3.0
+                    : type == EnemyType.forkBomb
                     ? 2.5
                     : type == EnemyType.rpc
                     ? 1.6
@@ -904,6 +913,8 @@ class RunState {
               ? 1
               : enemy.kind == 3
               ? 45
+              : enemy.type == EnemyType.allocation
+              ? 9
               : 4,
         ),
       );

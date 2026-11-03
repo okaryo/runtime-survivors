@@ -22,7 +22,7 @@ void main() {
       500,
       (_) => director.choose(220, [], random),
     ).toSet();
-    expect(late, {0, 1, 4, 5, 11});
+    expect(late, {0, 1, 2, 4, 5, 11});
     expect(
       SpawnDirector.rules.fold(
         0,
@@ -73,6 +73,42 @@ void main() {
       isFalse,
     );
   });
+  test(
+    'allocation returns after forty seconds as slow, durable, rewarding work',
+    () {
+      const director = SpawnDirector();
+      final random = Random(10);
+      expect(
+        List.generate(100, (_) => director.choose(39.99, [], random)),
+        isNot(contains(EnemyType.allocation.index)),
+      );
+      final run = prepared()..elapsed = 40;
+      run.update(0.01); // The earlier batch introduction is still pending.
+      tick(run, 0.7);
+      final allocation = run.enemies.singleWhere(
+        (enemy) => enemy.type == EnemyType.allocation,
+      );
+      expect(allocation.maxHealth, closeTo((22 + 40.66 / 18) * 3, 0.02));
+      expect(allocation.speed, lessThan(TaskEnemy(Vector2.zero()).speed));
+      expect(allocation.radius, greaterThan(TaskEnemy(Vector2.zero()).radius));
+      expect(run.seenEnemies, contains(2));
+      expect(allocation.type.isDiscoverable, isTrue);
+      expect(allocation.cacheable, isFalse); // Allocation has side effects.
+      run.enemies.removeWhere((enemy) => !identical(enemy, allocation));
+      allocation.position.setFrom(run.player);
+      run.update(0.01);
+      expect(run.health, 85);
+      // A normal shot can finish it; no Feature acts as a required counter.
+      allocation.position.setValues(200, 0);
+      allocation.health = 1;
+      run.instructions.add(
+        Instruction(allocation.position.clone(), allocation, 1),
+      );
+      run.update(0.01);
+      expect(allocation.alive, isFalse);
+      expect(run.experience.single.value, 9);
+    },
+  );
   test('RPC sends, waits, then retries with a capped fan and never homes', () {
     final run = prepared();
     final rpc = TaskEnemy(Vector2(240, 0), kind: 4, health: 100000)
