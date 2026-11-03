@@ -32,6 +32,8 @@ Flutter + Flameで開発しているPCブラウザ向けゲームです。キー
 
 ブラウザ版：[Runtime Survivors](https://okaryo.github.io/runtime-survivors/)
 
+ソースコード：[GitHub](https://github.com/okaryo/runtime-survivors)（ゲームページの最下部からも開けます）
+
 現在はゲーム性を検証するプロトタイプです。ラン途中の保存・ビルド共有は未対応です。
 
 ## ローカルで遊ぶ

@@ -6,6 +6,7 @@
 
 - Flutter 3.47.8 / Dart 3.13.7
 - ゲームエンジン：Flame
+- 外部リンク：Flutter公式の `url_launcher` の `Link`（Webでは実際のリンクとして描画）
 - 対象：PCブラウザ
 - 配信：GitHub Pages
 
