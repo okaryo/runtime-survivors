@@ -294,13 +294,13 @@ class GameText {
     ],
     'enemy.13.title': ['メモリリーク', 'Memory Leak'],
     'enemy.13.description': [
-      '解放されないメモリが四角い領域として残り、内側にいる間メモリを消費。発生源を処理すると領域は無害になり、早く消えます。',
-      'Leaves blocky allocations that drain memory while you stand inside. Processing the source disarms its patches and clears them sooner.',
+      '間合いを保ちながら、メモリを消費する四角い領域を残す。発生源を処理すると領域は無害になり、早く消えます。',
+      'Keeps its distance while leaving blocky allocations that drain memory. Processing the source disarms its patches and clears them sooner.',
     ],
     'enemy.14.title': ['タイマーイベント', 'Timer Event'],
     'enemy.14.description': [
-      '目盛りが満ちると、二つの隙間を持つ輪状パルスを放つ。隙間の向きは発射ごとに変わる。',
-      'Releases a pulse with two gaps when its clock fills. Openings change with each cast.',
+      '距離を保ち、目盛りが満ちると二つの隙間を持つ輪状パルスを放つ。隙間の向きは発射ごとに変わる。',
+      'Keeps its distance and releases a pulse with two gaps when its clock fills. Openings change with each cast.',
     ],
     'stat.chainRetention': ['連鎖時の威力維持', 'Damage retained per jump'],
     'stat.jitDecay': ['ゲージの時間減少', 'Gauge decay'],
@@ -501,8 +501,8 @@ class GameText {
     'enemy.5.title': ['Fork Bomb', 'Fork Bomb'],
     'enemy.5.type': ['召喚タスク', 'Summoner task'],
     'enemy.5.description': [
-      '自分の小さなコピーを段階的に増やす。親を処理すると、子からの追加生成も止まる。増えたコピーは範囲攻撃や連鎖でまとめて処理。',
-      'Creates smaller copies in stages. Processing the parent stops all further copying; area attacks and chains clear the children.',
+      '本体は距離を保ち、小さなコピーを送り込む。親を処理すると、子からの追加生成も止まる。増えたコピーは範囲攻撃や連鎖でまとめて処理。',
+      'The parent keeps its distance and sends in smaller copies. Processing it stops all further copying; area attacks and chains clear the children.',
     ],
     'nullSafety.title': ['Null Safety', 'Null Safety'],
     'nullSafety.description': [
@@ -748,8 +748,8 @@ class GameText {
     ],
     'enemy.3.title': ['デッドロック', 'Deadlock'],
     'enemy.3.description': [
-      '本体の前に頑丈なロックと障壁を展開。どれかのロックを処理して循環を解くと、短時間だけ本体を攻撃しやすくなる。',
-      'Deploys durable locks and barriers in front of its core. Break a lock to release the cycle and briefly expose the core.',
+      'ロックと障壁を展開し、本体も接触まで追い詰めてくる。どれかのロックを処理して循環を解くと、短時間だけ本体を攻撃しやすくなる。',
+      'Advances all the way into contact behind durable locks and barriers. Break a lock to release the cycle and briefly expose the core.',
     ],
     'memory.title': ['メモリ増設', 'Memory Expansion'],
     'memory.description': [

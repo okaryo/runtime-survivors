@@ -52,7 +52,12 @@ class DeadlockEncounter {
       return const [];
     }
     final delta = player - core.position;
-    if (delta.length > 160) core.position.add(delta.normalized() * 22 * dt);
+    if (delta.length2 > 0) {
+      core.position.add(
+        delta.normalized() *
+            min(delta.length, 40 * core.movementMultiplier * dt),
+      );
+    }
     for (final node in nodes.where((n) => n.alive)) {
       node.position.setFrom(core.position + node.formationOffset);
     }

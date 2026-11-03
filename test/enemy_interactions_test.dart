@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flame/components.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:runtime_survivors/game/run_state.dart';
+import 'package:runtime_survivors/game/ability_runtime.dart';
 import 'package:runtime_survivors/game/spawn_director.dart';
 
 import 'run_state_test.dart' show tick;
@@ -12,6 +13,85 @@ RunState prepared() => RunState(random: Random(9))
   ..enemies.clear();
 
 void main() {
+  for (final type in [
+    EnemyType.rpc,
+    EnemyType.forkBomb,
+    EnemyType.memoryLeak,
+    EnemyType.timerEvent,
+  ]) {
+    test('$type approaches, holds a band and retreats when pursued', () {
+      final run = prepared()..spawnRadius = 10000;
+      final enemy = TaskEnemy(Vector2(500, 0), kind: type.index, health: 100000)
+        ..attackCooldown = 1000;
+      run.enemies.add(enemy);
+      run.update(0.05);
+      expect(enemy.position.x, lessThan(500));
+
+      final range = enemy.preferredRange!;
+      final middle = (range.near + range.far) / 2;
+      enemy.position.setValues(middle, 0);
+      tick(run, 0.2);
+      expect(enemy.position.x, closeTo(middle, 0.001));
+      enemy.position.setValues(80, 0);
+      run.update(0.05);
+      expect(enemy.position.x, greaterThan(80));
+      expect(
+        enemy.speed,
+        lessThan(run.speed),
+      ); // It remains possible to pursue.
+
+      enemy.position.setFrom(run.player);
+      run.update(0.05);
+      expect(enemy.position.distanceTo(run.player), greaterThan(0));
+      final position = enemy.position.clone();
+      run.pause();
+      tick(run, 0.5);
+      expect(enemy.position, position);
+    });
+  }
+  test(
+    'fork copies still close all the way to contact instead of retreating',
+    () {
+      final run = prepared()..spawnRadius = 10000;
+      final root = TaskEnemy(Vector2(300, 0), kind: EnemyType.forkBomb.index);
+      final copy = TaskEnemy(
+        Vector2(60, 0),
+        kind: EnemyType.forkBomb.index,
+        health: 100000,
+        owner: root,
+        summoned: true,
+        generation: 2,
+      )..attackCooldown = 1000;
+      run.enemies.add(copy);
+      expect(copy.preferredRange, isNull);
+      tick(run, 0.7);
+      expect(copy.position.distanceTo(run.player), lessThan(copy.radius + 13));
+      expect(run.health, lessThan(100));
+    },
+  );
+  test(
+    'retreat respects lingering evaluation slow and casting remains stationary',
+    () {
+      final run = prepared()..spawnRadius = 10000;
+      run.upgrades[Upgrade.lazyEvaluation] = 1;
+      final rpc = TaskEnemy(
+        Vector2(80, 0),
+        kind: EnemyType.rpc.index,
+        health: 100000,
+      )..attackCooldown = 1000;
+      run.enemies.add(rpc);
+      // The active field covers both the enemy and its next movement step.
+      run.abilities.fields.add(
+        SlowField(Vector2(80, 0), 100, 0.7)..triggered = true,
+      );
+      run.update(0.05);
+      expect(rpc.position.x - 80, closeTo(rpc.speed * 0.7 * 0.05, 0.001));
+      rpc.telegraphRemaining = 0.5;
+      final position = rpc.position.clone();
+      run.update(0.05);
+      expect(rpc.position, position);
+    },
+  );
   test(
     'RPC maintains a firing distance beyond base range but can be pursued',
     () {

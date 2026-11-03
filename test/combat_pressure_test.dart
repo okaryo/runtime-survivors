@@ -6,6 +6,53 @@ import 'package:runtime_survivors/game/run_state.dart';
 import 'package:runtime_survivors/game/spawn_director.dart';
 
 void main() {
+  test(
+    'ordinary workload grows between rushes without replacing end pressure',
+    () {
+      final intervals = [
+        for (final time in [0.0, 60.0, 120.0, 180.0, 240.0, 270.0])
+          SpawnDirector.interval(time),
+      ];
+      for (var i = 1; i < intervals.length; i++) {
+        expect(intervals[i], lessThan(intervals[i - 1]));
+      }
+      expect(SpawnDirector.interval(120), closeTo(0.35, 0.001));
+      expect(SpawnDirector.interval(180), closeTo(0.28, 0.001));
+      expect(SpawnDirector.interval(180, rush: true), lessThan(intervals[3]));
+      expect(
+        SpawnDirector.interval(240),
+        lessThan(SpawnDirector.interval(239.9)),
+      );
+      expect(
+        SpawnDirector.interval(270),
+        lessThan(SpawnDirector.interval(269.9)),
+      );
+
+      // Compare equal quiet windows from an actual run, removing processed work
+      // every frame. This measures normal arrivals rather than leftover enemies
+      // or the one-off rush/boss triggers when a test jumps ahead in time.
+      int arrivals(double start) {
+        final run = RunState(random: Random(9))
+          ..start()
+          ..spawnRadius = 10000;
+        while (run.elapsed < start) {
+          run.health = run.maxHealth;
+          run.enemies.clear();
+          run.update(0.05);
+        }
+        var count = 0;
+        for (var i = 0; i < 100; i++) {
+          run.enemies.clear();
+          run.update(0.05);
+          count += run.enemies.length;
+        }
+        return count;
+      }
+
+      expect(arrivals(65), greaterThan(arrivals(5)));
+      expect(arrivals(200), greaterThan(arrivals(65)));
+    },
+  );
   test('two random timer gaps stay separate and collision agrees with both openings', () {
     final random = Random(4);
     final separations = <int>{};
@@ -91,7 +138,15 @@ void main() {
       final run = RunState(random: Random(2))
         ..start()
         ..enemies.clear()
-        ..elapsed = time;
+        ..spawnRadius = 10000;
+      // Advance scheduled events normally; jumping elapsed would replay many
+      // past rushes and pressure bursts together and saturate the safety cap.
+      while (run.elapsed < time) {
+        run.health = run.maxHealth;
+        run.enemies.clear();
+        run.update(0.05);
+      }
+      run.enemies.clear();
       for (var i = 0; i < 200; i++) {
         run.health = run.maxHealth;
         run.update(0.05);

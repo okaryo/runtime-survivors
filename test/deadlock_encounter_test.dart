@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flame/components.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:runtime_survivors/game/run_state.dart';
+import 'package:runtime_survivors/game/deadlock_encounter.dart';
 
 import 'run_state_test.dart' show tick;
 
@@ -13,6 +14,49 @@ RunState encounterRun() => RunState(random: Random(19))
   ..update(0.02);
 
 void main() {
+  test(
+    'deadlock pursues through its former stopping distance and makes contact',
+    () {
+      final run = RunState(random: Random(3))
+        ..start()
+        ..enemies.clear()
+        ..spawnRadius = 10000;
+      final core = TaskEnemy(
+        Vector2(150, 0),
+        kind: EnemyType.deadlock.index,
+        health: 3000,
+      );
+      final encounter = DeadlockEncounter(core)..exposedRemaining = 5.5;
+      run.enemies.add(core);
+      run.deadlocks.add(encounter);
+      tick(run, 3);
+      expect(core.position.distanceTo(run.player), lessThan(core.radius + 13));
+      expect(run.health, 78); // Core contact, without a beam hit masking it.
+      final position = core.position.clone();
+      run.pause();
+      tick(run, 1);
+      expect(core.position, position);
+    },
+  );
+  test(
+    'deadlock respects movement slow, follows with nodes and cannot overshoot',
+    () {
+      final core = TaskEnemy(Vector2(100, 0), kind: EnemyType.deadlock.index)
+        ..movementMultiplier = 0.8;
+      final encounter = DeadlockEncounter(core);
+      encounter.rebuild(Vector2.zero());
+      encounter.advance(1, Vector2.zero());
+      expect(core.position.x, 68);
+      for (final node in encounter.nodes) {
+        expect(node.position, core.position + node.formationOffset);
+      }
+      core.position.setValues(0.1, 0);
+      encounter.advance(0.05, Vector2.zero());
+      expect(core.position, Vector2.zero());
+      encounter.advance(0.05, Vector2.zero());
+      expect(core.position, Vector2.zero());
+    },
+  );
   test('deadlock deploys a forward barricade, warns before damage and freezes on pause', () {
     final run = encounterRun();
     final encounter = run.deadlocks.single;

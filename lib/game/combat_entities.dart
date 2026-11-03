@@ -85,6 +85,15 @@ class TaskEnemy {
     EnemyType.timerEvent => 38,
     _ => 57,
   };
+
+  /// Specialists give ground when pursued; summoned copies still rush in.
+  ({double near, double far})? get preferredRange => switch (type) {
+    EnemyType.rpc => (near: 230, far: 320),
+    EnemyType.forkBomb when !summoned => (near: 190, far: 260),
+    EnemyType.memoryLeak => (near: 110, far: 180),
+    EnemyType.timerEvent => (near: 210, far: 280),
+    _ => null,
+  };
 }
 
 enum InstructionKind { base, object, chain, cached }

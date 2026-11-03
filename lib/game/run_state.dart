@@ -323,14 +323,7 @@ class RunState {
     _spawnTimer -= dt;
     if (_spawnTimer <= 0 && enemies.length < 240) {
       _spawn();
-      _spawnTimer =
-          max(0.18, 0.70 - elapsed / 600) *
-          (isRush ? 0.55 : 1) *
-          (pressureStage == 2
-              ? 0.42
-              : pressureStage == 1
-              ? 0.68
-              : 1);
+      _spawnTimer = SpawnDirector.interval(elapsed, rush: isRush);
     }
     _updateHazards(dt);
     _updateWorkloadHazards(dt);
@@ -361,6 +354,8 @@ class RunState {
         _updateTimerEvent(enemy, delta, dt);
       } else if (enemy.type == EnemyType.batch && enemy.owner?.alive == true) {
         enemy.position.setFrom(enemy.owner!.position + enemy.formationOffset);
+      } else if (enemy.type == EnemyType.memoryLeak) {
+        _moveSpecialist(enemy, delta, dt);
       } else if (delta.length2 > 0) {
         enemy.position.add(
           delta.normalized() * enemy.speed * enemy.movementMultiplier * dt,
@@ -722,11 +717,7 @@ class RunState {
       }
       return;
     }
-    if (delta.length > 280) {
-      enemy.position.add(
-        delta.normalized() * enemy.speed * enemy.movementMultiplier * dt,
-      );
-    }
+    _moveSpecialist(enemy, delta, dt);
     if (delta.length > 400) return;
     enemy.attackCooldown -= dt;
     if (enemy.attackCooldown <= 0) {
@@ -953,20 +944,7 @@ class RunState {
       }
       return;
     }
-    if (delta.length >
-        (ranged
-            ? 320
-            : enemy.summoned
-            ? 0
-            : 260)) {
-      enemy.position.add(
-        delta.normalized() * enemy.speed * enemy.movementMultiplier * dt,
-      );
-    } else if (ranged && delta.length > 1 && delta.length < 230) {
-      enemy.position.add(
-        delta.normalized() * -enemy.speed * enemy.movementMultiplier * dt,
-      );
-    }
+    _moveSpecialist(enemy, delta, dt);
     enemy.attackCooldown -= dt;
     if (enemy.attackCooldown <= 0 &&
         delta.length > 1 &&
@@ -974,6 +952,21 @@ class RunState {
         (ranged || canFork)) {
       enemy.chargeDirection.setFrom(delta.normalized());
       enemy.telegraphRemaining = ranged ? 0.65 : 1.1;
+    }
+  }
+
+  void _moveSpecialist(TaskEnemy enemy, Vector2 delta, double dt) {
+    final distance = delta.length;
+    final range = enemy.preferredRange;
+    final step = enemy.speed * enemy.movementMultiplier * dt;
+    if (distance > (range?.far ?? 0)) {
+      enemy.position.add(
+        delta.normalized() * min(step, distance - (range?.far ?? 0)),
+      );
+    } else if (range != null && distance < range.near) {
+      // An overlapped spawn must still be able to leave the player.
+      final away = distance > 0 ? -delta / distance : Vector2(1, 0);
+      enemy.position.add(away * min(step, range.near - distance));
     }
   }
 

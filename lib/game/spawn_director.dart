@@ -38,6 +38,17 @@ class EncounterRule {
 /// Definitions preserve stable enemy IDs, and share a bounded specialist budget.
 class SpawnDirector {
   const SpawnDirector();
+
+  /// Steady workload grows even between rushes. End pressure stacks on top.
+  static double interval(double elapsed, {bool rush = false}) =>
+      max(0.20, 0.70 / (1 + max(0.0, elapsed) / 120)) *
+      (rush ? 0.55 : 1) *
+      switch (pressureStage(elapsed)) {
+        2 => 0.42,
+        1 => 0.68,
+        _ => 1.0,
+      };
+
   static const rules = [
     EncounterRule(EnemyType.batch, 30, 0.20, 20, 1),
     EncounterRule(EnemyType.allocation, 40, 0.16, 6, 2),
