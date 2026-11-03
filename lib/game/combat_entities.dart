@@ -94,18 +94,18 @@ class TaskEnemy {
   };
 
   double get jitGain => summoned
-      ? 0.5
+      ? 0.75
       : switch (type) {
-          EnemyType.request => 3,
-          EnemyType.interrupt => 4,
-          EnemyType.batch => 2,
-          EnemyType.allocation => 10,
-          EnemyType.rpc => 9,
-          EnemyType.timerEvent => 10,
-          EnemyType.memoryLeak => 12,
-          EnemyType.forkBomb => 14,
-          EnemyType.lockNode => 4,
-          EnemyType.deadlock => 30,
+          EnemyType.request => 4.5,
+          EnemyType.interrupt => 5.5,
+          EnemyType.batch => 3.5,
+          EnemyType.allocation => 12,
+          EnemyType.rpc => 10.5,
+          EnemyType.timerEvent => 12,
+          EnemyType.memoryLeak => 14,
+          EnemyType.forkBomb => 16,
+          EnemyType.lockNode => 5,
+          EnemyType.deadlock => 35,
           _ => 0,
         };
 }

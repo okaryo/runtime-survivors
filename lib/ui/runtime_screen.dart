@@ -182,8 +182,6 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
                         const SizedBox(height: 18),
                         encyclopedia!,
                         const SizedBox(height: 24),
-                        const Divider(color: line, height: 1),
-                        const SizedBox(height: 12),
                         Align(
                           alignment: Alignment.center,
                           child: Link(

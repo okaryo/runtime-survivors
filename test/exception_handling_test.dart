@@ -205,7 +205,7 @@ void main() {
     ]);
     hit(run);
     expect(run.kills, 2);
-    expect(run.jitCharge, 6);
+    expect(run.jitCharge, 9);
     expect(run.health, 42); // 12 damage, then 4 recovered from actual kills.
     final lethal = prepared()..health = 5;
     final survivor = TaskEnemy(Vector2(80, 0), health: 1000);
