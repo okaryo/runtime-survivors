@@ -13,6 +13,49 @@ RunState prepared() => RunState(random: Random(71))
 
 void main() {
   test(
+    'leaks patrol both ways inside their range and scatter distinct patches',
+    () {
+      for (final variant in [0, 1]) {
+        final run = prepared();
+        final source = TaskEnemy(
+          Vector2(145, 0),
+          kind: EnemyType.memoryLeak.index,
+          health: 100000,
+          inputVariant: variant,
+        );
+        run.enemies.add(source);
+        run.update(0.05);
+        expect(source.position.y * (variant == 0 ? 1 : -1), greaterThan(0));
+        for (var i = 0; i < 380; i++) {
+          run.update(1 / 60);
+          expect(source.position.distanceTo(run.player), closeTo(145, 0.001));
+        }
+        final patches = run.leakPatches
+            .where((p) => identical(p.source, source))
+            .toList();
+        expect(patches.length, 3);
+        for (var i = 0; i < patches.length; i++) {
+          for (var j = i + 1; j < patches.length; j++) {
+            expect(
+              patches[i].position.distanceTo(patches[j].position),
+              greaterThan(35),
+            );
+          }
+        }
+        final position = source.position.clone();
+        final cooldown = source.attackCooldown;
+        run.pause();
+        tick(run, 1);
+        expect(source.position, position);
+        expect(source.attackCooldown, cooldown);
+        source.health = 0;
+        run.resume();
+        run.update(0.01);
+        expect(patches.every((p) => p.cleaning), isTrue);
+      }
+    },
+  );
+  test(
     'leak collision follows occupied squares and leaves missing corners safe',
     () {
       final source = TaskEnemy(

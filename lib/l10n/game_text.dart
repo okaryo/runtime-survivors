@@ -294,8 +294,8 @@ class GameText {
     ],
     'enemy.13.title': ['メモリリーク', 'Memory Leak'],
     'enemy.13.description': [
-      '間合いを保ちながら、メモリを消費する四角い領域を残す。発生源を処理すると領域は無害になり、早く消えます。',
-      'Keeps its distance while leaving blocky allocations that drain memory. Processing the source disarms its patches and clears them sooner.',
+      '間合いを保って周囲を動き回り、メモリを消費する四角い領域を撒く。発生源を処理すると領域は無害になり、早く消えます。',
+      'Circles at a distance, scattering blocky allocations that drain memory. Processing the source disarms its patches and clears them sooner.',
     ],
     'enemy.14.title': ['タイマーイベント', 'Timer Event'],
     'enemy.14.description': [
@@ -748,8 +748,8 @@ class GameText {
     ],
     'enemy.3.title': ['デッドロック', 'Deadlock'],
     'enemy.3.description': [
-      'ロックと障壁を展開し、本体も接触まで追い詰めてくる。どれかのロックを処理して循環を解くと、短時間だけ本体を攻撃しやすくなる。',
-      'Advances all the way into contact behind durable locks and barriers. Break a lock to release the cycle and briefly expose the core.',
+      '本体とプレイヤーの間へロックと障壁を回り込ませ、接触まで追い詰める。どれかのロックを処理すると、短時間だけ本体を攻撃しやすくなる。',
+      'Turns its locks and barriers between you and the core while advancing into contact. Break a lock to briefly expose the core.',
     ],
     'memory.title': ['メモリ増設', 'Memory Expansion'],
     'memory.description': [

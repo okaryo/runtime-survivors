@@ -31,7 +31,10 @@ void main() {
       final middle = (range.near + range.far) / 2;
       enemy.position.setValues(middle, 0);
       tick(run, 0.2);
-      expect(enemy.position.x, closeTo(middle, 0.001));
+      expect(enemy.position.distanceTo(run.player), closeTo(middle, 0.001));
+      if (type != EnemyType.memoryLeak) {
+        expect(enemy.position.x, closeTo(middle, 0.001));
+      }
       enemy.position.setValues(80, 0);
       run.update(0.05);
       expect(enemy.position.x, greaterThan(80));

@@ -19,6 +19,10 @@ class DeadlockEncounter {
   double warningRemaining = 1.4;
   double exposedRemaining = 0;
   int cycle = 0;
+  double _heading = 0;
+  double _depth = 0;
+  double _spread = 130;
+  static const turnSpeed = 0.6;
   bool get exposed => exposedRemaining > 0;
   double get damageMultiplier => exposed ? 1 : 0.15;
 
@@ -26,12 +30,13 @@ class DeadlockEncounter {
     nodes.clear();
     warningRemaining = 1.4;
     final delta = player - core.position;
-    final forward = delta.length2 > 0 ? delta.normalized() : Vector2(0, 1);
+    _heading = delta.length2 > 0 ? atan2(delta.y, delta.x) : pi / 2;
+    final forward = Vector2(cos(_heading), sin(_heading));
     final side = Vector2(-forward.y, forward.x);
-    final depth = min(170.0, delta.length * (cycle.isEven ? 0.55 : 0.65));
-    final spread = core.health < core.maxHealth / 2 ? 160.0 : 130.0;
+    _depth = min(170.0, delta.length * (cycle.isEven ? 0.55 : 0.65));
+    _spread = core.health < core.maxHealth / 2 ? 160.0 : 130.0;
     for (var i = 0; i < 3; i++) {
-      final offset = forward * depth + side * ((i - 1) * spread);
+      final offset = forward * _depth + side * ((i - 1) * _spread);
       nodes.add(
         TaskEnemy(
           core.position + offset,
@@ -58,8 +63,27 @@ class DeadlockEncounter {
             min(delta.length, 40 * core.movementMultiplier * dt),
       );
     }
-    for (final node in nodes.where((n) => n.alive)) {
-      node.position.setFrom(core.position + node.formationOffset);
+    if (!exposed && nodes.length == 3) {
+      final toward = player - core.position;
+      if (toward.length2 > 0) {
+        final difference = atan2(
+          sin(atan2(toward.y, toward.x) - _heading),
+          cos(atan2(toward.y, toward.x) - _heading),
+        );
+        _heading += difference.clamp(-turnSpeed * dt, turnSpeed * dt);
+      }
+      final depth = min(170.0, toward.length * (cycle.isEven ? 0.55 : 0.65));
+      _depth += (depth - _depth).clamp(-60 * dt, 60 * dt);
+      final forward = Vector2(cos(_heading), sin(_heading));
+      final side = Vector2(-forward.y, forward.x);
+      for (var i = 0; i < nodes.length; i++) {
+        final node = nodes[i];
+        if (!node.alive) continue;
+        node.formationOffset.setFrom(
+          forward * _depth + side * ((i - 1) * _spread),
+        );
+        node.position.setFrom(core.position + node.formationOffset);
+      }
     }
     warningRemaining = max(0, warningRemaining - dt);
     if (exposed) {

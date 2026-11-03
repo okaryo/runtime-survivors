@@ -14,6 +14,41 @@ RunState encounterRun() => RunState(random: Random(19))
   ..update(0.02);
 
 void main() {
+  test('locks gradually turn toward the player and remain between player and core', () {
+    final core = TaskEnemy(
+      Vector2.zero(),
+      kind: EnemyType.deadlock.index,
+      health: 3000,
+    );
+    final encounter = DeadlockEncounter(core);
+    encounter.rebuild(Vector2(400, 0));
+    encounter.warningRemaining = 0;
+    final positions = encounter.nodes.map((n) => n.position.clone()).toList();
+    final player = Vector2(0, 400);
+    encounter.advance(0.05, player);
+    // A sharp player turn cannot instantly sweep the barrier across the arena.
+    for (var i = 0; i < positions.length; i++) {
+      expect(
+        encounter.nodes[i].position.distanceTo(positions[i]),
+        lessThan(13),
+      );
+    }
+    for (var frame = 0; frame < 60; frame++) {
+      encounter.advance(0.05, player);
+    }
+    final forward = (player - core.position).normalized();
+    final middle = encounter.nodes[1].position - core.position;
+    expect(middle.normalized().dot(forward), closeTo(1, 0.001));
+    for (final node in encounter.nodes) {
+      final projection = (node.position - core.position).dot(forward);
+      expect(projection, greaterThan(0));
+      expect(projection, lessThan(player.distanceTo(core.position)));
+    }
+    expect(encounter.barriers.length, 4);
+    encounter.breakDependency();
+    expect(encounter.barriers, isEmpty);
+    expect(encounter.nodes.every((n) => !n.alive), isTrue);
+  });
   test(
     'deadlock pursues through its former stopping distance and makes contact',
     () {

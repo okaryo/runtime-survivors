@@ -355,7 +355,7 @@ class RunState {
       } else if (enemy.type == EnemyType.batch && enemy.owner?.alive == true) {
         enemy.position.setFrom(enemy.owner!.position + enemy.formationOffset);
       } else if (enemy.type == EnemyType.memoryLeak) {
-        _moveSpecialist(enemy, delta, dt);
+        _patrolMemoryLeak(enemy, delta, dt);
       } else if (delta.length2 > 0) {
         enemy.position.add(
           delta.normalized() * enemy.speed * enemy.movementMultiplier * dt,
@@ -702,6 +702,22 @@ class RunState {
       );
     }
     enemy.attackCooldown = 2.2;
+  }
+
+  void _patrolMemoryLeak(TaskEnemy enemy, Vector2 delta, double dt) {
+    final distance = delta.length;
+    final range = enemy.preferredRange!;
+    if (distance < range.near || distance > range.far) {
+      _moveSpecialist(enemy, delta, dt);
+      return;
+    }
+    // Patrol around the player instead of stacking every patch in one place.
+    // A circular step preserves the safe distance band without radial drift.
+    final direction = enemy.inputVariant.isOdd ? -1 : 1;
+    final angle =
+        atan2(-delta.y, -delta.x) +
+        direction * enemy.speed * enemy.movementMultiplier * dt / distance;
+    enemy.position.setFrom(player + Vector2(cos(angle), sin(angle)) * distance);
   }
 
   void _updateTimerEvent(TaskEnemy enemy, Vector2 delta, double dt) {
