@@ -55,7 +55,7 @@ flutter build web --release --base-href /runtime-survivors/ --no-web-resources-c
 
 `build/web` にPages用の成果物を出力します。`--no-web-resources-cdn` によりCanvasKitも成果物に含めます。ルートパスでホストする場合は `--base-href /runtime-survivors/` を省略できます。
 
-UIの表示テストではFlutter SDKに同梱されたRobotoと、キーキャップで使う同梱のRoboto Monoを読み込み、PCブラウザの英文に近い文字幅でレイアウトを検証します。音声のネイティブテストでは無音のバックエンドを使用します。
+UIの表示テストではFlutter SDKに同梱されたRobotoと、キーキャップで使う同梱のRoboto Monoを読み込み、PCブラウザの英文に近い文字幅でレイアウトを検証します。日本語は同梱のRuntimeSansJPも読み込み、実際の日本語の文字幅で確認します。音声のネイティブテストでは無音のバックエンドを使用します。
 
 5分間の統合テストでは範囲・設置・回復、OOP・連鎖・JIT、同時攻撃・入力再利用・貫通、ストリーム接続と範囲攻撃の組み合わせを実行します。生存時間全体を検証するため、このテストではメモリを補充します。難易度評価や実プレイの代替ではありません。
 
@@ -66,6 +66,22 @@ UIの表示テストではFlutter SDKに同梱されたRobotoと、キーキャ�
 ### キーキャップの等幅フォント
 
 [Roboto Monoの公式配布](https://github.com/google/fonts/tree/main/ofl/robotomono)から取得した可変フォントを `assets/fonts/roboto_mono/RobotoMono.ttf` に同梱しています。原文のライセンス `OFL.txt` もWeb成果物に含めます。カードのキーキャップに使用し、表示テストでも同じフォントを読み込みます。
+
+### 日本語フォント
+
+[公式Noto Sans JP](https://github.com/google/fonts/tree/main/ofl/notosansjp)を使用し、UIの日本語フォールバックとゲーム内テキストに `RuntimeSansJP` を指定しています。日本語用の句読点を使用し、言語未指定の代替字体に依存しません。英数字は既存のRoboto / Roboto Monoを継続します。
+
+約9.1MBの元フォントを使用文字・仮名・句読点・共通記号へ絞り、約711KBの可変フォントを同梱。Webのindex.htmlから同一オリジンのアセットを先読みし、日本語表示のための外部フォントの追加取得を減らします。元のOFLライセンスも成果物へ含めます。ビルド時のフォント取得やFontToolsのインストールは不要です。
+
+新しい漢字を文言へ追加した場合、`test/japanese_font_test.dart` が同梱範囲を確認します。必要なら公式の `NotoSansJP[wght].ttf` を取得し、FontToolsを一時環境へ入れて再生成します。
+
+```sh
+python3 -m venv /tmp/runtime-font-tools
+/tmp/runtime-font-tools/bin/pip install fonttools==4.68.0
+/tmp/runtime-font-tools/bin/python tool/subset_japanese_font.py /path/to/NotoSansJP.ttf
+```
+
+生成されたTTFとcodepoints.txtを一緒にコミットしてください。句読点を含む日本語の実画面も確認します。
 
 ### BGM
 
