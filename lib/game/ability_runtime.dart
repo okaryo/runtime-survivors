@@ -4,6 +4,11 @@ import 'package:flame/components.dart';
 
 import 'combat_entities.dart';
 
+/// Carry frame overshoot into the next attack, without queuing attacks while
+/// an ability is blocked or has no target. At most one attack fires per frame.
+double advanceAttackCooldown(double remaining, double dt) =>
+    max(-dt, remaining - dt);
+
 /// One subscription is retained until its target finishes or leaves range.
 class AsyncStreamRuntime {
   TaskEnemy? target;
@@ -69,19 +74,20 @@ class AbilityRuntime {
 
   void advance(double dt) {
     jitCharge = max(0, jitCharge - jitDecay * dt);
-    fieldTimer -= dt;
+    fieldTimer = advanceAttackCooldown(fieldTimer, dt);
     exceptionCooldown = max(0, exceptionCooldown - dt);
     exceptionPause = max(0, exceptionPause - dt);
-    ownershipTimer -= dt;
+    ownershipTimer = advanceAttackCooldown(ownershipTimer, dt);
     gcPause = max(0, gcPause - dt);
     healingTimer -= dt;
     for (final field in fields) {
       field.remaining -= dt;
       field.arming -= dt;
       field.flash = max(0, field.flash - dt);
-      if (field.triggered) field.tickTimer -= dt;
+      if (field.triggered) {
+        field.tickTimer = advanceAttackCooldown(field.tickTimer, dt);
+      }
     }
-    fields.removeWhere((f) => f.remaining <= 0);
   }
 
   void recordKill(TaskEnemy enemy) =>

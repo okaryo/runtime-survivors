@@ -385,7 +385,7 @@ class RunState {
     if (phase == RunPhase.lost) return;
     _updateStream(dt);
     _updateObjects(dt);
-    _attackTimer -= dt;
+    _attackTimer = advanceAttackCooldown(_attackTimer, dt);
     if (_attackTimer <= 0 &&
         abilities.gcPause <= 0 &&
         abilities.exceptionPause <= 0) {
@@ -411,9 +411,9 @@ class RunState {
           ),
         );
       }
-      _attackTimer = targets.isEmpty ? 0 : attackInterval;
+      _attackTimer = targets.isEmpty ? 0 : _attackTimer + attackInterval;
     }
-    _patternTimer -= dt;
+    _patternTimer = advanceAttackCooldown(_patternTimer, dt);
     if (rank(Upgrade.patternMatching) > 0 && _patternTimer <= 0) {
       final target = _nearestEnemy(player, _stats.patternRange);
       if (target != null && projectiles.where((s) => !s.hostile).length < 12) {
@@ -432,7 +432,7 @@ class RunState {
             life: 1.2,
           ),
         );
-        _patternTimer = _stats.patternInterval;
+        _patternTimer += _stats.patternInterval;
       }
     }
     final chained = <Instruction>[];
@@ -488,7 +488,7 @@ class RunState {
       chained.take(max(0, instructionLimit - instructions.length)),
     );
     if (rank(Upgrade.garbageCollection) > 0) {
-      _gcTimer -= dt;
+      _gcTimer = advanceAttackCooldown(_gcTimer, dt);
       if (_gcTimer <= 0) {
         effects.add(
           RunEffect(
@@ -504,7 +504,7 @@ class RunState {
         )) {
           _damage(enemy, gcDamage);
         }
-        _gcTimer = _stats.gcInterval;
+        _gcTimer += _stats.gcInterval;
         abilities.gcPause = _stats.gcPause;
       }
     }
@@ -555,10 +555,11 @@ class RunState {
           damage: _stats.lazyDamage,
         ),
       );
-      abilities.fieldTimer = _stats.lazyInterval;
+      abilities.fieldTimer += _stats.lazyInterval;
     }
     for (final field in abilities.fields) {
       if (!field.triggered &&
+          field.remaining > 0 &&
           field.arming <= 0 &&
           enemies.any(
             (e) =>
@@ -581,9 +582,11 @@ class RunState {
       }
     }
     for (final field in abilities.fields.where(
-      (f) => f.triggered && f.tickTimer <= 0,
+      // Include the tick at the exact end of the active lifetime, even if the
+      // frame crosses both deadlines. Do not tick after the field expires.
+      (f) => f.triggered && f.tickTimer <= min(0.0, f.remaining) + 1e-9,
     )) {
-      field.tickTimer = SlowField.tickInterval;
+      field.tickTimer += SlowField.tickInterval;
       field.flash = 0.12;
       for (final enemy in enemies.where(
         (e) =>
@@ -594,9 +597,10 @@ class RunState {
         _damage(enemy, field.damage * 0.2);
       }
     }
+    abilities.fields.removeWhere((field) => field.remaining <= 0);
     if (rank(Upgrade.ownership) > 0 && abilities.ownershipTimer <= 0) {
       _pulse(_stats.ownershipRadius, _stats.ownershipDamage, healing: true);
-      abilities.ownershipTimer = _stats.ownershipInterval;
+      abilities.ownershipTimer += _stats.ownershipInterval;
     }
   }
 
@@ -657,14 +661,16 @@ class RunState {
         continue;
       }
       channel.flash = max(0, channel.flash - dt);
+      var activeTime = dt;
       if (channel.preparation > 0) {
+        activeTime = max(0, dt - channel.preparation);
         channel.preparation = max(0, channel.preparation - dt);
         if (channel.preparation > 0) continue;
       }
-      channel.tickTimer -= dt;
+      channel.tickTimer = advanceAttackCooldown(channel.tickTimer, activeTime);
       if (channel.tickTimer <= 0) {
         _damage(target!, _stats.streamDamage);
-        channel.tickTimer = _stats.streamInterval;
+        channel.tickTimer += _stats.streamInterval;
         channel.flash = 0.10;
       }
     }
@@ -801,7 +807,7 @@ class RunState {
       object.position.setFrom(
         player + Vector2(cos(angle), sin(angle)) * (72 + object.index * 8),
       );
-      object.attackTimer -= dt;
+      object.attackTimer = advanceAttackCooldown(object.attackTimer, dt);
       if (object.attackTimer <= 0) {
         final targets =
             enemies
@@ -826,7 +832,7 @@ class RunState {
               kind: InstructionKind.object,
             ),
           );
-          object.attackTimer = objectInterval;
+          object.attackTimer += objectInterval;
         }
       }
     }
