@@ -52,12 +52,18 @@ class GameAudio {
       SoundCue.end => [330.0, 220.0, 165.0],
       SoundCue.warning => [180.0, 180.0, 240.0],
       SoundCue.pulse => [130.0, 260.0],
+      SoundCue.collection => [520.0, 260.0, 130.0],
+      SoundCue.victory => [523.25, 659.25, 783.99, 1046.50, 783.99, 1046.50],
     };
     for (var i = 0; i < notes.length; i++) {
       _backend.note(
         notes[i],
-        i * 0.075,
-        cue == SoundCue.pickup ? 0.07 : 0.13,
+        i * (cue == SoundCue.victory ? 0.18 : 0.075),
+        cue == SoundCue.victory
+            ? 0.65
+            : cue == SoundCue.pickup
+            ? 0.07
+            : 0.13,
         cue == SoundCue.hit || cue == SoundCue.warning ? 'square' : 'triangle',
       );
     }

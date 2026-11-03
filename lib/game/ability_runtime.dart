@@ -2,7 +2,6 @@ import 'dart:math';
 
 import 'package:flame/components.dart';
 
-import 'build.dart';
 import 'combat_entities.dart';
 
 /// One subscription is retained until its target finishes or leaves range.
@@ -40,13 +39,13 @@ class SlowField {
 
 /// Per-run state for abilities; never stored in catalog definitions or previews.
 class AbilityRuntime {
-  static const jitRequiredExecutions = BuildStats.jitRequiredExecutions;
+  static const jitDecay = 9.0;
+  static const jitKillGain = 9.0;
   final List<SlowField> fields = [];
   final stream = AsyncStreamRuntime();
   // A signature includes both the operation and its visible input variant.
   final Set<int> cachedInputs = {};
-  int jitExecutions = 0;
-  bool get jitOptimized => jitExecutions >= jitRequiredExecutions;
+  double jitCharge = 0;
   double fieldTimer = 0;
   double memoTimer = 0;
   double ownershipTimer = 0;
@@ -58,13 +57,14 @@ class AbilityRuntime {
     fields.clear();
     stream.reset();
     cachedInputs.clear();
-    jitExecutions = 0;
+    jitCharge = 0;
     fieldTimer = memoTimer = ownershipTimer = gcPause = 0;
     healingTimer = 0;
     _healingSpent = 0;
   }
 
   void advance(double dt) {
+    jitCharge = max(0, jitCharge - jitDecay * dt);
     fieldTimer -= dt;
     memoTimer -= dt;
     ownershipTimer -= dt;
@@ -77,8 +77,22 @@ class AbilityRuntime {
     fields.removeWhere((f) => f.remaining <= 0);
   }
 
-  void recordExecution() {
-    jitExecutions = min(jitRequiredExecutions, jitExecutions + 1);
+  void recordKill({
+    bool summoned = false,
+    bool node = false,
+    bool boss = false,
+  }) {
+    jitCharge = min(
+      100,
+      jitCharge +
+          (boss
+              ? 30
+              : summoned
+              ? 2
+              : node
+              ? 4
+              : jitKillGain),
+    );
   }
 
   double claimHealing(double amount, double cap) {

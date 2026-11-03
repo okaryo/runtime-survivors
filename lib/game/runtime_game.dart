@@ -181,6 +181,22 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
         );
       }
     }
+    if (run.pressureStage > 0) {
+      canvas.drawRect(
+        Offset.zero & size.toSize(),
+        Paint()
+          ..color = coral.withValues(
+            alpha: run.pressureStage == 2 ? 0.045 : 0.02,
+          ),
+      );
+      canvas.drawRect(
+        const Offset(2, 2) & Size(size.x - 4, size.y - 4),
+        Paint()
+          ..color = coral.withValues(alpha: run.pressureStage == 2 ? 0.7 : 0.35)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3,
+      );
+    }
     canvas.save();
     canvas.translate(origin.dx, origin.dy);
     Offset point(Vector2 v) => Offset(v.x, v.y);
@@ -374,7 +390,11 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
       canvas.restore();
     }
     for (final effect in run.effects) {
-      final progress = 1 - effect.life / 0.5;
+      if (effect.collection) {
+        WorkloadPainter.collection(canvas, effect);
+        continue;
+      }
+      final progress = 1 - effect.life / effect.duration;
       canvas.drawCircle(
         point(effect.position),
         effect.radius * (effect.pulse ? progress : 0.3 + progress),
@@ -448,6 +468,21 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
           Paint()..color = color,
         );
       }
+      if (enemy.type == EnemyType.lockNode) {
+        canvas.drawRect(
+          const Rect.fromLTWH(-16, -27, 32, 4),
+          Paint()..color = const Color(0xFF31423F),
+        );
+        canvas.drawRect(
+          Rect.fromLTWH(
+            -16,
+            -27,
+            32 * (enemy.health / enemy.maxHealth).clamp(0, 1),
+            4,
+          ),
+          Paint()..color = const Color(0xFFF3CD84),
+        );
+      }
       canvas.restore();
     }
     WorkloadPainter.stream(
@@ -459,7 +494,7 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
     for (final shot in run.instructions) {
       final shotColor = switch (shot.kind) {
         InstructionKind.base =>
-          run.abilities.jitOptimized ? const Color(0xFFFFD36D) : mint,
+          run.jitCharge >= 50 ? const Color(0xFFFFD36D) : mint,
         InstructionKind.object => const Color(0xFFE8C974),
         InstructionKind.chain => const Color(0xFFCCA7F5),
         InstructionKind.cached => const Color(0xFFBEE3FF),
@@ -484,25 +519,30 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
     }
     final position = point(run.player);
     if (run.rank(Upgrade.jitCompilation) > 0) {
-      canvas.drawArc(
-        Rect.fromCircle(center: position, radius: 36),
-        -pi / 2,
-        2 * pi * run.abilities.jitExecutions / run.jitRequiredExecutions,
-        false,
-        Paint()
-          ..color = const Color(0xFFFFD36D)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 3,
+      final rect = Rect.fromLTWH(position.dx - 30, position.dy + 47, 60, 5);
+      canvas.drawRect(rect, Paint()..color = const Color(0xFF4D4835));
+      canvas.drawRect(
+        Rect.fromLTWH(rect.left, rect.top, rect.width * run.jitCharge / 100, 5),
+        Paint()..color = const Color(0xFFFFD36D),
       );
       _text(
         canvas,
-        text(run.abilities.jitOptimized ? 'jitReady' : 'jitAnalyzing', {
-          'count': run.abilities.jitExecutions,
-          'total': run.jitRequiredExecutions,
-        }),
-        position + const Offset(-38, 42),
+        'JIT ${run.jitCharge.round()}%',
+        position + const Offset(-27, 56),
         const Color(0xFFFFD36D),
-        11,
+        10,
+      );
+    }
+    if (run.rank(Upgrade.garbageCollection) > 0) {
+      canvas.drawArc(
+        Rect.fromCircle(center: position, radius: 28),
+        -pi / 2,
+        pi * 2 * run.gcProgress,
+        false,
+        Paint()
+          ..color = mint
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2,
       );
     }
 

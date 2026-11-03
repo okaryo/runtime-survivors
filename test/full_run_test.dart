@@ -94,7 +94,7 @@ void main() {
         run.resetToSetup();
         expect(run.abilities.cachedInputs, isEmpty);
         expect(run.abilities.fields, isEmpty);
-        expect(run.abilities.jitExecutions, 0);
+        expect(run.abilities.jitCharge, 0);
         expect(run.hazards, isEmpty);
         expect(run.leakPatches, isEmpty);
         expect(run.timerPulses, isEmpty);

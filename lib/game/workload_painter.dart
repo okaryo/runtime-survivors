@@ -89,55 +89,55 @@ class WorkloadPainter {
       1.0,
     );
     final center = Offset(pulse.position.x, pulse.position.y);
-    final start = pulse.gapAngle + TimerPulse.gapWidth / 2;
-    final sweep = pi * 2 - TimerPulse.gapWidth;
     final rect = Rect.fromCircle(center: center, radius: pulse.radius);
-    canvas.drawArc(
-      rect,
-      start,
-      sweep,
-      false,
-      Paint()
-        ..color = timerColor.withValues(alpha: 0.18 * opacity)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = TimerPulse.width + 6,
-    );
-    canvas.drawArc(
-      rect,
-      start,
-      sweep,
-      false,
-      Paint()
-        ..color = timerColor.withValues(alpha: 0.88 * opacity)
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round
-        ..strokeWidth = TimerPulse.width,
-    );
-    // Square brackets identify the two ends and make the escape gap readable.
-    for (final angle in [start, start + sweep]) {
-      final p = center + Offset(cos(angle), sin(angle)) * pulse.radius;
-      canvas.drawRect(
-        Rect.fromCenter(center: p, width: 7, height: 7),
-        Paint()..color = const Color(0xFFF3F5FF).withValues(alpha: opacity),
+    for (final arc in TimerPulse.arcs(pulse.gapAngles)) {
+      canvas.drawArc(
+        rect,
+        arc.$1,
+        arc.$2,
+        false,
+        Paint()
+          ..color = timerColor.withValues(alpha: 0.18 * opacity)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = TimerPulse.width + 6,
       );
+      canvas.drawArc(
+        rect,
+        arc.$1,
+        arc.$2,
+        false,
+        Paint()
+          ..color = timerColor.withValues(alpha: 0.88 * opacity)
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round
+          ..strokeWidth = TimerPulse.width,
+      );
+      for (final angle in [arc.$1, arc.$1 + arc.$2]) {
+        final p = center + Offset(cos(angle), sin(angle)) * pulse.radius;
+        canvas.drawRect(
+          Rect.fromCenter(center: p, width: 7, height: 7),
+          Paint()..color = const Color(0xFFF3F5FF).withValues(alpha: opacity),
+        );
+      }
     }
   }
 
   static void timerWindup(Canvas canvas, TaskEnemy enemy) {
     final center = Offset(enemy.position.x, enemy.position.y);
     final radius = enemy.radius + 14;
-    final gap = atan2(enemy.chargeDirection.y, enemy.chargeDirection.x);
     final progress = 1 - enemy.telegraphRemaining / TimerPulse.windup;
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      gap + TimerPulse.gapWidth / 2,
-      pi * 2 - TimerPulse.gapWidth,
-      false,
-      Paint()
-        ..color = timerColor.withValues(alpha: 0.65)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2,
-    );
+    for (final arc in TimerPulse.arcs(enemy.pulseGaps)) {
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        arc.$1,
+        arc.$2,
+        false,
+        Paint()
+          ..color = timerColor.withValues(alpha: 0.65)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2,
+      );
+    }
     for (var i = 0; i < 8; i++) {
       final angle = -pi / 2 + i * pi / 4;
       final p = center + Offset(cos(angle), sin(angle)) * (radius + 6);
@@ -147,6 +147,57 @@ class WorkloadPainter {
           ..color = timerColor.withValues(alpha: i / 8 <= progress ? 1 : 0.15),
       );
     }
+  }
+
+  static void collection(Canvas canvas, RunEffect effect) {
+    final p = Offset(effect.position.x, effect.position.y);
+    final progress = 1 - effect.life / effect.duration;
+    const color = Color(0xFF91E2CA);
+    canvas.drawCircle(
+      p,
+      effect.radius,
+      Paint()..color = color.withValues(alpha: (1 - progress) * 0.18),
+    );
+    canvas.drawCircle(
+      p,
+      effect.radius,
+      Paint()
+        ..color = color.withValues(alpha: (1 - progress) * 0.85)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 4,
+    );
+    canvas.drawArc(
+      Rect.fromCircle(center: p, radius: effect.radius * (1 - progress * 0.8)),
+      progress * pi * 3,
+      pi * 1.6,
+      false,
+      Paint()
+        ..color = color.withValues(alpha: (1 - progress) * 0.9)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3,
+    );
+    for (var i = 0; i < 12; i++) {
+      final angle = i * pi / 6;
+      final at =
+          p + Offset(cos(angle), sin(angle)) * effect.radius * (1 - progress);
+      canvas.drawRect(
+        Rect.fromCenter(center: at, width: 6, height: 6),
+        Paint()..color = color.withValues(alpha: 1 - progress),
+      );
+    }
+    final text = TextPainter(
+      textDirection: TextDirection.ltr,
+      text: TextSpan(
+        text: 'GC',
+        style: TextStyle(
+          color: color.withValues(alpha: 1 - progress),
+          fontSize: 16,
+          fontFamily: 'RobotoMono',
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    )..layout();
+    text.paint(canvas, p - Offset(text.width / 2, effect.radius + 24));
   }
 
   static void stream(

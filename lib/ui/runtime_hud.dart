@@ -311,7 +311,9 @@ class RuntimeHud extends StatelessWidget {
         const SizedBox(width: 4),
         Text(
           run.isRush
-              ? text('rush')
+              ? text('rush.${run.rushTheme?.name ?? 'interrupts'}')
+              : run.pressureStage > 0
+              ? text(run.pressureStage == 2 ? 'overload' : 'pressure')
               : text('rushIn', {'time': clock(run.secondsToRush)}),
           style: const TextStyle(
             color: _amber,

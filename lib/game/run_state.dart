@@ -76,6 +76,9 @@ class RunState {
   double _nextDeadlock = 75;
   int rushCount = 0;
   int deadlockCount = 0;
+  double _nextPressureBurst = 240;
+  RushTheme? rushTheme;
+  int get pressureStage => SpawnDirector.pressureStage(elapsed);
 
   bool get isRush => phase != RunPhase.ready && elapsed < _rushUntil;
   double get secondsToRush => max(0, _nextRush - elapsed);
@@ -94,7 +97,9 @@ class RunState {
   double get gcRadius => _stats.gcRadius;
   double get gcDamage => _stats.gcDamage;
   int get targetCount => _stats.targetCount;
-  int get jitRequiredExecutions => AbilityRuntime.jitRequiredExecutions;
+  double get jitCharge => abilities.jitCharge;
+  double get jitFireRate => 1 + _stats.jitSpeedBonus * jitCharge / 100;
+  double get gcProgress => (1 - _gcTimer / _stats.gcInterval).clamp(0.0, 1.0);
   String get timeLabel {
     final seconds = elapsed.floor();
     return '${(seconds ~/ 60).toString().padLeft(2, '0')}:${(seconds % 60).toString().padLeft(2, '0')}';
@@ -105,7 +110,7 @@ class RunState {
   void start() => _initialize(RunPhase.running);
 
   void _initialize(RunPhase initialPhase) {
-    _stats.jitOptimized = false;
+    _stats.jitCharge = 0;
     phase = initialPhase;
     player.setZero();
     movement.setZero();
@@ -138,6 +143,8 @@ class RunState {
     _nextDeadlock = 75;
     rushCount = 0;
     deadlockCount = 0;
+    _nextPressureBurst = 240;
+    rushTheme = null;
     events.clear();
     if (initialPhase == RunPhase.ready) {
       log(const RunLog('log.ready'));
@@ -228,12 +235,12 @@ class RunState {
   UpgradePreview preview(Upgrade upgrade) {
     final before = BuildStats.snapshot(
       upgrades,
-      jitOptimized: _stats.jitOptimized,
+      jitCharge: abilities.jitCharge,
     );
     final after = BuildStats.snapshot({
       ...upgrades,
       upgrade: rank(upgrade) + 1,
-    }, jitOptimized: _stats.jitOptimized);
+    }, jitCharge: abilities.jitCharge);
     return UpgradePreview(
       upgrade: upgrade,
       before: before,
@@ -272,7 +279,7 @@ class RunState {
       phase = RunPhase.won;
       movement.setZero();
       log(const RunLog('log.won'));
-      cues.add(SoundCue.end);
+      cues.add(SoundCue.victory);
       return;
     }
     if (movement.length2 > 0) {
@@ -280,14 +287,16 @@ class RunState {
     }
     invulnerability = max(0, invulnerability - dt);
     _updateAbilities(dt);
+    _stats.jitCharge = abilities.jitCharge;
     if (elapsed >= _nextRush) {
       rushCount++;
-      _rushUntil = elapsed + 9;
+      rushTheme = RushTheme.values[(rushCount - 1) % RushTheme.values.length];
+      _rushUntil = elapsed + (pressureStage > 0 ? 12 : 9);
       _nextRush += 45;
       for (var i = 0; i < 18 + rushCount * 3; i++) {
-        _spawn(kind: random.nextBool() ? 0 : 1);
+        _spawn();
       }
-      log(const RunLog('log.rush'));
+      log(RunLog('log.rush', args: {'theme': rushTheme!.name}));
       cues.add(SoundCue.warning);
     }
     if (elapsed >= _nextDeadlock) {
@@ -299,10 +308,25 @@ class RunState {
       }
       _nextDeadlock += 90;
     }
+    if (elapsed >= _nextPressureBurst) {
+      if (_nextPressureBurst == 240) log(const RunLog('log.pressure'));
+      if (_nextPressureBurst == 270) log(const RunLog('log.overload'));
+      for (var i = 0; i < (pressureStage == 2 ? 12 : 7); i++) {
+        _spawn();
+      }
+      _nextPressureBurst += 6;
+    }
     _spawnTimer -= dt;
     if (_spawnTimer <= 0 && enemies.length < 240) {
       _spawn();
-      _spawnTimer = max(0.18, 0.70 - elapsed / 600) * (isRush ? 0.55 : 1);
+      _spawnTimer =
+          max(0.18, 0.70 - elapsed / 600) *
+          (isRush ? 0.55 : 1) *
+          (pressureStage == 2
+              ? 0.42
+              : pressureStage == 1
+              ? 0.68
+              : 1);
     }
     _updateHazards(dt);
     _updateWorkloadHazards(dt);
@@ -372,16 +396,6 @@ class RunState {
                   .distanceToSquared(player)
                   .compareTo(b.position.distanceToSquared(player)),
             );
-      if (targets.isNotEmpty && rank(Upgrade.jitCompilation) > 0) {
-        final wasOptimized = abilities.jitOptimized;
-        abilities.recordExecution();
-        _stats.jitOptimized = abilities.jitOptimized;
-        if (!wasOptimized && abilities.jitOptimized) {
-          effects.add(RunEffect(player.clone(), radius: 70, optimized: true));
-          cues.add(SoundCue.select);
-          log(const RunLog('log.optimized'));
-        }
-      }
       for (final target in targets.take(targetCount)) {
         if (instructions.length >= instructionLimit) break;
         instructions.add(
@@ -473,8 +487,15 @@ class RunState {
     if (rank(Upgrade.garbageCollection) > 0) {
       _gcTimer -= dt;
       if (_gcTimer <= 0) {
-        effects.add(RunEffect(player.clone(), pulse: true, radius: gcRadius));
-        cues.add(SoundCue.pulse);
+        effects.add(
+          RunEffect(
+            player.clone(),
+            pulse: true,
+            radius: gcRadius,
+            collection: true,
+          ),
+        );
+        cues.add(SoundCue.collection);
         for (final enemy in enemies.where(
           (e) => e.alive && e.position.distanceTo(player) <= gcRadius,
         )) {
@@ -647,7 +668,7 @@ class RunState {
         MemoryLeakPatch(enemy.position, enemy, pattern: enemy.cycleCount++),
       );
     }
-    enemy.attackCooldown = 2.8;
+    enemy.attackCooldown = 2.2;
   }
 
   void _updateTimerEvent(TaskEnemy enemy, Vector2 delta, double dt) {
@@ -655,12 +676,7 @@ class RunState {
       enemy.telegraphRemaining = max(0, enemy.telegraphRemaining - dt);
       if (enemy.telegraphRemaining == 0) {
         if (timerPulses.length < TimerPulse.limit) {
-          timerPulses.add(
-            TimerPulse(
-              enemy.position.clone(),
-              atan2(enemy.chargeDirection.y, enemy.chargeDirection.x),
-            ),
-          );
+          timerPulses.add(TimerPulse(enemy.position.clone(), enemy.pulseGaps));
           cues.add(SoundCue.pulse);
         }
         enemy.cycleCount++;
@@ -676,8 +692,7 @@ class RunState {
     if (delta.length > 400) return;
     enemy.attackCooldown -= dt;
     if (enemy.attackCooldown <= 0) {
-      final gap = atan2(delta.y, delta.x) + pi / 2 + enemy.cycleCount * 0.9;
-      enemy.chargeDirection.setValues(cos(gap), sin(gap));
+      enemy.pulseGaps = TimerPulse.randomGaps(random);
       enemy.telegraphRemaining = TimerPulse.windup;
     }
   }
@@ -918,7 +933,13 @@ class RunState {
 
   void _spawn({double? radius, int? kind}) {
     final angle = random.nextDouble() * pi * 2;
-    kind ??= director.choose(elapsed, enemies, random, introduced: _introduced);
+    kind ??= director.choose(
+      elapsed,
+      enemies,
+      random,
+      introduced: _introduced,
+      theme: isRush ? rushTheme : null,
+    );
     final type = EnemyType.values[kind];
     if (type == EnemyType.deadlock && deadlocks.any((e) => e.core.alive)) {
       return;
@@ -937,28 +958,34 @@ class RunState {
       position,
       kind: kind,
       inputVariant: random.nextInt(3),
-      health: type == EnemyType.deadlock
-          ? 820 + elapsed * 2
-          : (22 + elapsed / 18) *
-                (type == EnemyType.allocation
-                    ? 3.0
-                    : type == EnemyType.memoryLeak
-                    ? 1.8
-                    : type == EnemyType.timerEvent
-                    ? 1.5
-                    : type == EnemyType.forkBomb
-                    ? 2.5
-                    : type == EnemyType.rpc
-                    ? 1.6
-                    : type == EnemyType.batch
-                    ? 1.15
-                    : 1),
+      health:
+          (type == EnemyType.deadlock
+              ? 1800 + elapsed * 4
+              : (22 + elapsed / 18) *
+                    (type == EnemyType.allocation
+                        ? 3.0
+                        : type == EnemyType.memoryLeak
+                        ? 1.8
+                        : type == EnemyType.timerEvent
+                        ? 1.5
+                        : type == EnemyType.forkBomb
+                        ? 2.5
+                        : type == EnemyType.rpc
+                        ? 1.6
+                        : type == EnemyType.batch
+                        ? 1.15
+                        : 1)) *
+          (pressureStage == 2
+              ? 1.45
+              : pressureStage == 1
+              ? 1.20
+              : 1),
     );
     enemies.add(leader);
     if (type == EnemyType.deadlock) {
       final encounter = DeadlockEncounter(leader);
       deadlocks.add(encounter);
-      enemies.addAll(encounter.rebuild());
+      enemies.addAll(encounter.rebuild(player));
     } else if (type == EnemyType.batch) {
       final direction = (position - player).normalized();
       for (var i = 1; i < 4; i++) {
@@ -987,6 +1014,14 @@ class RunState {
     enemy.flash = 0.12;
     if (!enemy.alive) {
       kills++;
+      if (rank(Upgrade.jitCompilation) > 0) {
+        abilities.recordKill(
+          summoned: enemy.summoned,
+          node: enemy.type == EnemyType.lockNode,
+          boss: encounter != null,
+        );
+        _stats.jitCharge = abilities.jitCharge;
+      }
       if (rank(Upgrade.memoization) > 0 && enemy.cacheable) {
         abilities.cachedInputs.add(enemy.inputSignature);
       }

@@ -13,39 +13,42 @@ RunState encounterRun() => RunState(random: Random(19))
   ..update(0.02);
 
 void main() {
-  test(
-    'deadlock always leaves an exit, warns before damage and freezes on pause',
-    () {
-      final run = encounterRun();
-      final encounter = run.deadlocks.single;
-      expect(encounter.nodes.length, 3);
-      expect(run.lockBarriers.length, 2);
-      expect(run.lockBarriers.every((b) => b.warning), isTrue);
-      run.player.setFrom(encounter.nodes.first.position);
-      run.update(0.01);
-      expect(
-        run.health,
-        100,
-      ); // A rebuilding node cannot hit before its warning.
-      final barrier = run.lockBarriers.first;
-      run.player.setFrom((barrier.from + barrier.to) / 2);
-      run.update(0.01);
-      expect(run.health, 100);
-      run.pause();
-      final remaining = encounter.warningRemaining;
-      tick(run, 2);
-      expect(encounter.warningRemaining, remaining);
-      run.resume();
-      encounter.warningRemaining = 0;
-      run.update(0.01);
-      expect(run.health, 84);
-      run.update(0.01);
-      expect(
-        run.health,
-        84,
-      ); // Shared invulnerability prevents repeated beam hits.
-    },
-  );
+  test('deadlock deploys a forward barricade, warns before damage and freezes on pause', () {
+    final run = encounterRun();
+    final encounter = run.deadlocks.single;
+    expect(encounter.nodes.length, 3);
+    final towardPlayer = run.player - encounter.core.position;
+    for (final node in encounter.nodes) {
+      final projection = (node.position - encounter.core.position).dot(
+        towardPlayer.normalized(),
+      );
+      expect(projection, greaterThan(0));
+      expect(projection, lessThan(towardPlayer.length));
+      expect(node.maxHealth, greaterThan(250));
+    }
+    expect(run.lockBarriers.length, 4);
+    expect(run.lockBarriers.every((b) => b.warning), isTrue);
+    run.player.setFrom(encounter.nodes.first.position);
+    run.update(0.01);
+    expect(run.health, 100); // A rebuilding node cannot hit before its warning.
+    final barrier = run.lockBarriers.first;
+    run.player.setFrom((barrier.from + barrier.to) / 2);
+    run.update(0.01);
+    expect(run.health, 100);
+    run.pause();
+    final remaining = encounter.warningRemaining;
+    tick(run, 2);
+    expect(encounter.warningRemaining, remaining);
+    run.resume();
+    encounter.warningRemaining = 0;
+    run.update(0.01);
+    expect(run.health, 84);
+    run.update(0.01);
+    expect(
+      run.health,
+      84,
+    ); // Shared invulnerability prevents repeated beam hits.
+  });
   test(
     'any lock opens the cycle and later rebuilds in a different configuration',
     () {
@@ -56,7 +59,7 @@ void main() {
       run.instructions.clear();
       run.instructions.add(Instruction(core.position.clone(), core, 100));
       run.update(0.01);
-      expect(core.health, closeTo(hp - 35, 0.001));
+      expect(core.health, closeTo(hp - 15, 0.001));
       run.instructions.clear();
       final node = encounter.nodes.first;
       run.instructions.add(Instruction(node.position.clone(), node, 10000));
@@ -71,7 +74,7 @@ void main() {
       expect(core.health, closeTo(before - 100, 0.001));
       core.health = core.maxHealth * 0.49;
       run.player.setFrom(core.position + Vector2(500, 0));
-      for (var i = 0; i < 145; i++) {
+      for (var i = 0; i < 115; i++) {
         if (run.phase == RunPhase.choosing) run.choose(run.choices.first);
         run.health = run.maxHealth;
         run.update(0.05);
@@ -79,11 +82,12 @@ void main() {
       expect(encounter.cycle, 1);
       expect(encounter.exposed, isFalse);
       expect(encounter.nodes.where((n) => n.alive).length, 3);
-      expect(run.lockBarriers.length, 2);
-      expect(
-        encounter.nodes.first.position.distanceTo(core.position),
-        closeTo(175, 0.001),
-      );
+      expect(run.lockBarriers.length, 4);
+      final forward = (run.player - core.position).normalized();
+      for (final node in encounter.nodes) {
+        expect((node.position - core.position).dot(forward), greaterThan(0));
+        expect(node.maxHealth, greaterThan(250));
+      }
     },
   );
   test('processing the core clears all dependencies without phantom rewards or healing', () {

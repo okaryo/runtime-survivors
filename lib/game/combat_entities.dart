@@ -49,6 +49,7 @@ class TaskEnemy {
   final formationOffset = Vector2.zero();
   int retryCount = 0;
   int cycleCount = 0;
+  List<double> pulseGaps = const [];
   bool get cacheable => type == EnemyType.request || type == EnemyType.batch;
   int get inputSignature => kind * 3 + inputVariant;
   final bool summoned;
@@ -126,13 +127,16 @@ class RunEffect {
     this.radius = 22,
     this.healing = false,
     this.optimized = false,
+    this.collection = false,
   });
   final Vector2 position;
   final bool pulse;
   final bool healing;
   final bool optimized;
+  final bool collection;
+  double get duration => collection ? 0.75 : 0.5;
   final double radius;
-  double life = 0.5;
+  late double life = duration;
 }
 
 /// A fixed trajectory shared by hostile shots and piercing player attacks.

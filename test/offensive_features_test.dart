@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:runtime_survivors/game/run_state.dart';
 
 // A stationary workload checks that every first Feature is useful on its own.
-// Sixteen seconds includes JIT's warm-up and its subsequent payoff.
+// JIT uses a separate repeated-kill workload because it needs completed tasks.
 // This does not assert a survival rate or substitute for playing the game.
 double processWork(Upgrade? feature) {
   final run = RunState(random: Random(21))
@@ -35,7 +35,7 @@ double processWork(Upgrade? feature) {
 
 void main() {
   for (final feature in Upgrade.values.where(
-    (u) => u.isAvailable && u.isFeature,
+    (u) => u.isAvailable && u.isFeature && u != Upgrade.jitCompilation,
   )) {
     test(
       'first $feature increases processing without requiring another Feature',
@@ -49,7 +49,7 @@ void main() {
     () {
       final baseline = BuildStats.snapshot({});
       for (final feature in Upgrade.values.where(
-        (u) => u.isAvailable && u.isFeature,
+        (u) => u.isAvailable && u.isFeature && u != Upgrade.jitCompilation,
       )) {
         final stats = BuildStats.snapshot({feature: 1});
         expect(stats.attackRange, baseline.attackRange);

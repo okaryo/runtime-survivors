@@ -1,3 +1,4 @@
+import '../game/ability_runtime.dart';
 import '../game/run_state.dart';
 import '../game/language_profile.dart';
 
@@ -169,13 +170,12 @@ class GameText {
           first ? null : '×${(1 + before.jitSpeedBonus).toStringAsFixed(2)}',
           '×${(1 + after.jitSpeedBonus).toStringAsFixed(2)}',
         ),
-        if (first)
-          metric(
-            'stat.jitWarmup',
-            null,
-            BuildStats.jitRequiredExecutions,
-            cost: true,
-          ),
+        metric(
+          'stat.jitDecay',
+          first ? null : '${AbilityRuntime.jitDecay.round()}/s',
+          '${AbilityRuntime.jitDecay.round()}/s',
+          cost: true,
+        ),
       ],
       Upgrade.ownership => [
         value(
@@ -269,6 +269,7 @@ class GameText {
 
   String event(RunLog event) => call(event.key, {
     ...event.args,
+    if (event.key == 'log.rush') 'theme': call('rush.${event.args['theme']}'),
     if (event.upgrade != null) 'name': title(event.upgrade!),
   });
 
@@ -296,11 +297,31 @@ class GameText {
     ],
     'enemy.14.title': ['タイマーイベント', 'Timer Event'],
     'enemy.14.description': [
-      '目盛りが満ちると、隙間のある輪状パルスを放つ。開いた部分を通るか、発射前に近づいて処理しよう。',
-      'Releases an expanding pulse when its clock fills. Pass through the gap or approach before it fires.',
+      '目盛りが満ちると、二つの隙間を持つ輪状パルスを放つ。隙間の向きは発射ごとに変わる。',
+      'Releases a pulse with two gaps when its clock fills. Openings change with each cast.',
     ],
     'stat.chainRetention': ['連鎖時の威力維持', 'Damage retained per jump'],
-    'stat.jitWarmup': ['解析に必要な通常攻撃', 'Base volleys to optimize'],
+    'stat.jitDecay': ['ゲージの時間減少', 'Gauge decay'],
+    'jitGauge': [
+      'JIT {charge}% · 連射 ×{rate}',
+      'JIT {charge}% · Fire rate ×{rate}',
+    ],
+    'pressure': ['高負荷', 'High load'],
+    'overload': ['過負荷', 'Overload'],
+    'log.pressure': [
+      '残り1分。処理要求が急増しています。',
+      'One minute left. Workload is accelerating.',
+    ],
+    'log.overload': [
+      '残り30秒。ランタイム過負荷！',
+      'Thirty seconds left. Runtime overload!',
+    ],
+    'rush.interrupts': ['割り込み集中', 'Interrupt storm'],
+    'rush.memory': ['メモリ・RPC集中', 'Memory / RPC rush'],
+    'rush.forks': ['コピー増殖', 'Fork cascade'],
+    'rush.leaks': ['リーク多発', 'Leak spill'],
+    'rush.timers': ['イベント集中', 'Event storm'],
+    'rush.overload': ['複合過負荷', 'Mixed overload'],
     'bossLockedShort': ['ロックを処理', 'Break a lock'],
     'bossExposedShort': ['本体を処理', 'Core exposed'],
     'enemy.11.title': ['バッチ処理', 'Batch job'],
@@ -334,15 +355,9 @@ class GameText {
     'stat.trapDamage': ['設置攻撃の威力', 'Trap damage'],
     'stat.memoDamage': ['初回入力の威力', 'New-input damage'],
     'stat.cacheDamage': ['保存済み入力の威力', 'Cached-input damage'],
-    'stat.jitSpeed': ['最適化後の通常攻撃速度', 'Optimized base fire rate'],
+    'stat.jitSpeed': ['最大時の通常攻撃速度', 'Base fire rate at full gauge'],
     'stat.cooldownScale': ['攻撃間隔の倍率', 'Attack interval scale'],
-    'jitAnalyzing': ['JIT 解析中 {count}/{total}', 'JIT analysis {count}/{total}'],
-    'jitReady': ['JIT 最適化済み', 'JIT optimized'],
     'memoStatus': ['保存済み入力：{count}種類', 'Cached inputs: {count}'],
-    'log.optimized': [
-      'JITの解析が完了。通常攻撃を高速化',
-      'JIT analysis complete. Rapid fire enabled',
-    ],
 
     'matchup': ['使いどころ', 'Best use'],
     'enemyAffinity': ['相性の良い言語機能', 'Compatible features'],
@@ -372,8 +387,8 @@ class GameText {
       'Repeated tasks with the same input',
     ],
     'jitCompilation.matchup': [
-      '長い戦闘・デッドロックの処理',
-      'Sustained combat; Deadlock encounters',
+      '撃破を続けられる群れ・ラッシュ',
+      'Crowds and rushes with frequent kills',
     ],
     'ownership.matchup': [
       '近距離で攻撃しながらメモリ回収',
@@ -414,12 +429,12 @@ class GameText {
     ],
     'jitCompilation.title': ['JITコンパイル', 'JIT Compilation'],
     'jitCompilation.description': [
-      '通常攻撃の実行で解析が進み、完了すると連射が高速化。対象が変わっても最適化は維持されます。',
-      'Base volleys advance analysis, then unlock rapid fire. Optimization persists across target changes.',
+      '撃破で最適化ゲージを蓄積。残量が多いほど通常攻撃が速くなります。',
+      'Kills build optimization. A fuller gauge makes base attacks fire faster.',
     ],
     'jitCompilation.tradeoff': [
-      '解析が終わるまでは高速化しない。長い準備を終えると、ラン終了まで強力な連射を維持。',
-      'No speed boost during analysis. A longer warm-up unlocks strong rapid fire for the rest of the run.',
+      'ゲージは時間とともに減少。攻撃を続けていても、撃破できなければ高速化が弱まる。',
+      'The gauge drains over time. Firing alone cannot sustain it; keep processing tasks.',
     ],
     'ownership.title': ['所有権', 'Ownership'],
     'ownership.description': [
@@ -674,7 +689,7 @@ class GameText {
       'Build succeeded. Your language is complete.',
     ],
     'log.lost': ['メモリ不足でランタイムが停止しました。', 'Runtime stopped: out of memory.'],
-    'log.rush': ['タスクが集中しています！', 'Task traffic is surging!'],
+    'log.rush': ['{theme}が発生！', '{theme} incoming!'],
     'garbageCollection.title': ['ガベージコレクション', 'Garbage Collection'],
     'garbageCollection.description': [
       '周囲をまとめて掃除する範囲攻撃。密集したタスクを一度に処理します。',
@@ -731,8 +746,8 @@ class GameText {
     ],
     'enemy.3.title': ['デッドロック', 'Deadlock'],
     'enemy.3.description': [
-      '複数のロックを結ぶ障壁で進路を狭める。どれかのロックを処理すると循環が解け、本体への攻撃機会が生まれる。',
-      'Narrows routes with linked locks. Break any lock to release the cycle and expose the core.',
+      '本体の前に頑丈なロックと障壁を展開。どれかのロックを処理して循環を解くと、短時間だけ本体を攻撃しやすくなる。',
+      'Deploys durable locks and barriers in front of its core. Break a lock to release the cycle and briefly expose the core.',
     ],
     'memory.title': ['メモリ増設', 'Memory Expansion'],
     'memory.description': [

@@ -96,7 +96,7 @@ void main() {
     expect(run.deadlockCount, 1);
     expect(run.deadlocks.single.core.maxHealth, greaterThan(900));
     expect(run.deadlocks.single.nodes.length, 3);
-    expect(run.lockBarriers.length, 2);
+    expect(run.lockBarriers.length, 4);
     expect(run.seenEnemies, contains(3));
   });
 

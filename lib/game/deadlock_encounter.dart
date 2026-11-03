@@ -11,30 +11,33 @@ class LockBarrier {
   final bool warning;
 }
 
-/// Breaking any wait dependency opens the cycle. One side is always an exit.
+/// Durable dependencies form a forward barricade between player and core.
 class DeadlockEncounter {
   DeadlockEncounter(this.core);
   final TaskEnemy core;
   final List<TaskEnemy> nodes = [];
-  double warningRemaining = 1.2;
+  double warningRemaining = 1.4;
   double exposedRemaining = 0;
   int cycle = 0;
   bool get exposed => exposedRemaining > 0;
-  double get damageMultiplier => exposed ? 1 : 0.35;
+  double get damageMultiplier => exposed ? 1 : 0.15;
 
-  List<TaskEnemy> rebuild() {
+  List<TaskEnemy> rebuild(Vector2 player) {
     nodes.clear();
-    warningRemaining = 1.2;
-    final radius = core.health < core.maxHealth / 2 ? 175.0 : 145.0;
+    warningRemaining = 1.4;
+    final delta = player - core.position;
+    final forward = delta.length2 > 0 ? delta.normalized() : Vector2(0, 1);
+    final side = Vector2(-forward.y, forward.x);
+    final depth = min(170.0, delta.length * (cycle.isEven ? 0.55 : 0.65));
+    final spread = core.health < core.maxHealth / 2 ? 160.0 : 130.0;
     for (var i = 0; i < 3; i++) {
-      final angle = -pi / 2 + i * 2 * pi / 3 + cycle * pi / 3;
-      final offset = Vector2(cos(angle), sin(angle)) * radius;
+      final offset = forward * depth + side * ((i - 1) * spread);
       nodes.add(
         TaskEnemy(
           core.position + offset,
           kind: EnemyType.lockNode.index,
           owner: core,
-          health: 60 + core.maxHealth * 0.025,
+          health: 140 + core.maxHealth * 0.055,
         )..formationOffset.setFrom(offset),
       );
     }
@@ -58,7 +61,7 @@ class DeadlockEncounter {
       exposedRemaining = max(0, exposedRemaining - dt);
       if (!exposed) {
         cycle++;
-        return rebuild();
+        return rebuild(player);
       }
     }
     return const [];
@@ -66,7 +69,7 @@ class DeadlockEncounter {
 
   void breakDependency() {
     if (exposed || !core.alive) return;
-    exposedRemaining = 7;
+    exposedRemaining = 5.5;
     for (final node in nodes) {
       node.health = 0;
     }
@@ -74,17 +77,19 @@ class DeadlockEncounter {
 
   Iterable<LockBarrier> get barriers sync* {
     if (!core.alive || exposed || nodes.length != 3) return;
-    for (var i = 0; i < 3; i++) {
-      if (i == cycle % 3) continue;
-      final a = nodes[i];
-      final b = nodes[(i + 1) % 3];
-      if (a.alive && b.alive) {
-        yield LockBarrier(
-          a.position,
-          b.position,
-          warning: warningRemaining > 0,
-        );
-      }
+    for (var i = 0; i < 2; i++) {
+      yield LockBarrier(
+        nodes[i].position,
+        nodes[i + 1].position,
+        warning: warningRemaining > 0,
+      );
+    }
+    for (final i in [0, 2]) {
+      yield LockBarrier(
+        core.position,
+        nodes[i].position,
+        warning: warningRemaining > 0,
+      );
     }
   }
 }

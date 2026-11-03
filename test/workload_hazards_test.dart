@@ -141,7 +141,7 @@ void main() {
   test(
     'pulse collision sweeps the ring, leaves its interior and open sector safe',
     () {
-      final pulse = TimerPulse(Vector2.zero(), 0)
+      final pulse = TimerPulse(Vector2.zero(), [0, pi * 1.3])
         ..previousRadius = 90
         ..radius = 100;
       expect(pulse.touches(Vector2(-95, 0), 13), isTrue);
@@ -168,7 +168,7 @@ void main() {
     run.update(0.01);
     expect(timer.telegraphRemaining, TimerPulse.windup);
     final position = timer.position.clone();
-    final gap = timer.chargeDirection.clone();
+    final gaps = timer.pulseGaps.toList();
     tick(run, 0.9);
     expect(run.timerPulses, isEmpty);
     expect(timer.position, position);
@@ -180,8 +180,8 @@ void main() {
     tick(run, 0.12);
     expect(run.timerPulses.length, 1);
     expect(
-      run.timerPulses.single.gapAngle,
-      closeTo(atan2(gap.y, gap.x), 0.001),
+      run.timerPulses.single.gapAngles,
+      orderedEquals(gaps.map((a) => a % (pi * 2)).toList()..sort()),
     );
     expect(timer.attackCooldown, greaterThan(4));
     timer.health = 0;
@@ -199,7 +199,7 @@ void main() {
     );
     run.enemies.add(source);
     final patch = MemoryLeakPatch(Vector2.zero(), source);
-    final pulse = TimerPulse(Vector2(-200, 0), pi);
+    final pulse = TimerPulse(Vector2(-200, 0), [pi, 0.7]);
     run.leakPatches.add(patch);
     run.timerPulses.add(pulse);
     run.addExperience(run.nextLevelXp);

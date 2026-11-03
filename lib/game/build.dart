@@ -75,12 +75,11 @@ extension UpgradeInfo on Upgrade {
 
 /// Shared stat formulas for live combat and immutable upgrade snapshots.
 class BuildStats {
-  static const jitRequiredExecutions = 18;
   BuildStats.live(this._ranks);
-  BuildStats.snapshot(Map<Upgrade, int> ranks, {this.jitOptimized = false})
+  BuildStats.snapshot(Map<Upgrade, int> ranks, {this.jitCharge = 0})
     : _ranks = Map.unmodifiable(ranks);
   final Map<Upgrade, int> _ranks;
-  bool jitOptimized = false;
+  double jitCharge = 0;
   int rank(Upgrade upgrade) => _ranks[upgrade] ?? 0;
   double get reservedMemory =>
       8.0 * rank(Upgrade.memoization) + 6.0 * rank(Upgrade.oop);
@@ -96,12 +95,15 @@ class BuildStats {
   double get compositionDelay => rank(Upgrade.functional) * 0.04;
   double get objectRange => 235 * areaScale;
   double get attackDamage => 24.0 * pow(0.92, rank(Upgrade.concurrency));
-  double get jitSpeedBonus => 0.50 + rank(Upgrade.jitCompilation) * 0.20;
+  double get jitSpeedBonus => 0.65 + rank(Upgrade.jitCompilation) * 0.25;
   double get attackInterval => max(
     0.12,
     (0.62 + compositionDelay) *
         cooldownScale /
-        (jitOptimized ? 1 + jitSpeedBonus : 1),
+        (1 +
+            (rank(Upgrade.jitCompilation) > 0
+                ? jitSpeedBonus * jitCharge / 100
+                : 0)),
   );
   double get projectileSpeed =>
       min(1600.0, 640.0 * pow(1.15, rank(Upgrade.bandwidth)));

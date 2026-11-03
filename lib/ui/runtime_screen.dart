@@ -393,11 +393,19 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
         ],
         if (run.rank(Upgrade.jitCompilation) > 0) ...[
           Text(
-            text(run.abilities.jitOptimized ? 'jitReady' : 'jitAnalyzing', {
-              'count': run.abilities.jitExecutions,
-              'total': run.jitRequiredExecutions,
+            text('jitGauge', {
+              'charge': run.jitCharge.round(),
+              'rate': run.jitFireRate.toStringAsFixed(2),
             }),
             style: const TextStyle(fontSize: 12, color: muted),
+          ),
+          const SizedBox(height: 5),
+          LinearProgressIndicator(
+            key: const Key('jit-gauge'),
+            value: run.jitCharge / 100,
+            color: const Color(0xFFBA8724),
+            backgroundColor: line,
+            minHeight: 5,
           ),
           const SizedBox(height: 6),
         ],
