@@ -669,7 +669,6 @@ class RunState {
   }
 
   void _updateMemoryLeak(TaskEnemy enemy, double dt) {
-    if (enemy.position.distanceTo(player) > 360) return;
     enemy.attackCooldown -= dt;
     if (enemy.attackCooldown > 0) return;
     if (leakPatches.length < MemoryLeakPatch.limit &&

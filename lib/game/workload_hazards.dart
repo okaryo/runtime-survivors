@@ -15,11 +15,11 @@ class MemoryLeakPatch {
       cells = layouts[pattern % layouts.length];
 
   static const cellSize = 22.0;
-  static const lifetime = 8.0;
+  static const lifetime = 12.0;
   static const armingTime = 0.55;
   static const cleanupTime = 1.25;
   static const limit = 20;
-  static const perSourceLimit = 3;
+  static const perSourceLimit = 6;
   static const damage = 8.0;
   static const layouts = <List<(int, int)>>[
     [

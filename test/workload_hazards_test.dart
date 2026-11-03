@@ -13,6 +13,62 @@ RunState prepared() => RunState(random: Random(71))
 
 void main() {
   test(
+    'leak sources scatter patches while still far beyond engagement range',
+    () {
+      final run = prepared();
+      final source = TaskEnemy(
+        Vector2(850, 0),
+        kind: EnemyType.memoryLeak.index,
+        health: 100000,
+      );
+      run.enemies.add(source);
+      tick(run, 1.6);
+      expect(source.position.distanceTo(run.player), greaterThan(360));
+      final patch = run.leakPatches.single;
+      expect(patch.source, same(source));
+      expect(patch.position.distanceTo(run.player), greaterThan(360));
+      expect(patch.position.distanceTo(source.position), lessThan(30));
+    },
+  );
+  test(
+    'leaked areas stay harmful past eight seconds and expire after twelve',
+    () {
+      final run = prepared()..invulnerability = 100;
+      final source = TaskEnemy(
+        Vector2(850, 0),
+        kind: EnemyType.memoryLeak.index,
+        health: 100000,
+      )..attackCooldown = 1000;
+      run.enemies.add(source);
+      final patch = MemoryLeakPatch(Vector2.zero(), source);
+      run.leakPatches.add(patch);
+      tick(run, 8.5);
+      expect(run.leakPatches, contains(patch));
+      expect(patch.active, isTrue);
+      run.invulnerability = 0;
+      run.update(0.01);
+      expect(run.health, 92);
+      run.invulnerability = 100;
+      tick(run, 3.6);
+      expect(run.leakPatches, isNot(contains(patch)));
+    },
+  );
+  test('longer-lived patches leave room for continued scattering within the global cap', () {
+    final run = prepared();
+    final source = TaskEnemy(
+      Vector2(205, 0),
+      kind: EnemyType.memoryLeak.index,
+      health: 100000,
+    );
+    run.enemies.add(source);
+    tick(run, 13);
+    expect(
+      run.leakPatches.where((patch) => identical(patch.source, source)).length,
+      6,
+    );
+    expect(run.leakPatches.length, lessThanOrEqualTo(MemoryLeakPatch.limit));
+  });
+  test(
     'leaks patrol both ways inside their range and scatter distinct patches',
     () {
       for (final variant in [0, 1]) {
