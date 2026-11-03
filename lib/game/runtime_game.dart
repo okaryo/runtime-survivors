@@ -453,14 +453,51 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
             };
       canvas.save();
       canvas.translate(enemy.position.x, enemy.position.y);
+      canvas.save();
+      if (enemy.reinforced) canvas.scale(1.25);
       CharacterPainter.draw(
         canvas,
         kind: enemy.kind,
-        radius: enemy.radius,
+        radius: enemy.baseRadius,
         flash: enemy.flash > 0,
         alert: enemy.telegraphRemaining > 0,
         time: run.elapsed + enemy.position.x * 0.01,
       );
+      canvas.restore();
+      if (enemy.reinforced) {
+        const heavyColor = Color(0xFFFFD27A);
+        for (final gap in [3.0, 7.0]) {
+          canvas.drawRRect(
+            RRect.fromRectAndRadius(
+              Rect.fromCircle(center: Offset.zero, radius: enemy.radius + gap),
+              const Radius.circular(6),
+            ),
+            Paint()
+              ..color = heavyColor.withValues(alpha: gap == 3 ? 0.9 : 0.55)
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 2,
+          );
+        }
+        final bar = Rect.fromLTWH(-22, -enemy.radius - 29, 44, 4);
+        canvas.drawRect(bar, Paint()..color = const Color(0xFF31423F));
+        canvas.drawRect(
+          Rect.fromLTWH(
+            bar.left,
+            bar.top,
+            bar.width * (enemy.health / enemy.maxHealth).clamp(0, 1),
+            bar.height,
+          ),
+          Paint()..color = heavyColor,
+        );
+        _text(
+          canvas,
+          text('reinforced'),
+          Offset(text.isJapanese ? -14 : -26, -enemy.radius - 45),
+          heavyColor,
+          9,
+          bold: true,
+        );
+      }
       if (enemy.type == EnemyType.rpc) {
         _text(
           canvas,

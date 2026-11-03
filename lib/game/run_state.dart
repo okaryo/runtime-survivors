@@ -89,6 +89,7 @@ class RunState {
   double get speed => _stats.speed;
   double get pickupRadius => _stats.pickupRadius;
   double get attackRange => _stats.attackRange;
+  double get streamRange => _stats.streamRange;
   double get objectDamage => _stats.objectDamage;
   double get objectInterval => _stats.objectInterval;
   double get chainRadius => _stats.chainRadius;
@@ -414,7 +415,7 @@ class RunState {
     }
     _patternTimer -= dt;
     if (rank(Upgrade.patternMatching) > 0 && _patternTimer <= 0) {
-      final target = _nearestEnemy(player, attackRange);
+      final target = _nearestEnemy(player, _stats.patternRange);
       if (target != null && projectiles.where((s) => !s.hostile).length < 12) {
         final delta = target.position - player;
         final direction = delta.length2 > 0
@@ -427,6 +428,7 @@ class RunState {
             damage: _stats.patternDamage,
             hostile: false,
             radius: _stats.patternRadius,
+            remainingDistance: _stats.patternRange,
             life: 1.2,
           ),
         );
@@ -637,7 +639,7 @@ class RunState {
         target != null &&
         target.alive &&
         enemies.contains(target) &&
-        target.position.distanceTo(player) <= attackRange;
+        target.position.distanceTo(player) <= streamRange;
     final assigned = channels
         .map((c) => c.target)
         .whereType<TaskEnemy>()
@@ -647,7 +649,7 @@ class RunState {
       final target = channel.target;
       if (!valid(target)) {
         channel.reset();
-        final next = _nearestEnemy(player, attackRange, excluding: assigned);
+        final next = _nearestEnemy(player, streamRange, excluding: assigned);
         if (next != null) {
           assigned.add(next);
           channel.connect(next, _stats.streamPreparation);
@@ -678,7 +680,7 @@ class RunState {
         MemoryLeakPatch(enemy.position, enemy, pattern: enemy.cycleCount++),
       );
     }
-    enemy.attackCooldown = 2.2;
+    enemy.attackCooldown = enemy.reinforced ? 1.8 : 2.2;
   }
 
   void _patrolMemoryLeak(TaskEnemy enemy, Vector2 delta, double dt) {
@@ -702,16 +704,23 @@ class RunState {
       enemy.telegraphRemaining = max(0, enemy.telegraphRemaining - dt);
       if (enemy.telegraphRemaining == 0) {
         if (timerPulses.length < TimerPulse.limit) {
-          timerPulses.add(TimerPulse(enemy.position.clone(), enemy.pulseGaps));
+          timerPulses.add(
+            TimerPulse(
+              enemy.position.clone(),
+              enemy.pulseGaps,
+              reinforced: enemy.reinforced,
+            ),
+          );
           cues.add(SoundCue.pulse);
         }
         enemy.cycleCount++;
-        enemy.attackCooldown = TimerPulse.cooldown;
+        enemy.attackCooldown =
+            TimerPulse.cooldown * (enemy.reinforced ? 0.75 : 1);
       }
       return;
     }
     _moveSpecialist(enemy, delta, dt);
-    if (delta.length > 400) return;
+    if (delta.length > (enemy.reinforced ? 350 : 310)) return;
     enemy.attackCooldown -= dt;
     if (enemy.attackCooldown <= 0) {
       enemy.pulseGaps = TimerPulse.randomGaps(random);
@@ -737,7 +746,7 @@ class RunState {
     }
     timerPulses.removeWhere(
       (p) =>
-          p.radius >= TimerPulse.maxRadius ||
+          p.radius >= p.limitRadius ||
           p.position.distanceTo(player) > spawnRadius * 2.2,
     );
   }
@@ -860,7 +869,9 @@ class RunState {
     for (final shot in projectiles) {
       final from = shot.position.clone();
       shot.life -= dt;
-      shot.position.add(shot.velocity * dt);
+      final travel = min(shot.velocity.length * dt, shot.remainingDistance);
+      if (travel > 0) shot.position.add(shot.velocity.normalized() * travel);
+      shot.remainingDistance -= travel;
       if (shot.hostile) {
         if (crossesCircle(from, shot.position, player, shot.radius + 13)) {
           _damagePlayer(shot.damage);
@@ -885,6 +896,7 @@ class RunState {
     projectiles.removeWhere(
       (shot) =>
           shot.life <= 0 ||
+          shot.remainingDistance <= 0 ||
           shot.position.distanceTo(player) > spawnRadius * 2.2,
     );
   }
@@ -902,7 +914,7 @@ class RunState {
       enemy.telegraphRemaining = max(0, enemy.telegraphRemaining - dt);
       if (enemy.telegraphRemaining == 0) {
         if (ranged) {
-          final count = 1 + enemy.retryCount;
+          final count = 1 + enemy.retryCount + (enemy.reinforced ? 1 : 0);
           for (var i = 0; i < count; i++) {
             if (projectiles.where((s) => s.hostile).length >= 96) break;
             final angle =
@@ -917,7 +929,8 @@ class RunState {
             );
           }
           enemy.retryCount = min(2, enemy.retryCount + 1);
-          enemy.attackCooldown = 2.8 + enemy.retryCount * 0.6;
+          enemy.attackCooldown =
+              (2.8 + enemy.retryCount * 0.6) * (enemy.reinforced ? 0.8 : 1);
         } else if (canFork) {
           final owned =
               enemies
@@ -927,7 +940,11 @@ class RunState {
                   .length +
               children.where((e) => identical(e.owner, root)).length;
           final count = min(
-            enemy.summoned ? 1 : 2,
+            enemy.summoned
+                ? 1
+                : enemy.reinforced
+                ? 3
+                : 2,
             min(6 - owned, 232 - enemies.length - children.length),
           );
           for (var i = 0; i < count; i++) {
@@ -943,7 +960,7 @@ class RunState {
               ),
             );
           }
-          enemy.attackCooldown = 5;
+          enemy.attackCooldown = enemy.reinforced ? 4 : 5;
         }
       }
       return;
@@ -952,7 +969,7 @@ class RunState {
     enemy.attackCooldown -= dt;
     if (enemy.attackCooldown <= 0 &&
         delta.length > 1 &&
-        delta.length < 430 &&
+        delta.length < (ranged ? (enemy.reinforced ? 500 : 460) : 430) &&
         (ranged || canFork)) {
       enemy.chargeDirection.setFrom(delta.normalized());
       enemy.telegraphRemaining = ranged ? 0.65 : 1.1;
@@ -997,32 +1014,19 @@ class RunState {
     }
     final position =
         player + Vector2(cos(angle), sin(angle)) * (radius ?? spawnRadius);
+    final reinforced = director.shouldReinforce(
+      type,
+      elapsed,
+      enemies,
+      random,
+      introduced: _introduced.contains(kind),
+    );
     final leader = TaskEnemy(
       position,
       kind: kind,
       inputVariant: random.nextInt(3),
-      health:
-          (type == EnemyType.deadlock
-              ? 1800 + elapsed * 4
-              : (22 + elapsed / 18) *
-                    (type == EnemyType.allocation
-                        ? 3.0
-                        : type == EnemyType.memoryLeak
-                        ? 3.4
-                        : type == EnemyType.timerEvent
-                        ? 3.2
-                        : type == EnemyType.forkBomb
-                        ? 2.5
-                        : type == EnemyType.rpc
-                        ? 3.6
-                        : type == EnemyType.batch
-                        ? 1.15
-                        : 1)) *
-          (pressureStage == 2
-              ? 1.45
-              : pressureStage == 1
-              ? 1.20
-              : 1),
+      reinforced: reinforced,
+      health: SpawnDirector.healthFor(type, elapsed, reinforced: reinforced),
     );
     enemies.add(leader);
     if (type == EnemyType.deadlock) {
@@ -1096,23 +1100,7 @@ class RunState {
         }
       }
       cues.add(SoundCue.kill);
-      experience.add(
-        Experience(
-          enemy.position.clone(),
-          enemy.type == EnemyType.lockNode
-              ? 3
-              : enemy.summoned
-              ? 1
-              : enemy.kind == 3
-              ? 45
-              : enemy.type == EnemyType.allocation
-              ? 9
-              : enemy.type == EnemyType.memoryLeak ||
-                    enemy.type == EnemyType.timerEvent
-              ? 7
-              : 4,
-        ),
-      );
+      experience.add(Experience(enemy.position.clone(), enemy.experienceValue));
       effects.add(RunEffect(enemy.position.clone()));
     }
   }

@@ -147,7 +147,7 @@ void main() {
     expect(next.map((c) => c.values), ['14 → 18', '1 → 2', '0.30s → 0.26s']);
     run.upgrades[Upgrade.spatialIndex] = 1;
     run.enemies.clear();
-    final target = TaskEnemy(Vector2(320, 0), health: 1000);
+    final target = TaskEnemy(Vector2(290, 0), health: 1000);
     run.enemies.add(target);
     run.update(0.01);
     expect(run.abilities.streams.first.target, same(target));

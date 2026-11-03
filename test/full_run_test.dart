@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:runtime_survivors/game/run_state.dart';
+import 'package:runtime_survivors/game/spawn_director.dart';
 
 void main() {
   final loadouts = [
@@ -72,6 +73,10 @@ void main() {
           run.health = run.maxHealth - 10;
           run.update(0.05);
           expect(run.enemies.length, lessThanOrEqualTo(240));
+          expect(
+            run.enemies.where((e) => e.alive && e.reinforced).length,
+            lessThanOrEqualTo(SpawnDirector.reinforcedLimit(run.elapsed)),
+          );
           expect(run.projectiles.length, lessThanOrEqualTo(108));
           expect(
             run.instructions.length,
@@ -114,6 +119,10 @@ void main() {
           run.health = run.maxHealth;
           run.update(0.05);
           expect(run.enemies.length, lessThanOrEqualTo(240));
+          expect(
+            run.enemies.where((e) => e.alive && e.reinforced).length,
+            lessThanOrEqualTo(SpawnDirector.reinforcedLimit(run.elapsed)),
+          );
           expect(run.projectiles.length, lessThanOrEqualTo(108));
           expect(run.featureCount, lessThanOrEqualTo(RunState.featureSlots));
           expect(run.infraCount, lessThanOrEqualTo(RunState.infraSlots));

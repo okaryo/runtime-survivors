@@ -179,10 +179,7 @@ class WorkloadPainter {
   }
 
   static void timerPulse(Canvas canvas, TimerPulse pulse) {
-    final opacity = ((TimerPulse.maxRadius - pulse.radius) / 35).clamp(
-      0.35,
-      1.0,
-    );
+    final opacity = ((pulse.limitRadius - pulse.radius) / 35).clamp(0.35, 1.0);
     final center = Offset(pulse.position.x, pulse.position.y);
     final rect = Rect.fromCircle(center: center, radius: pulse.radius);
     for (final arc in TimerPulse.arcs(pulse.gapAngles)) {

@@ -77,6 +77,15 @@ class EncyclopediaPanel extends StatelessWidget {
                     icon: Icons.hub_outlined,
                   ),
                   const SizedBox(height: 12),
+                  Text(
+                    text('reinforcedHint'),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      height: 1.5,
+                      color: muted,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   _rows(
                     [
                       for (final kind

@@ -19,6 +19,13 @@ enum EnemyType {
 }
 
 extension EnemyAvailability on EnemyType {
+  bool get isSpecialist => const {
+    EnemyType.rpc,
+    EnemyType.forkBomb,
+    EnemyType.memoryLeak,
+    EnemyType.timerEvent,
+  }.contains(this);
+
   bool get isDiscoverable => const {
     EnemyType.request,
     EnemyType.interrupt,
@@ -41,7 +48,19 @@ class TaskEnemy {
     this.owner,
     this.inputVariant = 0,
     this.generation = 0,
-  }) : maxHealth = health;
+    this.reinforced = false,
+  }) : maxHealth = health,
+       assert(
+         !reinforced || (!summoned && EnemyType.values[kind].isSpecialist),
+       ) {
+    attackCooldown = switch (type) {
+      EnemyType.rpc => 0.35,
+      EnemyType.timerEvent => 0,
+      EnemyType.memoryLeak => 0.6,
+      EnemyType.forkBomb when !summoned => 0.8,
+      _ => 1.5,
+    };
+  }
   final Vector2 position;
   final int kind;
   final int inputVariant;
@@ -51,6 +70,7 @@ class TaskEnemy {
   int cycleCount = 0;
   List<double> pulseGaps = const [];
   final bool summoned;
+  final bool reinforced;
   final TaskEnemy? owner;
   EnemyType get type => EnemyType.values[kind];
   double movementMultiplier = 1;
@@ -61,7 +81,8 @@ class TaskEnemy {
   double telegraphRemaining = 0;
   final chargeDirection = Vector2.zero();
   bool get alive => health > 0;
-  double get radius => type == EnemyType.deadlock
+  double get radius => baseRadius * (reinforced ? 1.25 : 1);
+  double get baseRadius => type == EnemyType.deadlock
       ? 28
       : type == EnemyType.allocation
       ? 21
@@ -93,7 +114,8 @@ class TaskEnemy {
     _ => null,
   };
 
-  double get jitGain => summoned
+  double get jitGain => _baseJitGain * (reinforced ? 1.5 : 1);
+  double get _baseJitGain => summoned
       ? 0.5
       : switch (type) {
           EnemyType.request => 3,
@@ -108,6 +130,20 @@ class TaskEnemy {
           EnemyType.deadlock => 30,
           _ => 0,
         };
+
+  int get experienceValue =>
+      (type == EnemyType.lockNode
+          ? 3
+          : summoned
+          ? 1
+          : type == EnemyType.deadlock
+          ? 45
+          : type == EnemyType.allocation
+          ? 9
+          : type == EnemyType.memoryLeak || type == EnemyType.timerEvent
+          ? 7
+          : 4) *
+      (reinforced ? 2 : 1);
 }
 
 enum InstructionKind { base, object, chain }
@@ -183,6 +219,7 @@ class LinearProjectile {
     this.hostile = true,
     this.life = 4,
     this.radius = 6,
+    this.remainingDistance = double.infinity,
   });
   final Vector2 position;
   final Vector2 velocity;
@@ -190,6 +227,7 @@ class LinearProjectile {
   final bool hostile;
   final double radius;
   double life;
+  double remainingDistance;
   final Set<TaskEnemy> hit = {};
 }
 

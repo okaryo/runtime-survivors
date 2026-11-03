@@ -8,11 +8,14 @@ import 'combat_entities.dart';
 /// Leaked allocations occupy grid cells, including their actual collision shape.
 class MemoryLeakPatch {
   MemoryLeakPatch(Vector2 position, this.source, {int pattern = 0})
-    : position = Vector2(
-        (position.x / cellSize).round() * cellSize,
-        (position.y / cellSize).round() * cellSize,
-      ),
-      cells = layouts[pattern % layouts.length];
+    : position = position.clone(),
+      cellExtent = source.reinforced ? 28 : cellSize,
+      cells = layouts[pattern % layouts.length] {
+    this.position.setValues(
+      (position.x / cellExtent).round() * cellExtent,
+      (position.y / cellExtent).round() * cellExtent,
+    );
+  }
 
   static const cellSize = 22.0;
   static const lifetime = 12.0;
@@ -67,6 +70,7 @@ class MemoryLeakPatch {
   ];
 
   final Vector2 position;
+  final double cellExtent;
   final TaskEnemy source;
   final List<(int, int)> cells;
   double remaining = lifetime;
@@ -75,10 +79,10 @@ class MemoryLeakPatch {
   bool get active => !cleaning && age >= armingTime && remaining > 0;
 
   Rect cellRect((int, int) cell) => Rect.fromLTWH(
-    position.x + cell.$1 * cellSize - cellSize / 2,
-    position.y + cell.$2 * cellSize - cellSize / 2,
-    cellSize,
-    cellSize,
+    position.x + cell.$1 * cellExtent - cellExtent / 2,
+    position.y + cell.$2 * cellExtent - cellExtent / 2,
+    cellExtent,
+    cellExtent,
   );
 
   bool touches(Vector2 point, double radius) => cells.any((cell) {
@@ -100,7 +104,7 @@ class MemoryLeakPatch {
 
 /// A moving arc has an open sector; only the ring, not its interior, hurts.
 class TimerPulse {
-  TimerPulse(this.position, List<double> gaps)
+  TimerPulse(this.position, List<double> gaps, {this.reinforced = false})
     : gapAngles = List.unmodifiable(
         gaps.map((a) => a % (pi * 2)).toList()..sort(),
       );
@@ -136,12 +140,14 @@ class TimerPulse {
   static const cooldown = 4.4;
   final Vector2 position;
   final List<double> gapAngles;
+  final bool reinforced;
+  double get limitRadius => reinforced ? 380 : maxRadius;
   double radius = 24;
   double previousRadius = 24;
 
   void advance(double dt) {
     previousRadius = radius;
-    radius = min(maxRadius, radius + speed * dt);
+    radius = min(limitRadius, radius + speed * dt);
   }
 
   bool touches(Vector2 point, double actorRadius) {

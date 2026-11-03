@@ -304,6 +304,11 @@ class GameText {
       'Durable targets and mobile ranged combat',
     ],
     'githubLink': ['GitHubでソースコードを見る', 'View source on GitHub'],
+    'reinforced': ['高負荷', 'HIGH LOAD'],
+    'reinforcedHint': [
+      '大きな体と二重枠のタスクは高負荷個体。頑丈で、元の攻撃も強まっています。',
+      'Larger tasks with double borders carry high loads: tougher bodies and stronger versions of their usual attacks.',
+    ],
     'enemy.13.title': ['メモリリーク', 'Memory Leak'],
     'enemy.13.description': [
       '離れた場所を移動中も、メモリを消費する四角い領域を撒く。領域は長く残り、発生源を処理すると無害になります。',

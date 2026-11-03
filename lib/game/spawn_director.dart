@@ -39,6 +39,59 @@ class EncounterRule {
 class SpawnDirector {
   const SpawnDirector();
 
+  static double healthFor(
+    EnemyType type,
+    double elapsed, {
+    bool reinforced = false,
+  }) {
+    final base = type == EnemyType.deadlock
+        ? 1800 + elapsed * 4
+        : (22 + elapsed / 18) *
+              switch (type) {
+                EnemyType.allocation => 3.0,
+                EnemyType.memoryLeak => 3.4,
+                EnemyType.timerEvent => 3.2,
+                EnemyType.forkBomb => 2.5,
+                EnemyType.rpc => 3.6,
+                EnemyType.batch => 1.15,
+                _ => 1.0,
+              };
+    final specialistGrowth = type.isSpecialist
+        ? 1 + max(0.0, elapsed - 120) / 60
+        : 1.0;
+    final pressure = switch (pressureStage(elapsed)) {
+      2 => 1.45,
+      1 => 1.20,
+      _ => 1.0,
+    };
+    return base *
+        specialistGrowth *
+        pressure *
+        (reinforced && type.isSpecialist ? 2.2 : 1);
+  }
+
+  static int reinforcedLimit(double elapsed) => elapsed < 150
+      ? 0
+      : elapsed < 240
+      ? 1
+      : 2;
+
+  bool shouldReinforce(
+    EnemyType type,
+    double elapsed,
+    List<TaskEnemy> enemies,
+    Random random, {
+    required bool introduced,
+  }) {
+    if (!introduced ||
+        !type.isSpecialist ||
+        enemies.where((e) => e.alive && e.reinforced).length >=
+            reinforcedLimit(elapsed)) {
+      return false;
+    }
+    return random.nextDouble() < (elapsed < 240 ? 0.18 : 0.28);
+  }
+
   /// Steady workload grows even between rushes. End pressure stacks on top.
   static double interval(double elapsed, {bool rush = false}) =>
       max(0.20, 0.70 / (1 + max(0.0, elapsed) / 120)) *

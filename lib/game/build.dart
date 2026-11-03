@@ -93,14 +93,18 @@ class BuildStats {
   double get maxHealth => 100 + 25.0 * rank(Upgrade.memory) - reservedMemory;
   double get speed => 185.0 * (1 + 0.08 * rank(Upgrade.clock));
   double get pickupRadius => 66 + 22.0 * rank(Upgrade.cache);
-  double get attackRange => (300 + 12.0 * rank(Upgrade.cache)) * areaScale;
+  double get rangeScale => 1 + 0.04 * rank(Upgrade.spatialIndex);
+  double get attackRange =>
+      min(420, (300 + 8.0 * rank(Upgrade.cache)) * rangeScale);
+  double get streamRange =>
+      min(380, (285 + 6.0 * rank(Upgrade.cache)) * rangeScale);
   double get cooldownScale => pow(0.92, rank(Upgrade.compiler)).toDouble();
   double get objectDamage => 20 + rank(Upgrade.oop) * 6.0;
   double get objectInterval => 0.9 * cooldownScale;
-  double get chainRadius => 155 * areaScale;
+  double get chainRadius => 155 * rangeScale;
   double get chainRetention => 0.85;
   double get compositionDelay => rank(Upgrade.functional) * 0.04;
-  double get objectRange => 235 * areaScale;
+  double get objectRange => 235 * rangeScale;
   double get attackDamage => 24.0 * pow(0.92, rank(Upgrade.concurrency));
   double get jitSpeedBonus => 0.65 + rank(Upgrade.jitCompilation) * 0.25;
   double get attackInterval => max(
@@ -122,6 +126,7 @@ class BuildStats {
   double get patternRadius =>
       (4.0 + rank(Upgrade.patternMatching) * 2) * areaScale;
   double get patternInterval => 2.8 * cooldownScale;
+  double get patternRange => min(520, 420 * rangeScale);
   int get targetCount => 1 + rank(Upgrade.concurrency);
   double get areaScale => 1 + 0.10 * rank(Upgrade.spatialIndex);
   double get gcRadius =>

@@ -22,7 +22,7 @@ void main() {
         health: 100000,
       );
       run.enemies.add(source);
-      tick(run, 1.6);
+      tick(run, 0.75);
       expect(source.position.distanceTo(run.player), greaterThan(360));
       final patch = run.leakPatches.single;
       expect(patch.source, same(source));
@@ -61,7 +61,7 @@ void main() {
       health: 100000,
     );
     run.enemies.add(source);
-    tick(run, 13);
+    tick(run, 12);
     expect(
       run.leakPatches.where((patch) => identical(patch.source, source)).length,
       6,
