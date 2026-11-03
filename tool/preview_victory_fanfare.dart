@@ -1,16 +1,18 @@
 // Run: dart run tool/preview_victory_fanfare.dart /tmp/runtime-victory.wav
+// Add --game-over for the descending game-over theme.
 // Offline approximation of the Web Audio triangle voices and gain envelope.
 import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:runtime_survivors/audio/victory_fanfare.dart';
+import 'package:runtime_survivors/audio/game_over_theme.dart';
 
 void main(List<String> arguments) {
   const rate = 44100;
-  final duration = victoryFanfare
-      .map((tone) => tone.offset + tone.duration)
-      .reduce(max);
+  final gameOver = arguments.contains('--game-over');
+  final score = gameOver ? gameOverTheme : victoryFanfare;
+  final duration = score.map((tone) => tone.offset + tone.duration).reduce(max);
   final count = ((duration + 0.05) * rate).ceil();
   final wav = ByteData(44 + count * 2);
   void tag(int offset, String text) => wav.buffer.asUint8List().setRange(
@@ -33,7 +35,7 @@ void main(List<String> arguments) {
   wav.setUint32(40, count * 2, Endian.little);
   for (var i = 0; i < count; i++) {
     var sample = 0.0;
-    for (final tone in victoryFanfare) {
+    for (final tone in score) {
       final t = i / rate - tone.offset;
       if (t < 0 || t >= tone.duration) continue;
       final release = max(0.005, tone.hold);
@@ -51,9 +53,10 @@ void main(List<String> arguments) {
       Endian.little,
     );
   }
-  final output = arguments.isEmpty
-      ? '/tmp/runtime-victory.wav'
-      : arguments.first;
+  final paths = arguments.where((argument) => argument != '--game-over');
+  final output = paths.isEmpty
+      ? '/tmp/runtime-${gameOver ? 'game-over' : 'victory'}.wav'
+      : paths.first;
   File(output).writeAsBytesSync(wav.buffer.asUint8List());
   stdout.writeln('Wrote $output (${duration.toStringAsFixed(2)} seconds)');
 }

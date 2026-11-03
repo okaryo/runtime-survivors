@@ -96,27 +96,73 @@ void main() {
       audio.dispose();
     },
   );
-  test(
-    'impact effects keep their falling pitch and defeat remains distinct',
-    () {
-      final output = RecordingOutput();
-      final audio = GameAudio(output: output);
-      audio.play(SoundCue.end);
-      expect(
-        output.notes.every((note) => note.endFrequencyRatio == 0.75),
-        isTrue,
-      );
-      expect(
-        output.notes.last.frequency,
-        lessThan(output.notes.first.frequency),
-      );
-      output.notes.clear();
-      audio.configure(muted: false, volume: 0);
-      audio.play(SoundCue.victory);
-      expect(output.notes, isEmpty);
-      audio.dispose();
-    },
-  );
+  test('impact effects keep their falling pitch', () {
+    final output = RecordingOutput();
+    final audio = GameAudio(output: output);
+    audio.play(SoundCue.hit);
+    expect(
+      output.notes.every((note) => note.endFrequencyRatio == 0.75),
+      isTrue,
+    );
+    expect(output.notes.last.frequency, lessThan(output.notes.first.frequency));
+    output.notes.clear();
+    audio.configure(muted: false, volume: 0);
+    audio.play(SoundCue.victory);
+    expect(output.notes, isEmpty);
+    audio.dispose();
+  });
+  test('lethal damage plays a descending minor theme once and stops music', () {
+    final output = RecordingOutput();
+    final audio = GameAudio(output: output);
+    final run = RunState()..start();
+    final game = RuntimeGame(run)
+      ..onSound = audio.play
+      ..onPhaseChanged = (phase) =>
+          audio.setMusicPlaying(phase == RunPhase.running);
+    game.onGameResize(Vector2(1280, 720));
+    game.refresh();
+    expect(output.playing, isTrue);
+    output.notes.clear();
+    run.health = 1;
+    run.enemies
+      ..clear()
+      ..add(TaskEnemy(Vector2.zero(), health: 100000));
+    game.update(0.02);
+    expect(run.phase, RunPhase.lost);
+    expect(output.playing, isFalse);
+    final theme = output.notes
+        .where((note) => note.endFrequencyRatio == 1)
+        .toList();
+    expect(theme.length, 7);
+    expect(theme.every((note) => note.wave == 'triangle'), isTrue);
+    expect(theme[1].frequency, lessThan(theme[0].frequency));
+    expect(theme[2].frequency, lessThan(theme[1].frequency));
+    expect(theme[1].offset - theme[0].offset, greaterThan(0.2));
+    final chord = theme.skip(3).toList();
+    expect(chord.map((note) => note.offset).toSet().length, 1);
+    expect(chord.every((note) => note.hold > 0), isTrue);
+    final root = chord.first.frequency;
+    expect(chord[1].frequency / root, closeTo(1.1892, 0.001)); // Minor third.
+    expect(chord[2].frequency / root, closeTo(1.4983, 0.001));
+    expect(chord.last.frequency / root, 2);
+    expect(theme.last.offset + theme.last.duration, greaterThan(2.2));
+    final count = output.notes.length;
+    game.update(0.05);
+    game.refresh();
+    expect(output.notes.length, count);
+    audio.dispose();
+  });
+  test('game-over theme respects mute and zero volume', () {
+    final output = RecordingOutput();
+    final audio = GameAudio(output: output);
+    audio.configure(muted: true, volume: 1);
+    audio.play(SoundCue.end);
+    expect(output.notes, isEmpty);
+    audio.configure(muted: false, volume: 0);
+    audio.play(SoundCue.end);
+    expect(output.notes, isEmpty);
+    audio.dispose();
+  });
   test(
     'music follows start, level selection, pause, resume, victory and defeat',
     () {

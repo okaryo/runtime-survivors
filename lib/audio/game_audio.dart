@@ -3,6 +3,7 @@ import 'sound_backend_stub.dart'
 import 'sound_cue.dart';
 import 'audio_output.dart';
 import 'victory_fanfare.dart';
+import 'game_over_theme.dart';
 
 class GameAudio {
   GameAudio({AudioOutput? output}) : _backend = output ?? SoundBackend();
@@ -43,8 +44,9 @@ class GameAudio {
     };
     if (now - (_lastPlayed[cue] ?? -1000) < cooldown) return;
     _lastPlayed[cue] = now;
-    if (cue == SoundCue.victory) {
-      for (final tone in victoryFanfare) {
+    if (cue == SoundCue.victory || cue == SoundCue.end) {
+      final score = cue == SoundCue.victory ? victoryFanfare : gameOverTheme;
+      for (final tone in score) {
         _backend.note(
           tone.frequency,
           tone.offset,
@@ -63,12 +65,11 @@ class GameAudio {
       SoundCue.pickup => [880.0],
       SoundCue.levelUp => [440.0, 554.0, 660.0, 880.0],
       SoundCue.select => [550.0, 825.0],
-      SoundCue.end => [330.0, 220.0, 165.0],
       SoundCue.warning => [180.0, 180.0, 240.0],
       SoundCue.pulse => [130.0, 260.0],
       SoundCue.collection => [520.0, 260.0, 130.0],
-      SoundCue.victory =>
-        const <double>[], // Handled by the musical score above.
+      SoundCue.victory ||
+      SoundCue.end => const <double>[], // Handled by the musical score above.
     };
     for (var i = 0; i < notes.length; i++) {
       _backend.note(
