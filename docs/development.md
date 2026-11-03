@@ -58,6 +58,8 @@ flutter build web --release --base-href /runtime-survivors/ --no-web-resources-c
 
 UIの表示テストではFlutter SDKに同梱されたRobotoと、キーキャップで使う同梱のRoboto Monoを読み込み、PCブラウザの英文に近い文字幅でレイアウトを検証します。日本語は同梱のRuntimeSansJPも読み込み、実際の日本語の文字幅で確認します。音声のネイティブテストでは無音のバックエンドを使用します。
 
+クリア音の譜面は `lib/audio/victory_fanfare.dart` にあります。通常SEの音程下降を適用せず、固定音程の三角波を重ねます。5分間のプレイなしで確認したい場合は、`dart run tool/preview_victory_fanfare.dart /tmp/runtime-victory.wav` で同じ譜面・振幅エンベロープのWAVプレビューを生成できます。Web Audioの波形を近似する確認用で、ゲームはWeb Audioで合成します。
+
 5分間の統合テストでは範囲・設置・回復、OOP・連鎖・JIT、同時攻撃・入力再利用・貫通、ストリーム接続と範囲攻撃の組み合わせを実行します。生存時間全体を検証するため、このテストではメモリを補充します。難易度評価や実プレイの代替ではありません。
 
 新しい敵のIDは列挙型の末尾に追加し、既存の発見記録との互換性を維持します。出現時期・比率・上限・コストは `SpawnDirector.rules`、出現・図鑑対象の切り替えは `EnemyAvailability`、Infraのランク上限は `UpgradeInfo`、言語判定の重みは `language_profile.dart` にあります。
