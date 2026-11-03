@@ -56,8 +56,10 @@ class SpawnDirector {
                 EnemyType.batch => 1.15,
                 _ => 1.0,
               };
-    final specialistGrowth = type.isSpecialist
+    final roleGrowth = type.isSpecialist
         ? 1 + max(0.0, elapsed - 120) / 60
+        : type == EnemyType.allocation
+        ? 1 + max(0.0, elapsed - 120) / 120
         : 1.0;
     final pressure = switch (pressureStage(elapsed)) {
       2 => 1.45,
@@ -65,7 +67,7 @@ class SpawnDirector {
       _ => 1.0,
     };
     return base *
-        specialistGrowth *
+        roleGrowth *
         pressure *
         (reinforced && type.isSpecialist ? 2.2 : 1);
   }
@@ -131,6 +133,8 @@ class SpawnDirector {
   }) {
     final counts = <EnemyType, int>{};
     for (final enemy in enemies.where((e) => e.alive)) {
+      // Copies share the arena population cap, not the parent encounter budget.
+      if (enemy.type == EnemyType.forkBomb && enemy.summoned) continue;
       counts.update(enemy.type, (n) => n + 1, ifAbsent: () => 1);
     }
     final budget = rules.fold(

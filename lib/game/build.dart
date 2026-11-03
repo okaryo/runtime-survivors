@@ -105,7 +105,9 @@ class BuildStats {
   double get chainRetention => 0.85;
   double get compositionDelay => rank(Upgrade.functional) * 0.04;
   double get objectRange => 235 * rangeScale;
-  double get attackDamage => 24.0 * pow(0.92, rank(Upgrade.concurrency));
+  double get attackDamage => rank(Upgrade.concurrency) == 0
+      ? 24.0
+      : 24.0 * 0.96 * pow(0.92, rank(Upgrade.concurrency) - 1);
   double get jitSpeedBonus => 0.65 + rank(Upgrade.jitCompilation) * 0.25;
   double get attackInterval => max(
     0.12,
@@ -149,7 +151,7 @@ class BuildStats {
   double get ownershipDamage => 26 + rank(Upgrade.ownership) * 14.0;
   double get ownershipInterval => 1.6 * cooldownScale;
   double get ownershipHeal => 1.0 + rank(Upgrade.ownership);
-  double get ownershipCap => 4.0 + rank(Upgrade.ownership) * 2;
+  double get ownershipCap => 2.0 + rank(Upgrade.ownership);
   double get ownershipRadius => 105 * areaScale;
   double get streamDamage => 10 + rank(Upgrade.asyncStream) * 4.0;
   double get streamInterval => 0.25 * cooldownScale;

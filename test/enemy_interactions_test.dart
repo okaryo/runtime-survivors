@@ -281,7 +281,7 @@ void main() {
     }
     tick(run, 1.2);
     expect(run.enemies.any((e) => e.generation == 2), isTrue);
-    expect(run.enemies.where((e) => e.summoned).length, lessThanOrEqualTo(6));
+    expect(run.enemies.length, lessThanOrEqualTo(232));
     parent.health = 0;
     final count = run.enemies.where((e) => e.summoned).length;
     tick(run, 1.2);

@@ -16,7 +16,7 @@ void main() {
         final fp = text.comparisons(run.preview(Upgrade.functional));
         expect(fp.map((c) => c.values), ['1', '85%', '0.62s → 0.66s']);
         final concurrency = text.comparisons(run.preview(Upgrade.concurrency));
-        expect(concurrency.map((c) => c.values), ['1 → 2', '24 → 22.1']);
+        expect(concurrency.map((c) => c.values), ['1 → 2', '24 → 23.0']);
         for (final upgrade in Upgrade.values.where(
           (u) => u.isAvailable && !u.isFeature,
         )) {

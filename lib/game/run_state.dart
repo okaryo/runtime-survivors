@@ -948,23 +948,16 @@ class RunState {
           enemy.attackCooldown =
               (2.8 + enemy.retryCount * 0.6) * (enemy.reinforced ? 0.8 : 1);
         } else if (canFork) {
-          final owned =
-              enemies
-                  .where(
-                    (e) => e.alive && e.summoned && identical(e.owner, root),
-                  )
-                  .length +
-              children.where((e) => identical(e.owner, root)).length;
           final count = min(
             enemy.summoned
                 ? 1
                 : enemy.reinforced
                 ? 3
                 : 2,
-            min(6 - owned, 232 - enemies.length - children.length),
+            max(0, 232 - enemies.length - children.length),
           );
           for (var i = 0; i < count; i++) {
-            final angle = elapsed + i * pi;
+            final angle = elapsed + i * pi * 2 / count;
             children.add(
               TaskEnemy(
                 enemy.position + Vector2(cos(angle), sin(angle)) * 28,
@@ -984,10 +977,10 @@ class RunState {
     _moveSpecialist(enemy, delta, dt);
     enemy.attackCooldown -= dt;
     if (enemy.attackCooldown <= 0 &&
-        delta.length > 1 &&
+        (canFork || (ranged && delta.length > 1)) &&
         delta.length < (ranged ? (enemy.reinforced ? 500 : 460) : 430) &&
         (ranged || canFork)) {
-      enemy.chargeDirection.setFrom(delta.normalized());
+      if (ranged) enemy.chargeDirection.setFrom(delta.normalized());
       enemy.telegraphRemaining = ranged ? 0.65 : 1.1;
     }
   }

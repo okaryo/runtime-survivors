@@ -172,22 +172,19 @@ void main() {
     },
   );
 
-  test(
-    'concurrency attacks multiple distinct tasks without reducing shot damage',
-    () {
-      final run = freshRun();
-      grant(run, Upgrade.concurrency);
-      run.enemies.clear();
-      run.enemies.addAll([
-        TaskEnemy(Vector2(100, 0)),
-        TaskEnemy(Vector2(-100, 0)),
-      ]);
-      run.update(0.01);
-      expect(run.instructions.length, 2);
-      expect(run.instructions.map((s) => s.target).toSet().length, 2);
-      expect(run.attackDamage, closeTo(22.08, 0.0001));
-    },
-  );
+  test('concurrency attacks distinct tasks with a smaller first-rank damage tradeoff', () {
+    final run = freshRun();
+    grant(run, Upgrade.concurrency);
+    run.enemies.clear();
+    run.enemies.addAll([
+      TaskEnemy(Vector2(100, 0)),
+      TaskEnemy(Vector2(-100, 0)),
+    ]);
+    run.update(0.01);
+    expect(run.instructions.length, 2);
+    expect(run.instructions.map((s) => s.target).toSet().length, 2);
+    expect(run.attackDamage, closeTo(23.04, 0.0001));
+  });
 
   test('garbage collection damages all nearby tasks, but not distant ones', () {
     final run = freshRun();

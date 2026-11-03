@@ -48,7 +48,7 @@ void main() {
     test('$feature retains attack cadence across 30, 60 and 120 FPS', () {
       final ranks = {
         Upgrade.compiler: 6,
-        if (feature != null) feature: 4,
+        ?feature: 4,
         if (feature == Upgrade.concurrency) ...{
           Upgrade.functional: 4,
           Upgrade.jitCompilation: 4,

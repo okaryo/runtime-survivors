@@ -49,7 +49,7 @@ void main() {
     expect(run.projectiles, isEmpty);
   });
   test(
-    'summoner queues children safely, respects per-parent and global caps',
+    'summoner queues children safely and respects the arena population cap',
     () {
       final run = prepared();
       final parent = TaskEnemy(Vector2(200, 0), kind: 5, health: 99999)
@@ -61,11 +61,7 @@ void main() {
         parent.attackCooldown = 0;
         tick(run, 1.3);
       }
-      expect(
-        run.enemies.where((e) => e.alive && e.owner == parent).length,
-        lessThanOrEqualTo(6),
-      );
-      expect(run.enemies.length, lessThanOrEqualTo(240));
+      expect(run.enemies.length, lessThanOrEqualTo(232));
     },
   );
   test('director introduces specialists gradually and limits their budget', () {

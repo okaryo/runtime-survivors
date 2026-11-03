@@ -206,7 +206,10 @@ void main() {
     hit(run);
     expect(run.kills, 2);
     expect(run.jitCharge, 6);
-    expect(run.health, 42); // 12 damage, then 4 recovered from actual kills.
+    expect(
+      run.health,
+      41,
+    ); // 12 damage, then 3 recovered within the shared cap.
     final lethal = prepared()..health = 5;
     final survivor = TaskEnemy(Vector2(80, 0), health: 1000);
     lethal.enemies.add(survivor);

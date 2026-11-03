@@ -218,7 +218,7 @@ void main() {
       },
     );
     test(
-      'fork parent ${heavy ? 'high load' : 'normal'} produces a distinct first brood without exceeding six descendants',
+      'fork parent ${heavy ? 'high load' : 'normal'} produces its first ordinary brood',
       () {
         final run = prepared();
         final root = TaskEnemy(

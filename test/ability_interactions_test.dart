@@ -90,9 +90,9 @@ void main() {
     }
     run.enemies.add(TaskEnemy(Vector2(90, 0), health: 1, summoned: true));
     run.update(0.05);
-    expect(run.health, 56);
-    expect(run.recoveredMemory, 6);
-    expect(run.recoveryLabel, '+6 MB');
+    expect(run.health, 53);
+    expect(run.recoveredMemory, 3);
+    expect(run.recoveryLabel, '+3 MB');
     expect(
       run.effects
           .where((e) => e.recoveredMemory > 0)
