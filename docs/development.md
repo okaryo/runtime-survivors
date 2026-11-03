@@ -31,7 +31,7 @@ SDKを更新する際は、`pubspec.yaml` の指定とローカルのFlutterを�
 | `lib/game/workload_hazards.dart` | メモリリークのセル形状と寿命、タイマーパルスの移動と衝突 |
 | `lib/game/workload_painter.dart` | 漏出領域・タイマーパルス・ストリームの描画 |
 | `lib/game/combat_entities.dart` | 敵、弾、オブジェクト、軌道の衝突判定、実回復量を持つ表示エフェクト |
-| `lib/game/spawn_director.dart` | 時間帯・ラッシュテーマ・終盤の負荷と出現コストによる編成管理 |
+| `lib/game/spawn_director.dart` | 時間別耐久・高負荷個体・ラッシュテーマ・出現コストによる編成管理 |
 | `lib/game/language_profile.dart` | 戦闘バランスから独立した言語傾向の判定 |
 | `lib/game/runtime_game.dart` | Flameの更新・描画・キーボード入力 |
 | `lib/game/character_painter.dart` | キャラクターの図形描画 |
@@ -62,6 +62,15 @@ UIの表示テストではFlutter SDKに同梱されたRobotoと、キーキャ�
 クリア音の譜面は `lib/audio/victory_fanfare.dart` にあります。通常SEの音程下降を適用せず、固定音程の三角波を重ねます。5分間のプレイなしで確認したい場合は、`dart run tool/preview_victory_fanfare.dart /tmp/runtime-victory.wav` で同じ譜面・振幅エンベロープのWAVプレビューを生成できます。Web Audioの波形を近似する確認用で、ゲームはWeb Audioで合成します。
 
 5分間の統合テストでは範囲・設置・回復、OOP・連鎖・JIT、同時攻撃・入力再利用・貫通、ストリーム接続と範囲攻撃の組み合わせを実行します。生存時間全体を検証するため、このテストではメモリを補充します。難易度評価や実プレイの代替ではありません。
+
+特殊敵の行動機会・優先処理を比較する固定条件のテストもあります。
+
+```sh
+RUNTIME_BALANCE_REPORT=1 flutter test test/specialist_pressure_test.dart
+RUNTIME_CAPTURE=1 flutter test test/reinforced_render_test.dart
+```
+
+前者は4分時点の耐久と、ストリーム・OOP・連鎖・JITおよび関連Infraを強化した構成で、通常個体・高負荷個体の初動と処理時間、接近した場合の処理時間を比較します。メモリを補充し、無関係な出現を除くため、勝率は測りません。後者は日英の比較画像を `/tmp/runtime-high-load-ja.png` と `/tmp/runtime-high-load-en.png` へ出力します。表示比較のため4種類を並べる固定シーンで、実際の同時出現上限は1〜2体です。
 
 新しい敵のIDは列挙型の末尾に追加し、既存の発見記録との互換性を維持します。出現時期・比率・上限・コストは `SpawnDirector.rules`、出現・図鑑対象の切り替えは `EnemyAvailability`、Infraのランク上限は `UpgradeInfo`、言語判定の重みは `language_profile.dart` にあります。
 
