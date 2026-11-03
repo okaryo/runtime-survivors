@@ -74,6 +74,8 @@ RUNTIME_CAPTURE=1 flutter test test/reinforced_render_test.dart
 
 前者は4分時点の耐久と、ストリーム・OOP・連鎖・JITおよび関連Infraを強化した構成で、通常個体・高負荷個体の初動と処理時間、接近した場合の処理時間を比較します。メモリを補充し、無関係な出現を除くため、勝率は測りません。後者は日英の比較画像を `/tmp/runtime-high-load-ja.png` と `/tmp/runtime-high-load-en.png` へ出力します。表示比較のため4種類を並べる固定シーンで、実際の同時出現上限は1〜2体です。
 
+`test/combat_cadence_test.dart` は固定した高耐久対象で30・60・120 FPSの実効火力を比較し、対象不在や能力待機後に攻撃の繰り越しが連発へ変わらないことも確認します。遅延評価の持続終了時の攻撃も全FPSで揃えます。`test/fork_generation_test.dart` はコピーが6体を超えた後の継続生成・3方向への分散・世代上限・総数上限・親処理による生成停止を検証します。`test/balance_progression_test.dart` は初回並行処理の一撃処理、メモリ確保の後半耐久、所有権で漏出領域に居続けても回復が上回らないことを確認します。
+
 新しい敵のIDは列挙型の末尾に追加し、既存の発見記録との互換性を維持します。出現時期・比率・上限・コストは `SpawnDirector.rules`、出現・図鑑対象の切り替えは `EnemyAvailability`、Infraのランク上限は `UpgradeInfo`、言語判定の重みは `language_profile.dart` にあります。
 
 ## アセットの生成
