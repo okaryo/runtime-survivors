@@ -303,10 +303,11 @@ class GameText {
       '頑丈な単体・距離を保つ戦闘',
       'Durable targets and mobile ranged combat',
     ],
+    'githubLink': ['GitHubでソースコードを見る', 'View source on GitHub'],
     'enemy.13.title': ['メモリリーク', 'Memory Leak'],
     'enemy.13.description': [
-      '頑丈な本体が離れた場所を周回し、メモリを消費する四角い領域を撒く。発生源を処理すると領域は無害になり、早く消えます。',
-      'A sturdy source circles farther away, scattering blocky allocations that drain memory. Processing it disarms its patches and clears them sooner.',
+      '離れた場所を移動中も、メモリを消費する四角い領域を撒く。領域は長く残り、発生源を処理すると無害になります。',
+      'Scatters long-lasting blocky allocations even while far away. Standing in them drains memory; processing the source disarms them.',
     ],
     'enemy.14.title': ['タイマーイベント', 'Timer Event'],
     'enemy.14.description': [

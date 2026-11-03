@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/link.dart';
 
 import '../audio/game_audio.dart';
 import '../audio/sound_cue.dart';
@@ -180,6 +181,24 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
                         ),
                         const SizedBox(height: 18),
                         encyclopedia!,
+                        const SizedBox(height: 24),
+                        const Divider(color: line, height: 1),
+                        const SizedBox(height: 12),
+                        Align(
+                          alignment: Alignment.center,
+                          child: Link(
+                            key: const Key('github-link'),
+                            uri: Uri.parse(
+                              'https://github.com/okaryo/runtime-survivors',
+                            ),
+                            target: LinkTarget.blank,
+                            builder: (context, followLink) => TextButton.icon(
+                              onPressed: followLink,
+                              icon: const Icon(Icons.code, size: 18),
+                              label: Text(text('githubLink')),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
