@@ -22,8 +22,8 @@ void main() {
         (enemy) => enemy.type == EnemyType.memoryLeak,
       );
       expect(leak.maxHealth, greaterThan(run.attackDamage * 3));
-      expect(leak.preferredRange!.near, 170);
-      expect(leak.preferredRange!.far, 240);
+      expect(leak.preferredRange!.near, 260);
+      expect(leak.preferredRange!.far, 330);
       run.enemies.removeWhere((enemy) => !identical(enemy, leak));
       leak.health = 1000;
       leak.position.setValues(140, 0);

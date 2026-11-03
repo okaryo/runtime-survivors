@@ -109,7 +109,7 @@ class TaskEnemy {
   ({double near, double far})? get preferredRange => switch (type) {
     EnemyType.rpc => (near: 230, far: 320),
     EnemyType.forkBomb when !summoned => (near: 190, far: 260),
-    EnemyType.memoryLeak => (near: 170, far: 240),
+    EnemyType.memoryLeak => (near: 260, far: 330),
     EnemyType.timerEvent => (near: 210, far: 280),
     _ => null,
   };

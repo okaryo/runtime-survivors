@@ -61,6 +61,8 @@ UIの表示テストではFlutter SDKに同梱されたRobotoと、キーキャ�
 
 クリア音の譜面は `lib/audio/victory_fanfare.dart` にあります。通常SEの音程下降を適用せず、固定音程の三角波を重ねます。5分間のプレイなしで確認したい場合は、`dart run tool/preview_victory_fanfare.dart /tmp/runtime-victory.wav` で同じ譜面・振幅エンベロープのWAVプレビューを生成できます。Web Audioの波形を近似する確認用で、ゲームはWeb Audioで合成します。
 
+ゲームオーバー音の譜面は `lib/audio/game_over_theme.dart` にあります。低いAマイナーの和音へ下降する約2.23秒のフレーズで、クリア音と同じ固定音程の三角波と余韻を使います。`dart run tool/preview_victory_fanfare.dart --game-over /tmp/runtime-game-over.wav` で同じ生成ツールからプレビューできます。敗北への遷移で一度だけ再生し、ミュート・音量設定を共有します。
+
 5分間の統合テストでは範囲・設置・回復、OOP・連鎖・JIT、同時攻撃・入力再利用・貫通、ストリーム接続と範囲攻撃の組み合わせを実行します。生存時間全体を検証するため、このテストではメモリを補充します。難易度評価や実プレイの代替ではありません。
 
 特殊敵の行動機会・優先処理を比較する固定条件のテストもあります。

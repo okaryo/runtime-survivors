@@ -686,17 +686,27 @@ class RunState {
   void _patrolMemoryLeak(TaskEnemy enemy, Vector2 delta, double dt) {
     final distance = delta.length;
     final range = enemy.preferredRange!;
-    if (distance < range.near || distance > range.far) {
-      _moveSpecialist(enemy, delta, dt);
+    final step = enemy.speed * enemy.movementMultiplier * dt;
+    if (distance == 0) {
+      enemy.position.x += min(step, range.near);
       return;
     }
-    // Patrol around the player instead of stacking every patch in one place.
-    // A circular step preserves the safe distance band without radial drift.
+    // Spiral while approaching or retreating, then orbit inside the safe band.
+    // Keep some lateral motion so new patches spread instead of forming a line.
+    final radialStep = distance < range.near
+        ? min(step * 0.8, range.near - distance)
+        : distance > range.far
+        ? -min(step * 0.8, distance - range.far)
+        : 0.0;
+    final nextDistance = distance + radialStep;
+    final lateralStep = sqrt(max(0.0, step * step - radialStep * radialStep));
     final direction = enemy.inputVariant.isOdd ? -1 : 1;
     final angle =
         atan2(-delta.y, -delta.x) +
-        direction * enemy.speed * enemy.movementMultiplier * dt / distance;
-    enemy.position.setFrom(player + Vector2(cos(angle), sin(angle)) * distance);
+        direction * lateralStep / max(distance, nextDistance);
+    enemy.position.setFrom(
+      player + Vector2(cos(angle), sin(angle)) * nextDistance,
+    );
   }
 
   void _updateTimerEvent(TaskEnemy enemy, Vector2 delta, double dt) {

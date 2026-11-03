@@ -9,7 +9,7 @@ import 'combat_entities.dart';
 class MemoryLeakPatch {
   MemoryLeakPatch(Vector2 position, this.source, {int pattern = 0})
     : position = position.clone(),
-      cellExtent = source.reinforced ? 28 : cellSize,
+      cellExtent = source.reinforced ? 32 : cellSize,
       cells = layouts[pattern % layouts.length] {
     this.position.setValues(
       (position.x / cellExtent).round() * cellExtent,
@@ -17,7 +17,7 @@ class MemoryLeakPatch {
     );
   }
 
-  static const cellSize = 22.0;
+  static const cellSize = 25.0;
   static const lifetime = 12.0;
   static const armingTime = 0.55;
   static const cleanupTime = 1.25;

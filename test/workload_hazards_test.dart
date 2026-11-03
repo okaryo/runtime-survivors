@@ -56,7 +56,7 @@ void main() {
   test('longer-lived patches leave room for continued scattering within the global cap', () {
     final run = prepared();
     final source = TaskEnemy(
-      Vector2(205, 0),
+      Vector2(295, 0),
       kind: EnemyType.memoryLeak.index,
       health: 100000,
     );
@@ -74,7 +74,7 @@ void main() {
       for (final variant in [0, 1]) {
         final run = prepared();
         final source = TaskEnemy(
-          Vector2(205, 0),
+          Vector2(295, 0),
           kind: EnemyType.memoryLeak.index,
           health: 100000,
           inputVariant: variant,
@@ -84,7 +84,7 @@ void main() {
         expect(source.position.y * (variant == 0 ? 1 : -1), greaterThan(0));
         for (var i = 0; i < 380; i++) {
           run.update(1 / 60);
-          expect(source.position.distanceTo(run.player), closeTo(205, 0.001));
+          expect(source.position.distanceTo(run.player), closeTo(295, 0.001));
         }
         final patches = run.leakPatches
             .where((p) => identical(p.source, source))
@@ -111,6 +111,43 @@ void main() {
       }
     },
   );
+  test('leaks spiral into a more distant band without jumping or charging straight in', () {
+    for (final startDistance in [0.0, 120.0, 500.0]) {
+      for (final variant in [0, 1]) {
+        final run = prepared()..invulnerability = 100;
+        final source = TaskEnemy(
+          Vector2(startDistance, 0),
+          kind: EnemyType.memoryLeak.index,
+          health: 100000,
+          inputVariant: variant,
+        );
+        run.enemies.add(source);
+        var distance = startDistance;
+        for (var frame = 0; frame < 660; frame++) {
+          final previous = source.position.clone();
+          run.update(1 / 60);
+          final nextDistance = source.position.distanceTo(run.player);
+          expect(
+            source.position.distanceTo(previous),
+            lessThanOrEqualTo(source.speed / 60 + 0.0001),
+          );
+          if (distance < 259.9999) {
+            expect(nextDistance, greaterThan(distance));
+          } else if (distance > 330.0001) {
+            expect(nextDistance, lessThan(distance));
+          } else {
+            expect(nextDistance, closeTo(distance, 0.0001));
+          }
+          if (frame == 1) {
+            expect(source.position.y * (variant == 0 ? 1 : -1), greaterThan(0));
+          }
+          distance = nextDistance;
+        }
+        expect(distance, inInclusiveRange(259.999, 330.001));
+        expect(run.leakPatches.length, greaterThanOrEqualTo(4));
+      }
+    }
+  });
   test(
     'leak collision follows occupied squares and leaves missing corners safe',
     () {
@@ -126,15 +163,18 @@ void main() {
         final patch = MemoryLeakPatch(Vector2.zero(), source, pattern: pattern);
         for (final cell in patch.cells) {
           expect(
-            patch.touches(Vector2(cell.$1 * 22.0, cell.$2 * 22.0), 0),
+            patch.touches(
+              Vector2(cell.$1 * patch.cellExtent, cell.$2 * patch.cellExtent),
+              0,
+            ),
             isTrue,
           );
         }
       }
       final patch = MemoryLeakPatch(Vector2.zero(), source);
-      expect(patch.touches(Vector2(-44, 44), 13), isFalse);
-      expect(patch.touches(Vector2(68, 0), 13), isTrue);
-      expect(patch.touches(Vector2(69, 0), 13), isFalse);
+      expect(patch.touches(Vector2(-50, 50), 13), isFalse);
+      expect(patch.touches(Vector2(75.5, 0), 13), isTrue);
+      expect(patch.touches(Vector2(76.5, 0), 13), isFalse);
       expect(patch.active, isFalse);
       patch.advance(0.56, sourcePresent: true);
       expect(patch.active, isTrue);
@@ -156,7 +196,7 @@ void main() {
     expect(run.health, 92);
     tick(run, 0.3);
     expect(run.health, 92);
-    run.player.setValues(-44, 44);
+    run.player.setValues(-50, 50);
     tick(run, 0.5);
     expect(run.health, 92);
     run.player.setZero();

@@ -249,14 +249,14 @@ void main() {
     run.enemies.add(heavy);
     tick(run, 2.5);
     expect(run.leakPatches.length, 2);
-    expect(run.leakPatches.every((patch) => patch.cellExtent == 28), isTrue);
+    expect(run.leakPatches.every((patch) => patch.cellExtent == 32), isTrue);
     final ordinary = MemoryLeakPatch(
       Vector2.zero(),
       TaskEnemy(Vector2.zero(), kind: EnemyType.memoryLeak.index),
     );
     final larger = MemoryLeakPatch(Vector2.zero(), heavy);
-    expect(ordinary.touches(Vector2(68, 0), 0), isFalse);
-    expect(larger.touches(Vector2(68, 0), 0), isTrue);
+    expect(ordinary.touches(Vector2(78, 0), 0), isFalse);
+    expect(larger.touches(Vector2(78, 0), 0), isTrue);
     expect(larger.cellRect((2, 0)).width, larger.cellExtent);
   });
 
