@@ -18,7 +18,7 @@ void main() {
       for (final variant in [0, 1]) {
         final run = prepared();
         final source = TaskEnemy(
-          Vector2(145, 0),
+          Vector2(205, 0),
           kind: EnemyType.memoryLeak.index,
           health: 100000,
           inputVariant: variant,
@@ -28,7 +28,7 @@ void main() {
         expect(source.position.y * (variant == 0 ? 1 : -1), greaterThan(0));
         for (var i = 0; i < 380; i++) {
           run.update(1 / 60);
-          expect(source.position.distanceTo(run.player), closeTo(145, 0.001));
+          expect(source.position.distanceTo(run.player), closeTo(205, 0.001));
         }
         final patches = run.leakPatches
             .where((p) => identical(p.source, source))

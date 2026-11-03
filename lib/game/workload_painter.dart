@@ -13,6 +13,62 @@ class WorkloadPainter {
   static const timerColor = Color(0xFFB9C9FF);
   static const streamColor = Color(0xFF77DCF0);
 
+  static void exceptionGuard(Canvas canvas, Vector2 player, bool ready) {
+    final paint = Paint()
+      ..color = const Color(0xFF9DD8FF).withValues(alpha: ready ? 0.9 : 0.2)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5
+      ..strokeJoin = StrokeJoin.round;
+    for (final side in [-1.0, 1.0]) {
+      final x = player.x + side * (ready ? 25 : 30);
+      final top = player.y - (ready ? 16 : 10);
+      final bottom = player.y + (ready ? 16 : 10);
+      canvas.drawPath(
+        Path()
+          ..moveTo(x - side * 7, top)
+          ..lineTo(x, top)
+          ..lineTo(x, bottom)
+          ..lineTo(x - side * 7, bottom),
+        paint,
+      );
+    }
+  }
+
+  static void counter(Canvas canvas, RunEffect effect) {
+    const color = Color(0xFFFFC46B);
+    final progress = 1 - effect.life / effect.duration;
+    final center = Offset(effect.position.x, effect.position.y);
+    // The whole hit area flashes immediately; the expanding ring is feedback,
+    // not a second collision wave.
+    canvas.drawCircle(
+      center,
+      effect.radius,
+      Paint()..color = color.withValues(alpha: (1 - progress) * 0.12),
+    );
+    canvas.drawCircle(
+      center,
+      effect.radius * (0.25 + progress * 0.75),
+      Paint()
+        ..color = color.withValues(alpha: 1 - progress)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3,
+    );
+    for (final side in [-1.0, 1.0]) {
+      final x = center.dx + side * (28 + progress * 35);
+      canvas.drawPath(
+        Path()
+          ..moveTo(x - side * 10, center.dy - 22)
+          ..lineTo(x, center.dy - 22)
+          ..lineTo(x, center.dy + 22)
+          ..lineTo(x - side * 10, center.dy + 22),
+        Paint()
+          ..color = color.withValues(alpha: 1 - progress)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3,
+      );
+    }
+  }
+
   static void recovery(Canvas canvas, RunEffect effect, Vector2 player) {
     const color = Color(0xFFB8FFB2);
     final from = effect.source ?? effect.position;

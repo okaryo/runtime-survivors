@@ -95,7 +95,7 @@ void main() {
           game.run.addExperience(game.run.nextLevelXp);
           game.run.choices = [
             Upgrade.garbageCollection,
-            Upgrade.memoization,
+            Upgrade.exceptionHandling,
             Upgrade.concurrency,
           ];
           game.refresh();
@@ -117,8 +117,8 @@ void main() {
           await capture('/tmp/runtime-survivors-feature-tradeoffs.png');
           await tester.sendKeyEvent(LogicalKeyboardKey.digit2);
           await tester.pump();
-          expect(game.run.maxHealth, 92);
-          expect(game.run.health, lessThanOrEqualTo(92));
+          expect(game.run.maxHealth, 100);
+          expect(game.run.health, lessThanOrEqualTo(game.run.maxHealth));
           await tester.pumpWidget(const SizedBox());
           settings.dispose();
         },

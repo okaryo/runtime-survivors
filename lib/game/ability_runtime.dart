@@ -44,14 +44,12 @@ class SlowField {
 /// Per-run state for abilities; never stored in catalog definitions or previews.
 class AbilityRuntime {
   static const jitDecay = 9.0;
-  static const jitKillGain = 9.0;
   final List<SlowField> fields = [];
   final streams = [AsyncStreamRuntime()];
-  // A signature includes both the operation and its visible input variant.
-  final Set<int> cachedInputs = {};
   double jitCharge = 0;
   double fieldTimer = 0;
-  double memoTimer = 0;
+  double exceptionCooldown = 0;
+  double exceptionPause = 0;
   double ownershipTimer = 0;
   double gcPause = 0;
   double healingTimer = 0;
@@ -62,9 +60,9 @@ class AbilityRuntime {
     streams
       ..clear()
       ..add(AsyncStreamRuntime());
-    cachedInputs.clear();
     jitCharge = 0;
-    fieldTimer = memoTimer = ownershipTimer = gcPause = 0;
+    fieldTimer = ownershipTimer = gcPause = 0;
+    exceptionCooldown = exceptionPause = 0;
     healingTimer = 0;
     _healingSpent = 0;
   }
@@ -72,7 +70,8 @@ class AbilityRuntime {
   void advance(double dt) {
     jitCharge = max(0, jitCharge - jitDecay * dt);
     fieldTimer -= dt;
-    memoTimer -= dt;
+    exceptionCooldown = max(0, exceptionCooldown - dt);
+    exceptionPause = max(0, exceptionPause - dt);
     ownershipTimer -= dt;
     gcPause = max(0, gcPause - dt);
     healingTimer -= dt;
@@ -85,23 +84,8 @@ class AbilityRuntime {
     fields.removeWhere((f) => f.remaining <= 0);
   }
 
-  void recordKill({
-    bool summoned = false,
-    bool node = false,
-    bool boss = false,
-  }) {
-    jitCharge = min(
-      100,
-      jitCharge +
-          (boss
-              ? 30
-              : summoned
-              ? 2
-              : node
-              ? 4
-              : jitKillGain),
-    );
-  }
+  void recordKill(TaskEnemy enemy) =>
+      jitCharge = min(100, jitCharge + enemy.jitGain);
 
   double claimHealing(double amount, double cap) {
     if (healingTimer <= 0) {

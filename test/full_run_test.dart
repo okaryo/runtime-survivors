@@ -19,7 +19,7 @@ void main() {
     ],
     [
       Upgrade.concurrency,
-      Upgrade.memoization,
+      Upgrade.exceptionHandling,
       Upgrade.jitCompilation,
       Upgrade.patternMatching,
     ],
@@ -27,7 +27,7 @@ void main() {
       Upgrade.asyncStream,
       Upgrade.functional,
       Upgrade.ownership,
-      Upgrade.memoization,
+      Upgrade.exceptionHandling,
     ],
   ];
   for (var i = 0; i < loadouts.length; i++) {
@@ -77,10 +77,6 @@ void main() {
             run.instructions.length,
             lessThanOrEqualTo(RunState.instructionLimit),
           );
-          expect(
-            run.abilities.cachedInputs.length,
-            lessThanOrEqualTo(EnemyType.values.length * 3),
-          );
           expect(run.abilities.fields.length, lessThanOrEqualTo(3));
           expect(run.hazards.length, lessThanOrEqualTo(24));
           expect(
@@ -92,7 +88,8 @@ void main() {
         }
         expect(run.phase, RunPhase.won);
         run.resetToSetup();
-        expect(run.abilities.cachedInputs, isEmpty);
+        expect(run.abilities.exceptionCooldown, 0);
+        expect(run.abilities.exceptionPause, 0);
         expect(run.abilities.fields, isEmpty);
         expect(run.abilities.jitCharge, 0);
         expect(run.hazards, isEmpty);
@@ -123,10 +120,6 @@ void main() {
           expect(
             run.instructions.length,
             lessThanOrEqualTo(RunState.instructionLimit),
-          );
-          expect(
-            run.abilities.cachedInputs.length,
-            lessThanOrEqualTo(EnemyType.values.length * 3),
           );
           expect(run.abilities.fields.length, lessThanOrEqualTo(3));
           expect(run.hazards.length, lessThanOrEqualTo(24));

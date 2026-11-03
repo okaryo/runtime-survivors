@@ -11,7 +11,10 @@ void main() {
         ('Java', {Upgrade.garbageCollection: 1, Upgrade.oop: 3}),
         ('Scala', {Upgrade.oop: 1, Upgrade.functional: 2}),
         ('Rust', {Upgrade.ownership: 3}),
-        ('Python', {Upgrade.garbageCollection: 1, Upgrade.memoization: 2}),
+        (
+          'Python',
+          {Upgrade.garbageCollection: 1, Upgrade.exceptionHandling: 2},
+        ),
         ('Ruby', {Upgrade.garbageCollection: 2, Upgrade.oop: 1}),
         ('JavaScript', {Upgrade.functional: 2, Upgrade.concurrency: 1}),
       ]) {

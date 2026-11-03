@@ -21,6 +21,7 @@ enum Upgrade {
   coprocessor,
   memoryProtection,
   asyncStream,
+  exceptionHandling,
 }
 
 extension UpgradeInfo on Upgrade {
@@ -30,9 +31,14 @@ extension UpgradeInfo on Upgrade {
   bool get isAvailable =>
       this != Upgrade.pipeline &&
       this != Upgrade.coprocessor &&
-      this != Upgrade.nullSafety;
+      this != Upgrade.nullSafety &&
+      this != Upgrade.memoization;
 
-  Set<Upgrade> get requiresAny => const {};
+  Set<Upgrade> get requiresAny => this == Upgrade.exceptionHandling
+      ? Upgrade.values
+            .where((u) => u.isAvailable && u.isFeature && u != this)
+            .toSet()
+      : const {};
 
   String get symbol => switch (this) {
     Upgrade.garbageCollection => 'GC',
@@ -55,6 +61,7 @@ extension UpgradeInfo on Upgrade {
     Upgrade.coprocessor => 'Co',
     Upgrade.memoryProtection => '#',
     Upgrade.asyncStream => '~',
+    Upgrade.exceptionHandling => 'try',
   };
 
   bool get isFeature => switch (this) {
@@ -68,7 +75,8 @@ extension UpgradeInfo on Upgrade {
     Upgrade.memoization ||
     Upgrade.jitCompilation ||
     Upgrade.ownership ||
-    Upgrade.asyncStream => true,
+    Upgrade.asyncStream ||
+    Upgrade.exceptionHandling => true,
     _ => false,
   };
 }
@@ -81,8 +89,7 @@ class BuildStats {
   final Map<Upgrade, int> _ranks;
   double jitCharge = 0;
   int rank(Upgrade upgrade) => _ranks[upgrade] ?? 0;
-  double get reservedMemory =>
-      8.0 * rank(Upgrade.memoization) + 6.0 * rank(Upgrade.oop);
+  double get reservedMemory => 6.0 * rank(Upgrade.oop);
   double get maxHealth => 100 + 25.0 * rank(Upgrade.memory) - reservedMemory;
   double get speed => 185.0 * (1 + 0.08 * rank(Upgrade.clock));
   double get pickupRadius => 66 + 22.0 * rank(Upgrade.cache);
@@ -128,8 +135,12 @@ class BuildStats {
   double get lazyDamage => 48 + rank(Upgrade.lazyEvaluation) * 20.0;
   double get lazyInterval => 4 * cooldownScale;
   double get lazyTickDamage => lazyDamage * 0.2;
-  double get memoDamage => 18 + rank(Upgrade.memoization) * 12.0;
-  double get memoInterval => 1.5 * cooldownScale;
+  double get exceptionReduction =>
+      0.35 + rank(Upgrade.exceptionHandling) * 0.05;
+  double get counterDamage => 38 + rank(Upgrade.exceptionHandling) * 22.0;
+  double get counterRadius => 135 * areaScale;
+  double get exceptionCooldown => 5;
+  double get exceptionPause => 0.25;
   double get ownershipDamage => 26 + rank(Upgrade.ownership) * 14.0;
   double get ownershipInterval => 1.6 * cooldownScale;
   double get ownershipHeal => 1.0 + rank(Upgrade.ownership);

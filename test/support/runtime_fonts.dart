@@ -22,4 +22,7 @@ Future<void> loadRuntimeFonts() async {
   final japanese = FontLoader('RuntimeSansJP')
     ..addFont(rootBundle.load('assets/fonts/noto_sans_jp/RuntimeSansJP.ttf'));
   await japanese.load();
+  final icons = FontLoader('MaterialIcons')
+    ..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'));
+  await icons.load();
 }

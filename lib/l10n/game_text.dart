@@ -155,14 +155,25 @@ class GameText {
         ),
         value('stat.slowRadius', before.slowRadius, after.slowRadius),
       ],
-      Upgrade.memoization => [
-        value('stat.memoDamage', before.memoDamage, after.memoDamage),
-        value(
-          'stat.cacheDamage',
-          before.memoDamage * 1.8,
-          after.memoDamage * 1.8,
+      Upgrade.memoization => const [],
+      Upgrade.exceptionHandling => [
+        metric(
+          'stat.exceptionReduction',
+          first ? null : '${(before.exceptionReduction * 100).round()}%',
+          '${(after.exceptionReduction * 100).round()}%',
         ),
-        hp(cost: true),
+        value('stat.counterDamage', before.counterDamage, after.counterDamage),
+        metric(
+          'stat.exceptionCooldown',
+          first ? null : '${before.exceptionCooldown.toStringAsFixed(1)}s',
+          '${after.exceptionCooldown.toStringAsFixed(1)}s',
+        ),
+        metric(
+          'stat.exceptionPause',
+          first ? null : '${before.exceptionPause.toStringAsFixed(2)}s',
+          '${after.exceptionPause.toStringAsFixed(2)}s',
+          cost: true,
+        ),
       ],
       Upgrade.jitCompilation => [
         metric(
@@ -294,8 +305,8 @@ class GameText {
     ],
     'enemy.13.title': ['メモリリーク', 'Memory Leak'],
     'enemy.13.description': [
-      '間合いを保って周囲を動き回り、メモリを消費する四角い領域を撒く。発生源を処理すると領域は無害になり、早く消えます。',
-      'Circles at a distance, scattering blocky allocations that drain memory. Processing the source disarms its patches and clears them sooner.',
+      '頑丈な本体が離れた場所を周回し、メモリを消費する四角い領域を撒く。発生源を処理すると領域は無害になり、早く消えます。',
+      'A sturdy source circles farther away, scattering blocky allocations that drain memory. Processing it disarms its patches and clears them sooner.',
     ],
     'enemy.14.title': ['タイマーイベント', 'Timer Event'],
     'enemy.14.description': [
@@ -328,8 +339,8 @@ class GameText {
     'bossExposedShort': ['本体を処理', 'Core exposed'],
     'enemy.11.title': ['バッチ処理', 'Batch job'],
     'enemy.11.description': [
-      '同じ処理を行うデータが隊列を組んで進む。列を揃えて貫通するか、まとめて範囲攻撃。同じ入力の再来にはメモ化も有効。',
-      'Data for the same operation advances in a formation. Line up piercing shots or clear the batch with area attacks; repeated inputs also suit memoization.',
+      '同じ処理を行うデータが隊列を組んで進む。列を揃えて貫通するか、まとめて範囲攻撃。',
+      'Data for the same operation advances in a formation. Line up piercing shots or clear the batch with area attacks.',
     ],
     'bossLocked': ['デッドロック · ロックを処理して解除', 'Deadlock · break a lock to release'],
     'bossExposed': [
@@ -355,11 +366,17 @@ class GameText {
     ],
     'stat.abilityInterval': ['発動間隔', 'Attack interval'],
     'stat.trapDamage': ['設置攻撃の威力', 'Trap damage'],
-    'stat.memoDamage': ['初回入力の威力', 'New-input damage'],
-    'stat.cacheDamage': ['保存済み入力の威力', 'Cached-input damage'],
+    'stat.exceptionReduction': ['発動時の被ダメージ軽減', 'Damage reduction on catch'],
+    'stat.counterDamage': ['カウンター威力', 'Counter damage'],
+    'stat.exceptionCooldown': ['再準備時間', 'Catch recharge'],
+    'stat.exceptionPause': ['反撃後の通常攻撃待機', 'Base pause after counter'],
+    'exceptionReady': ['例外処理：catch待機中', 'Exceptions: catch ready'],
+    'exceptionRecharging': [
+      '例外処理：再準備 {seconds}s',
+      'Exceptions: recharging {seconds}s',
+    ],
     'stat.jitSpeed': ['最大時の通常攻撃速度', 'Base fire rate at full gauge'],
     'stat.cooldownScale': ['攻撃間隔の倍率', 'Attack interval scale'],
-    'memoStatus': ['保存済み入力：{count}種類', 'Cached inputs: {count}'],
 
     'matchup': ['使いどころ', 'Best use'],
     'enemyAffinity': ['相性の良い言語機能', 'Compatible features'],
@@ -429,10 +446,23 @@ class GameText {
       '結果の保存領域として、使える最大メモリの一部を予約。',
       'Reserves part of maximum memory for cached results.',
     ],
+    'exceptionHandling.title': ['例外処理', 'Exception Handling'],
+    'exceptionHandling.description': [
+      '準備完了中の被弾を軽減し、周囲へ範囲カウンター。',
+      'When ready, reduces one hit and counters nearby tasks.',
+    ],
+    'exceptionHandling.tradeoff': [
+      '発動後は再準備が必要。反撃直後は通常攻撃が短時間中断する。移動と他の機能は継続。',
+      'Needs time to recharge. Countering briefly interrupts base attacks; movement and other features continue.',
+    ],
+    'exceptionHandling.matchup': [
+      '被弾時の立て直し・近くの群れ',
+      'Recovery under pressure; nearby crowds',
+    ],
     'jitCompilation.title': ['JITコンパイル', 'JIT Compilation'],
     'jitCompilation.description': [
-      '撃破で最適化ゲージを蓄積。残量が多いほど通常攻撃が速くなります。',
-      'Kills build optimization. A fuller gauge makes base attacks fire faster.',
+      '撃破で最適化ゲージを蓄積。手強いタスクほど多く獲得し、残量が多いほど通常攻撃が速くなります。',
+      'Kills build optimization, with tougher tasks granting more. A fuller gauge makes base attacks fire faster.',
     ],
     'jitCompilation.tradeoff': [
       'ゲージは時間とともに減少。攻撃を続けていても、撃破できなければ高速化が弱まる。',
@@ -733,8 +763,8 @@ class GameText {
     'enemy.2.type': ['高耐久タスク', 'Heavy task'],
     'enemy.0.title': ['リクエスト', 'Request'],
     'enemy.0.description': [
-      '基本の計算要求。同じ入力が繰り返し届くので、メモ化した結果を再利用できる。',
-      'A basic computation request. Repeated inputs allow memoized results to be reused.',
+      '基本の計算要求。数が多く、追いかけて接触してくる。',
+      'A basic computation request. Arrives in numbers and pursues you into contact.',
     ],
     'enemy.1.title': ['割り込み', 'Interrupt'],
     'enemy.1.description': [

@@ -104,6 +104,8 @@ class RunState {
   double get jitCharge => abilities.jitCharge;
   double get jitFireRate => 1 + _stats.jitSpeedBonus * jitCharge / 100;
   double get gcProgress => (1 - _gcTimer / _stats.gcInterval).clamp(0.0, 1.0);
+  bool get exceptionReady =>
+      rank(Upgrade.exceptionHandling) > 0 && abilities.exceptionCooldown <= 0;
   String get timeLabel {
     final seconds = elapsed.floor();
     return '${(seconds ~/ 60).toString().padLeft(2, '0')}:${(seconds % 60).toString().padLeft(2, '0')}';
@@ -383,7 +385,9 @@ class RunState {
     _updateStream(dt);
     _updateObjects(dt);
     _attackTimer -= dt;
-    if (_attackTimer <= 0 && abilities.gcPause <= 0) {
+    if (_attackTimer <= 0 &&
+        abilities.gcPause <= 0 &&
+        abilities.exceptionPause <= 0) {
       final targets =
           enemies
               .where(
@@ -437,9 +441,7 @@ class RunState {
         continue;
       }
       final delta = shot.target.position - shot.position;
-      final shotSpeed = shot.kind == InstructionKind.cached
-          ? min(1600.0, projectileSpeed * 1.5)
-          : projectileSpeed;
+      final shotSpeed = projectileSpeed;
       if (delta.length <= shotSpeed * dt + shot.target.radius) {
         _damage(shot.target, shot.damage);
         if (shot.jumps > 0) {
@@ -594,46 +596,22 @@ class RunState {
       _pulse(_stats.ownershipRadius, _stats.ownershipDamage, healing: true);
       abilities.ownershipTimer = _stats.ownershipInterval;
     }
-    if (rank(Upgrade.memoization) > 0 && abilities.memoTimer <= 0) {
-      final candidates =
-          enemies
-              .where(
-                (e) => e.alive && e.position.distanceTo(player) <= attackRange,
-              )
-              .toList()
-            ..sort((a, b) {
-              final cacheOrder =
-                  (abilities.cachedInputs.contains(b.inputSignature) ? 1 : 0)
-                      .compareTo(
-                        abilities.cachedInputs.contains(a.inputSignature)
-                            ? 1
-                            : 0,
-                      );
-              return cacheOrder != 0
-                  ? cacheOrder
-                  : a.position
-                        .distanceToSquared(player)
-                        .compareTo(b.position.distanceToSquared(player));
-            });
-      if (candidates.isNotEmpty && instructions.length < instructionLimit) {
-        final target = candidates.first;
-        final cached = abilities.cachedInputs.contains(target.inputSignature);
-        instructions.add(
-          Instruction(
-            player.clone(),
-            target,
-            _stats.memoDamage * (cached ? 1.8 : 1),
-            kind: cached ? InstructionKind.cached : InstructionKind.object,
-          ),
-        );
-        abilities.memoTimer = _stats.memoInterval;
-      }
-    }
   }
 
-  void _pulse(double radius, double damage, {bool healing = false}) {
+  void _pulse(
+    double radius,
+    double damage, {
+    bool healing = false,
+    bool counter = false,
+  }) {
     effects.add(
-      RunEffect(player.clone(), pulse: true, radius: radius, healing: healing),
+      RunEffect(
+        player.clone(),
+        pulse: true,
+        radius: radius,
+        healing: healing,
+        counter: counter,
+      ),
     );
     for (final enemy in enemies.where(
       (e) => e.alive && e.position.distanceTo(player) <= radius,
@@ -857,6 +835,12 @@ class RunState {
 
   void _damagePlayer(double damage) {
     if (invulnerability > 0) return;
+    final caught = exceptionReady;
+    if (caught) {
+      damage *= 1 - _stats.exceptionReduction;
+      abilities.exceptionCooldown = _stats.exceptionCooldown;
+      abilities.exceptionPause = _stats.exceptionPause;
+    }
     health = max(0, health - damage);
     invulnerability = _stats.hitInvulnerability;
     cues.add(SoundCue.hit);
@@ -865,6 +849,11 @@ class RunState {
       movement.setZero();
       log(const RunLog('log.lost'));
       cues.add(SoundCue.end);
+      return;
+    }
+    if (caught) {
+      _pulse(_stats.counterRadius, _stats.counterDamage, counter: true);
+      cues.add(SoundCue.pulse);
     }
   }
 
@@ -1020,7 +1009,7 @@ class RunState {
                     (type == EnemyType.allocation
                         ? 3.0
                         : type == EnemyType.memoryLeak
-                        ? 1.8
+                        ? 3.4
                         : type == EnemyType.timerEvent
                         ? 3.2
                         : type == EnemyType.forkBomb
@@ -1070,15 +1059,8 @@ class RunState {
     if (!enemy.alive) {
       kills++;
       if (rank(Upgrade.jitCompilation) > 0) {
-        abilities.recordKill(
-          summoned: enemy.summoned,
-          node: enemy.type == EnemyType.lockNode,
-          boss: encounter != null,
-        );
+        abilities.recordKill(enemy);
         _stats.jitCharge = abilities.jitCharge;
-      }
-      if (rank(Upgrade.memoization) > 0 && enemy.cacheable) {
-        abilities.cachedInputs.add(enemy.inputSignature);
       }
       if (rank(Upgrade.ownership) > 0 &&
           !enemy.summoned &&

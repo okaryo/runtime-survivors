@@ -50,8 +50,6 @@ class TaskEnemy {
   int retryCount = 0;
   int cycleCount = 0;
   List<double> pulseGaps = const [];
-  bool get cacheable => type == EnemyType.request || type == EnemyType.batch;
-  int get inputSignature => kind * 3 + inputVariant;
   final bool summoned;
   final TaskEnemy? owner;
   EnemyType get type => EnemyType.values[kind];
@@ -90,13 +88,29 @@ class TaskEnemy {
   ({double near, double far})? get preferredRange => switch (type) {
     EnemyType.rpc => (near: 230, far: 320),
     EnemyType.forkBomb when !summoned => (near: 190, far: 260),
-    EnemyType.memoryLeak => (near: 110, far: 180),
+    EnemyType.memoryLeak => (near: 170, far: 240),
     EnemyType.timerEvent => (near: 210, far: 280),
     _ => null,
   };
+
+  double get jitGain => summoned
+      ? 1
+      : switch (type) {
+          EnemyType.request => 6,
+          EnemyType.interrupt => 7,
+          EnemyType.batch => 5,
+          EnemyType.allocation => 14,
+          EnemyType.rpc => 12,
+          EnemyType.timerEvent => 14,
+          EnemyType.memoryLeak => 16,
+          EnemyType.forkBomb => 18,
+          EnemyType.lockNode => 6,
+          EnemyType.deadlock => 40,
+          _ => 0,
+        };
 }
 
-enum InstructionKind { base, object, chain, cached }
+enum InstructionKind { base, object, chain }
 
 class Instruction {
   Instruction(
@@ -137,6 +151,7 @@ class RunEffect {
     this.healing = false,
     this.optimized = false,
     this.collection = false,
+    this.counter = false,
     this.recoveredMemory = 0,
     this.source,
   });
@@ -145,10 +160,13 @@ class RunEffect {
   final bool healing;
   final bool optimized;
   final bool collection;
+  final bool counter;
   final double recoveredMemory;
   final Vector2? source;
   double get duration => recoveredMemory > 0
       ? 0.9
+      : counter
+      ? 0.65
       : collection
       ? 0.75
       : 0.5;

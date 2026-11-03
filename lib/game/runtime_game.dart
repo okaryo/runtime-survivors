@@ -408,6 +408,18 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
         WorkloadPainter.recovery(canvas, effect, run.player);
         continue;
       }
+      if (effect.counter) {
+        WorkloadPainter.counter(canvas, effect);
+        _text(
+          canvas,
+          'CATCH',
+          point(effect.position) + const Offset(-22, -75),
+          const Color(0xFFFFC46B),
+          13,
+          bold: true,
+        );
+        continue;
+      }
       if (effect.collection) {
         WorkloadPainter.collection(canvas, effect);
         continue;
@@ -449,19 +461,6 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
         alert: enemy.telegraphRemaining > 0,
         time: run.elapsed + enemy.position.x * 0.01,
       );
-      if (run.rank(Upgrade.memoization) > 0 && enemy.cacheable) {
-        for (var i = 0; i <= enemy.inputVariant; i++) {
-          canvas.drawCircle(
-            Offset(-6.0 + i * 6, enemy.radius + 10),
-            2,
-            Paint()
-              ..color =
-                  run.abilities.cachedInputs.contains(enemy.inputSignature)
-                  ? const Color(0xFFBEE3FF)
-                  : const Color(0xFF748D87),
-          );
-        }
-      }
       if (enemy.type == EnemyType.rpc) {
         _text(
           canvas,
@@ -512,7 +511,6 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
           run.jitCharge >= 50 ? const Color(0xFFFFD36D) : mint,
         InstructionKind.object => const Color(0xFFE8C974),
         InstructionKind.chain => const Color(0xFFCCA7F5),
-        InstructionKind.cached => const Color(0xFFBEE3FF),
       };
       final direction = shot.target.position - shot.position;
       final tail = direction.length2 == 0
@@ -557,6 +555,9 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
         const Color(0xFFFFD36D),
         10,
       );
+    }
+    if (run.rank(Upgrade.exceptionHandling) > 0) {
+      WorkloadPainter.exceptionGuard(canvas, run.player, run.exceptionReady);
     }
     if (run.rank(Upgrade.garbageCollection) > 0) {
       canvas.drawArc(

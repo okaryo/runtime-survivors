@@ -45,7 +45,7 @@ void main() {
           ? [
               Upgrade.garbageCollection,
               Upgrade.jitCompilation,
-              Upgrade.memoization,
+              Upgrade.exceptionHandling,
               Upgrade.nullSafety,
             ]
           : [

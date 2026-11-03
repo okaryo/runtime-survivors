@@ -81,50 +81,6 @@ void main() {
     tick(run, 0.7);
     expect(elite.health, finalHealth); // Expired fields cannot continue to hit.
   });
-  test('memoization stores operation plus input and reuses only matching completed results', () {
-    final run = prepared()..upgrades[Upgrade.memoization] = 1;
-    final completed = TaskEnemy(
-      Vector2(240, 0),
-      kind: 11,
-      inputVariant: 1,
-      health: 1,
-    );
-    run.enemies.add(completed);
-    run.instructions.add(Instruction(completed.position.clone(), completed, 1));
-    run.update(0.01);
-    expect(run.abilities.cachedInputs, {completed.inputSignature});
-    run.instructions.clear();
-    final matching = TaskEnemy(
-      Vector2(250, 0),
-      kind: 11,
-      inputVariant: 1,
-      health: 1000,
-    );
-    final different = TaskEnemy(
-      Vector2(200, 0),
-      kind: 11,
-      inputVariant: 2,
-      health: 1000,
-    );
-    run.enemies.addAll([matching, different]);
-    run.abilities.memoTimer = 0;
-    run.update(0.01);
-    final cached = run.instructions.singleWhere(
-      (s) => s.kind == InstructionKind.cached,
-    );
-    expect(cached.target, same(matching));
-    expect(cached.damage, 54);
-    expect(
-      run.abilities.cachedInputs.contains(different.inputSignature),
-      isFalse,
-    );
-    final timer = run.abilities.memoTimer;
-    run.pause();
-    tick(run, 2);
-    expect(run.abilities.memoTimer, timer);
-    run.start();
-    expect(run.abilities.cachedInputs, isEmpty);
-  });
   test('Ownership adds an attack and healing has a shared budget excluding summons', () {
     final run = prepared()
       ..upgrades[Upgrade.ownership] = 1
@@ -150,7 +106,7 @@ void main() {
     run.resetToSetup();
     expect(run.recoveredMemory, 0);
     expect(run.abilities.fields, isEmpty);
-    expect(run.abilities.cachedInputs, isEmpty);
+    expect(run.abilities.exceptionCooldown, 0);
   });
   test('all infrastructure caps at six and compiler speeds every attack family without altering recharge', () {
     final before = BuildStats.snapshot({Upgrade.oop: 1, Upgrade.nullSafety: 1});
@@ -165,13 +121,14 @@ void main() {
       (before.gcInterval, after.gcInterval),
       (before.patternInterval, after.patternInterval),
       (before.lazyInterval, after.lazyInterval),
-      (before.memoInterval, after.memoInterval),
       (before.nullInterval, after.nullInterval),
       (before.ownershipInterval, after.ownershipInterval),
     ]) {
       expect(pair.$2, closeTo(pair.$1 * 0.92, 0.0001));
     }
     expect(after.shieldCooldown, before.shieldCooldown);
+    expect(after.exceptionCooldown, before.exceptionCooldown);
+    expect(after.exceptionPause, before.exceptionPause);
     expect(after.attackDamage, before.attackDamage);
     for (final infra in Upgrade.values.where((u) => !u.isFeature)) {
       expect(infra.maxRank, 6);

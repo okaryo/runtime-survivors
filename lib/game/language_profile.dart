@@ -73,8 +73,12 @@ const _archetypes = [
   ),
   _Archetype(
     'Python',
-    {Upgrade.garbageCollection: 1, Upgrade.memoization: 1},
-    {Upgrade.garbageCollection: 2, Upgrade.oop: 1, Upgrade.memoization: 1},
+    {Upgrade.garbageCollection: 1, Upgrade.exceptionHandling: 1},
+    {
+      Upgrade.garbageCollection: 2,
+      Upgrade.oop: 1,
+      Upgrade.exceptionHandling: 1,
+    },
   ),
   _Archetype(
     'Ruby',

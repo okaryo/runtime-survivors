@@ -35,7 +35,11 @@ double processWork(Upgrade? feature) {
 
 void main() {
   for (final feature in Upgrade.values.where(
-    (u) => u.isAvailable && u.isFeature && u != Upgrade.jitCompilation,
+    (u) =>
+        u.isAvailable &&
+        u.isFeature &&
+        u != Upgrade.jitCompilation &&
+        u != Upgrade.exceptionHandling,
   )) {
     test(
       'first $feature increases processing without requiring another Feature',
@@ -49,7 +53,11 @@ void main() {
     () {
       final baseline = BuildStats.snapshot({});
       for (final feature in Upgrade.values.where(
-        (u) => u.isAvailable && u.isFeature && u != Upgrade.jitCompilation,
+        (u) =>
+            u.isAvailable &&
+            u.isFeature &&
+            u != Upgrade.jitCompilation &&
+            u != Upgrade.exceptionHandling,
       )) {
         final stats = BuildStats.snapshot({feature: 1});
         expect(stats.attackRange, baseline.attackRange);
@@ -61,16 +69,19 @@ void main() {
         concurrency.attackDamage * concurrency.targetCount,
         greaterThan(baseline.attackDamage),
       );
-      expect(BuildStats.snapshot({Upgrade.memoization: 1}).maxHealth, 92);
+      expect(
+        BuildStats.snapshot({Upgrade.exceptionHandling: 1}).maxHealth,
+        100,
+      );
       expect(BuildStats.snapshot({Upgrade.oop: 1}).maxHealth, 94);
       final composed = BuildStats.snapshot({Upgrade.functional: 1});
       expect(composed.attackInterval, greaterThan(baseline.attackInterval));
       expect(composed.chainRetention, greaterThan(0.7));
       final reserved = BuildStats.snapshot({
         Upgrade.oop: 4,
-        Upgrade.memoization: 4,
+        Upgrade.exceptionHandling: 4,
       });
-      expect(reserved.maxHealth, 44);
+      expect(reserved.maxHealth, 76);
     },
   );
 }

@@ -259,6 +259,40 @@ class _Artwork {
         line(25, 23, 25, 41, color: accent);
         line(39, 23, 39, 41, color: accent);
         line(17, 52, 47, 52, color: accent);
+      case Upgrade.exceptionHandling:
+        path(
+          [
+            const Offset(23, 14),
+            const Offset(15, 14),
+            const Offset(15, 48),
+            const Offset(23, 48),
+          ],
+          color: accent,
+          width: 4,
+        );
+        path(
+          [
+            const Offset(41, 14),
+            const Offset(49, 14),
+            const Offset(49, 48),
+            const Offset(41, 48),
+          ],
+          color: accent,
+          width: 4,
+        );
+        polygon([
+          const Offset(32, 19),
+          const Offset(43, 23),
+          const Offset(41, 36),
+          const Offset(32, 43),
+          const Offset(23, 36),
+          const Offset(21, 23),
+        ], fill: light);
+        path([
+          const Offset(28, 33),
+          const Offset(36, 33),
+          const Offset(33, 28),
+        ], color: accent);
       case Upgrade.memoization:
         box(12, 12, 31, 31, fill: light);
         box(21, 21, 31, 31, fill: _paper);

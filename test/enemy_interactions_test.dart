@@ -13,6 +13,25 @@ RunState prepared() => RunState(random: Random(9))
   ..enemies.clear();
 
 void main() {
+  test(
+    'spawned leaks withstand several base shots and patrol farther away',
+    () {
+      final run = prepared()..elapsed = 90;
+      tick(run, 2.5);
+      final leak = run.enemies.firstWhere(
+        (enemy) => enemy.type == EnemyType.memoryLeak,
+      );
+      expect(leak.maxHealth, greaterThan(run.attackDamage * 3));
+      expect(leak.preferredRange!.near, 170);
+      expect(leak.preferredRange!.far, 240);
+      run.enemies.removeWhere((enemy) => !identical(enemy, leak));
+      leak.health = 1000;
+      leak.position.setValues(140, 0);
+      leak.attackCooldown = 1000;
+      run.update(0.05);
+      expect(leak.position.x, greaterThan(140));
+    },
+  );
   for (final type in [
     EnemyType.rpc,
     EnemyType.forkBomb,
@@ -171,7 +190,6 @@ void main() {
         closeTo(32.0 * i, 0.001),
       );
       expect(batch[i].owner, same(leader));
-      expect(batch[i].cacheable, isTrue);
     }
     leader.health = 0;
     final follower = batch[1];
@@ -203,7 +221,6 @@ void main() {
       expect(allocation.radius, greaterThan(TaskEnemy(Vector2.zero()).radius));
       expect(run.seenEnemies, contains(2));
       expect(allocation.type.isDiscoverable, isTrue);
-      expect(allocation.cacheable, isFalse); // Allocation has side effects.
       run.enemies.removeWhere((enemy) => !identical(enemy, allocation));
       allocation.position.setFrom(run.player);
       run.update(0.01);

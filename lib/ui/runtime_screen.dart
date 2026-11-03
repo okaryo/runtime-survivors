@@ -412,9 +412,16 @@ class _RuntimeScreenState extends State<RuntimeScreen> {
           ),
           const SizedBox(height: 6),
         ],
-        if (run.rank(Upgrade.memoization) > 0) ...[
+        if (run.rank(Upgrade.exceptionHandling) > 0) ...[
           Text(
-            text('memoStatus', {'count': run.abilities.cachedInputs.length}),
+            run.exceptionReady
+                ? text('exceptionReady')
+                : text('exceptionRecharging', {
+                    'seconds': run.abilities.exceptionCooldown.toStringAsFixed(
+                      1,
+                    ),
+                  }),
+            key: const Key('exception-status'),
             style: const TextStyle(fontSize: 12, color: muted),
           ),
           const SizedBox(height: 6),

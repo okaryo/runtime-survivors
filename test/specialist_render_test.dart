@@ -56,11 +56,11 @@ void main() {
           Vector2(-10, -70),
           run.enemies.last,
           54,
-          kind: InstructionKind.cached,
+          kind: InstructionKind.chain,
         ),
       );
       run.upgrades[Upgrade.jitCompilation] = 1;
-      run.upgrades[Upgrade.memoization] = 1;
+      run.upgrades[Upgrade.exceptionHandling] = 1;
       run.abilities.jitCharge = 75;
       run.phase = RunPhase.paused;
       final key = GlobalKey();

@@ -35,12 +35,24 @@ void main() {
         for (final choices in [
           [Upgrade.oop, Upgrade.functional, Upgrade.garbageCollection],
           [Upgrade.concurrency, Upgrade.memory, Upgrade.cache],
-          [Upgrade.compiler, Upgrade.memoization, Upgrade.memory],
-          [Upgrade.memoization, Upgrade.patternMatching, Upgrade.compiler],
-          [Upgrade.lazyEvaluation, Upgrade.memoization, Upgrade.jitCompilation],
+          [Upgrade.compiler, Upgrade.exceptionHandling, Upgrade.memory],
+          [
+            Upgrade.exceptionHandling,
+            Upgrade.patternMatching,
+            Upgrade.compiler,
+          ],
+          [
+            Upgrade.lazyEvaluation,
+            Upgrade.exceptionHandling,
+            Upgrade.jitCompilation,
+          ],
           [Upgrade.ownership, Upgrade.spatialIndex, Upgrade.memoryProtection],
           [Upgrade.memoryProtection, Upgrade.bandwidth, Upgrade.clock],
-          [Upgrade.asyncStream, Upgrade.jitCompilation, Upgrade.memoization],
+          [
+            Upgrade.asyncStream,
+            Upgrade.jitCompilation,
+            Upgrade.exceptionHandling,
+          ],
         ]) {
           game.run.choices = choices;
           game.refresh();
