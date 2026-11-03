@@ -330,6 +330,21 @@ class _Artwork {
         ], fill: light);
         line(32, 23, 32, 41, color: accent);
         line(23, 32, 41, 32, color: accent);
+      case Upgrade.asyncStream:
+        // A subscription feeds a single lane of event packets into one receiver.
+        box(9, 24, 10, 16, fill: _paper, r: 2);
+        line(19, 32, 46, 32, color: accent);
+        for (final x in [23.0, 32.0, 41.0]) {
+          box(x, 29, 5, 6, fill: light, r: 0);
+        }
+        box(47, 21, 9, 22, fill: light, r: 2);
+        path([
+          const Offset(17, 18),
+          const Offset(21, 13),
+          const Offset(42, 13),
+          const Offset(46, 18),
+        ], color: accent);
+        line(23, 47, 41, 47, color: accent);
       case Upgrade.compiler:
         // Code passes through an optimizing funnel, producing one bright result.
         path([

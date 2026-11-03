@@ -23,6 +23,12 @@ void main() {
       Upgrade.jitCompilation,
       Upgrade.patternMatching,
     ],
+    [
+      Upgrade.asyncStream,
+      Upgrade.functional,
+      Upgrade.ownership,
+      Upgrade.memoization,
+    ],
   ];
   for (var i = 0; i < loadouts.length; i++) {
     test(
@@ -49,6 +55,12 @@ void main() {
             Upgrade.memoryProtection,
             Upgrade.clock,
           ],
+          [
+            Upgrade.compiler,
+            Upgrade.spatialIndex,
+            Upgrade.memory,
+            Upgrade.clock,
+          ],
         ];
         run.upgrades.addAll({for (final infra in infrastructure[i]) infra: 6});
         for (
@@ -71,6 +83,11 @@ void main() {
           );
           expect(run.abilities.fields.length, lessThanOrEqualTo(3));
           expect(run.hazards.length, lessThanOrEqualTo(24));
+          expect(
+            run.leakPatches.length,
+            lessThanOrEqualTo(MemoryLeakPatch.limit),
+          );
+          expect(run.timerPulses.length, lessThanOrEqualTo(TimerPulse.limit));
           expect(run.health, lessThanOrEqualTo(run.maxHealth));
         }
         expect(run.phase, RunPhase.won);
@@ -79,6 +96,9 @@ void main() {
         expect(run.abilities.fields, isEmpty);
         expect(run.abilities.jitExecutions, 0);
         expect(run.hazards, isEmpty);
+        expect(run.leakPatches, isEmpty);
+        expect(run.timerPulses, isEmpty);
+        expect(run.abilities.stream.target, isNull);
       },
     );
   }
@@ -110,9 +130,14 @@ void main() {
           );
           expect(run.abilities.fields.length, lessThanOrEqualTo(3));
           expect(run.hazards.length, lessThanOrEqualTo(24));
+          expect(
+            run.leakPatches.length,
+            lessThanOrEqualTo(MemoryLeakPatch.limit),
+          );
+          expect(run.timerPulses.length, lessThanOrEqualTo(TimerPulse.limit));
         }
         expect(run.phase, RunPhase.won);
-        expect(run.seenEnemies, containsAll([2, 4, 5, 11]));
+        expect(run.seenEnemies, containsAll([2, 4, 5, 11, 13, 14]));
         expect(run.rushCount, 6);
         run.start();
         expect(run.projectiles, isEmpty);

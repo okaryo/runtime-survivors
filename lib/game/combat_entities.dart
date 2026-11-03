@@ -14,6 +14,8 @@ enum EnemyType {
   duplicateRequest,
   batch,
   lockNode,
+  memoryLeak,
+  timerEvent,
 }
 
 extension EnemyAvailability on EnemyType {
@@ -25,6 +27,8 @@ extension EnemyAvailability on EnemyType {
     EnemyType.rpc,
     EnemyType.forkBomb,
     EnemyType.deadlock,
+    EnemyType.memoryLeak,
+    EnemyType.timerEvent,
   }.contains(this);
 }
 
@@ -44,6 +48,7 @@ class TaskEnemy {
   final int generation;
   final formationOffset = Vector2.zero();
   int retryCount = 0;
+  int cycleCount = 0;
   bool get cacheable => type == EnemyType.request || type == EnemyType.batch;
   int get inputSignature => kind * 3 + inputVariant;
   final bool summoned;
@@ -63,6 +68,10 @@ class TaskEnemy {
       ? 21
       : type == EnemyType.forkBomb
       ? (summoned ? 9 : 18)
+      : type == EnemyType.memoryLeak
+      ? 17
+      : type == EnemyType.timerEvent
+      ? 16
       : 13;
   double get speed => switch (type) {
     EnemyType.interrupt => 103,
@@ -71,6 +80,8 @@ class TaskEnemy {
     EnemyType.rpc => 46,
     EnemyType.forkBomb => summoned ? 68 : 34,
     EnemyType.lockNode || EnemyType.deadlock => 0,
+    EnemyType.memoryLeak => 32,
+    EnemyType.timerEvent => 38,
     _ => 57,
   };
 }

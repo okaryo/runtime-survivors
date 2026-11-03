@@ -11,9 +11,15 @@ extension EnemyAffinities on EnemyType {
       Upgrade.garbageCollection,
       Upgrade.memoization,
     ],
-    EnemyType.allocation => const [Upgrade.jitCompilation, Upgrade.oop],
+    EnemyType.allocation => const [
+      Upgrade.asyncStream,
+      Upgrade.jitCompilation,
+      Upgrade.oop,
+    ],
     EnemyType.rpc => const [Upgrade.oop, Upgrade.patternMatching],
     EnemyType.forkBomb => const [Upgrade.garbageCollection, Upgrade.functional],
+    EnemyType.memoryLeak => const [Upgrade.asyncStream, Upgrade.oop],
+    EnemyType.timerEvent => const [Upgrade.jitCompilation, Upgrade.asyncStream],
     EnemyType.deadlock => const [
       Upgrade.concurrency,
       Upgrade.oop,

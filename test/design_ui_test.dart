@@ -40,6 +40,7 @@ void main() {
           [Upgrade.lazyEvaluation, Upgrade.memoization, Upgrade.jitCompilation],
           [Upgrade.ownership, Upgrade.spatialIndex, Upgrade.memoryProtection],
           [Upgrade.memoryProtection, Upgrade.bandwidth, Upgrade.clock],
+          [Upgrade.asyncStream, Upgrade.jitCompilation, Upgrade.memoization],
         ]) {
           game.run.choices = choices;
           game.refresh();

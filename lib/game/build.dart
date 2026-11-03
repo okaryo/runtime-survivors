@@ -20,6 +20,7 @@ enum Upgrade {
   spatialIndex,
   coprocessor,
   memoryProtection,
+  asyncStream,
 }
 
 extension UpgradeInfo on Upgrade {
@@ -53,6 +54,7 @@ extension UpgradeInfo on Upgrade {
     Upgrade.spatialIndex => 'R',
     Upgrade.coprocessor => 'Co',
     Upgrade.memoryProtection => '#',
+    Upgrade.asyncStream => '~',
   };
 
   bool get isFeature => switch (this) {
@@ -65,7 +67,8 @@ extension UpgradeInfo on Upgrade {
     Upgrade.lazyEvaluation ||
     Upgrade.memoization ||
     Upgrade.jitCompilation ||
-    Upgrade.ownership => true,
+    Upgrade.ownership ||
+    Upgrade.asyncStream => true,
     _ => false,
   };
 }
@@ -129,6 +132,10 @@ class BuildStats {
   double get ownershipHeal => 1.0 + rank(Upgrade.ownership);
   double get ownershipCap => 4.0 + rank(Upgrade.ownership) * 2;
   double get ownershipRadius => 105 * areaScale;
+  double get streamDamage => 10 + rank(Upgrade.asyncStream) * 4.0;
+  double get streamInterval => 0.25 * cooldownScale;
+  double get streamPreparation =>
+      (0.8 - rank(Upgrade.asyncStream) * 0.1) * cooldownScale;
   double get hitInvulnerability => 0.65 + rank(Upgrade.memoryProtection) * 0.08;
 }
 

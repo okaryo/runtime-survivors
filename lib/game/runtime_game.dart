@@ -7,6 +7,7 @@ import 'package:flutter/widgets.dart';
 
 import 'run_state.dart';
 import 'character_painter.dart';
+import 'workload_painter.dart';
 import '../audio/sound_cue.dart';
 import '../l10n/game_text.dart';
 
@@ -183,6 +184,12 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
     canvas.save();
     canvas.translate(origin.dx, origin.dy);
     Offset point(Vector2 v) => Offset(v.x, v.y);
+    for (final patch in run.leakPatches) {
+      WorkloadPainter.leak(canvas, patch, run.elapsed);
+    }
+    for (final pulse in run.timerPulses) {
+      WorkloadPainter.timerPulse(canvas, pulse);
+    }
     for (final field in run.abilities.fields) {
       final p = point(field.position);
       canvas.drawCircle(
@@ -289,7 +296,9 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
       (e) => e.kind >= 4 && e.telegraphRemaining > 0,
     )) {
       final p = point(enemy.position);
-      if (enemy.type == EnemyType.rpc) {
+      if (enemy.type == EnemyType.timerEvent) {
+        WorkloadPainter.timerWindup(canvas, enemy);
+      } else if (enemy.type == EnemyType.rpc) {
         canvas.drawCircle(
           p,
           enemy.radius + 6 + sin(run.elapsed * 18) * 2,
@@ -441,6 +450,12 @@ class RuntimeGame extends FlameGame with KeyboardEvents {
       }
       canvas.restore();
     }
+    WorkloadPainter.stream(
+      canvas,
+      run.abilities.stream,
+      run.player,
+      run.elapsed,
+    );
     for (final shot in run.instructions) {
       final shotColor = switch (shot.kind) {
         InstructionKind.base =>

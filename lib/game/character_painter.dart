@@ -18,6 +18,8 @@ class CharacterPainter {
     Color(0xFFA6D7CB),
     Color(0xFFC5B1E5),
     Color(0xFFF3CD84),
+    Color(0xFF80B8B4),
+    Color(0xFFAEBFF2),
   ];
   static void draw(
     Canvas canvas, {
@@ -146,6 +148,45 @@ class CharacterPainter {
         canvas.drawRRect(paper, fill);
         canvas.drawRRect(paper, outline);
       }
+    } else if (kind == 13) {
+      // A broken allocation block sheds square fragments from its open corner.
+      final body = Path()
+        ..moveTo(-r, -r)
+        ..lineTo(r, -r)
+        ..lineTo(r, 1)
+        ..lineTo(r - 7, 1)
+        ..lineTo(r - 7, r - 5)
+        ..lineTo(1, r - 5)
+        ..lineTo(1, r)
+        ..lineTo(-r, r)
+        ..close();
+      canvas.drawPath(body, fill);
+      canvas.drawPath(body, outline);
+      for (final y in [-r + 5, -r + 9]) {
+        canvas.drawLine(Offset(-r + 4, y), Offset(r - 4, y), face);
+      }
+      for (var i = 0; i < 3; i++) {
+        final shift = (time * 9 + i * 7) % 18;
+        canvas.drawRect(
+          Rect.fromLTWH(r - 4 + shift * 0.7, r - 5 + shift, 4, 4),
+          Paint()
+            ..color = const Color(0xFFF09C67).withValues(alpha: 1 - shift / 24),
+        );
+      }
+    } else if (kind == 14) {
+      // A clock face, winding key and two feet distinguish the periodic task.
+      canvas.drawRect(Rect.fromLTWH(-5, -r - 7, 10, 6), fill);
+      canvas.drawRect(Rect.fromLTWH(-5, -r - 7, 10, 6), outline);
+      canvas.drawCircle(Offset.zero, r, fill);
+      canvas.drawCircle(Offset.zero, r, outline);
+      final hand = time * 1.3;
+      canvas.drawLine(
+        const Offset(0, -3),
+        Offset(sin(hand) * 8, -3 - cos(hand) * 8),
+        face,
+      );
+      canvas.drawLine(const Offset(0, -3), const Offset(-6, -5), face);
+      canvas.drawCircle(const Offset(0, -3), 2, face);
     } else if (kind >= 6) {
       final body = RRect.fromRectAndRadius(
         Rect.fromLTRB(-r, -r, r, r),

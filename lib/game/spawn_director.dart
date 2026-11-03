@@ -25,6 +25,8 @@ class SpawnDirector {
     EncounterRule(EnemyType.batch, 30, 0.20, 20, 1),
     EncounterRule(EnemyType.allocation, 40, 0.16, 6, 2),
     EncounterRule(EnemyType.rpc, 50, 0.13, 4, 3),
+    EncounterRule(EnemyType.timerEvent, 65, 0.12, 3, 2),
+    EncounterRule(EnemyType.memoryLeak, 90, 0.10, 2, 3),
     EncounterRule(EnemyType.forkBomb, 100, 0.10, 2, 4),
   ];
 

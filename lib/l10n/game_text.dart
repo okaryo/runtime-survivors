@@ -190,6 +190,20 @@ class GameText {
           '${number(after.ownershipCap)}/s',
         ),
       ],
+      Upgrade.asyncStream => [
+        value('stat.streamDamage', before.streamDamage, after.streamDamage),
+        seconds(
+          'stat.streamInterval',
+          before.streamInterval,
+          after.streamInterval,
+        ),
+        metric(
+          'stat.streamPreparation',
+          first ? null : '${before.streamPreparation.toStringAsFixed(2)}s',
+          '${after.streamPreparation.toStringAsFixed(2)}s',
+          cost: first,
+        ),
+      ],
       Upgrade.spatialIndex => [
         metric(
           'stat.range',
@@ -259,6 +273,32 @@ class GameText {
   });
 
   static const copy = <String, List<String>>{
+    'stat.streamDamage': ['継続処理の威力', 'Stream tick damage'],
+    'stat.streamInterval': ['継続処理の間隔', 'Stream tick interval'],
+    'stat.streamPreparation': ['接続の準備時間', 'Connection setup'],
+    'asyncStream.title': ['非同期ストリーム', 'Async Stream'],
+    'asyncStream.description': [
+      'タスクへ接続し、データ片を流して継続攻撃。移動しながら同じ対象を処理し続けます。',
+      'Connects to one task and streams continuous attacks while you move.',
+    ],
+    'asyncStream.tradeoff': [
+      '接続ごとに準備が必要。対象の撃破や射程外への移動で接続が切れるため、頻繁な切り替えは苦手。',
+      'Every connection needs setup. Defeated or out-of-range targets break it, making frequent switches costly.',
+    ],
+    'asyncStream.matchup': [
+      '頑丈な単体・距離を保つ戦闘',
+      'Durable targets and mobile ranged combat',
+    ],
+    'enemy.13.title': ['メモリリーク', 'Memory Leak'],
+    'enemy.13.description': [
+      '解放されないメモリが四角い領域として残り、内側にいる間メモリを消費。発生源を処理すると領域は無害になり、早く消えます。',
+      'Leaves blocky allocations that drain memory while you stand inside. Processing the source disarms its patches and clears them sooner.',
+    ],
+    'enemy.14.title': ['タイマーイベント', 'Timer Event'],
+    'enemy.14.description': [
+      '目盛りが満ちると、隙間のある輪状パルスを放つ。開いた部分を通るか、発射前に近づいて処理しよう。',
+      'Releases an expanding pulse when its clock fills. Pass through the gap or approach before it fires.',
+    ],
     'stat.chainRetention': ['連鎖時の威力維持', 'Damage retained per jump'],
     'stat.jitWarmup': ['解析に必要な通常攻撃', 'Base volleys to optimize'],
     'bossLockedShort': ['ロックを処理', 'Break a lock'],

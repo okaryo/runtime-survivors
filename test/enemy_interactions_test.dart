@@ -22,7 +22,7 @@ void main() {
       500,
       (_) => director.choose(220, [], random),
     ).toSet();
-    expect(late, {0, 1, 2, 4, 5, 11});
+    expect(late, {0, 1, 2, 4, 5, 11, 13, 14});
     expect(
       SpawnDirector.rules.fold(
         0,

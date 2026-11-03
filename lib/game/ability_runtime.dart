@@ -3,6 +3,28 @@ import 'dart:math';
 import 'package:flame/components.dart';
 
 import 'build.dart';
+import 'combat_entities.dart';
+
+/// One subscription is retained until its target finishes or leaves range.
+class AsyncStreamRuntime {
+  TaskEnemy? target;
+  double preparation = 0;
+  double preparationDuration = 0;
+  double tickTimer = 0;
+  double flash = 0;
+  bool get ready => target != null && preparation <= 0;
+
+  void connect(TaskEnemy task, double duration) {
+    target = task;
+    preparation = preparationDuration = duration;
+    tickTimer = flash = 0;
+  }
+
+  void reset() {
+    target = null;
+    preparation = preparationDuration = tickTimer = flash = 0;
+  }
+}
 
 /// Deferred work stays at its placement point until a task needs processing.
 class SlowField {
@@ -20,6 +42,7 @@ class SlowField {
 class AbilityRuntime {
   static const jitRequiredExecutions = BuildStats.jitRequiredExecutions;
   final List<SlowField> fields = [];
+  final stream = AsyncStreamRuntime();
   // A signature includes both the operation and its visible input variant.
   final Set<int> cachedInputs = {};
   int jitExecutions = 0;
@@ -33,6 +56,7 @@ class AbilityRuntime {
 
   void reset() {
     fields.clear();
+    stream.reset();
     cachedInputs.clear();
     jitExecutions = 0;
     fieldTimer = memoTimer = ownershipTimer = gcPause = 0;

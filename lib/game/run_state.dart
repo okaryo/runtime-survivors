@@ -9,8 +9,10 @@ import 'spawn_director.dart';
 import 'build.dart';
 import 'deadlock_encounter.dart';
 import 'ability_runtime.dart';
+import 'workload_hazards.dart';
 export 'combat_entities.dart';
 export 'build.dart';
+export 'workload_hazards.dart';
 
 enum RunPhase { ready, running, choosing, paused, won, lost }
 
@@ -36,6 +38,8 @@ class RunState {
   final List<RuntimeObject> objects = [];
   final List<LinearProjectile> projectiles = [];
   final List<DangerZone> hazards = [];
+  final List<MemoryLeakPatch> leakPatches = [];
+  final List<TimerPulse> timerPulses = [];
   final abilities = AbilityRuntime();
   final List<DeadlockEncounter> deadlocks = [];
   Iterable<LockBarrier> get lockBarriers => deadlocks.expand((e) => e.barriers);
@@ -113,6 +117,8 @@ class RunState {
     objects.clear();
     projectiles.clear();
     hazards.clear();
+    leakPatches.clear();
+    timerPulses.clear();
     deadlocks.clear();
     abilities.reset();
     upgrades.clear();
@@ -299,6 +305,7 @@ class RunState {
       _spawnTimer = max(0.18, 0.70 - elapsed / 600) * (isRush ? 0.55 : 1);
     }
     _updateHazards(dt);
+    _updateWorkloadHazards(dt);
     if (phase == RunPhase.lost) return;
     _updateEnemyStatuses();
     for (final encounter in deadlocks) {
@@ -322,6 +329,8 @@ class RunState {
       } else if (enemy.type == EnemyType.rpc ||
           enemy.type == EnemyType.forkBomb) {
         _updateSpecialist(enemy, delta, dt, children);
+      } else if (enemy.type == EnemyType.timerEvent) {
+        _updateTimerEvent(enemy, delta, dt);
       } else if (enemy.type == EnemyType.batch && enemy.owner?.alive == true) {
         enemy.position.setFrom(enemy.owner!.position + enemy.formationOffset);
       } else if (delta.length2 > 0) {
@@ -329,6 +338,7 @@ class RunState {
           delta.normalized() * enemy.speed * enemy.movementMultiplier * dt,
         );
       }
+      if (enemy.type == EnemyType.memoryLeak) _updateMemoryLeak(enemy, dt);
       // Nodes become dangerous through their warned links, not on appearance.
       if (enemy.type != EnemyType.lockNode &&
           enemy.position.distanceTo(player) < enemy.radius + 13 &&
@@ -347,6 +357,7 @@ class RunState {
     enemies.addAll(children);
     _updateProjectiles(dt);
     if (phase == RunPhase.lost) return;
+    _updateStream(dt);
     _updateObjects(dt);
     _attackTimer -= dt;
     if (_attackTimer <= 0 && abilities.gcPause <= 0) {
@@ -596,6 +607,104 @@ class RunState {
     }
   }
 
+  void _updateStream(double dt) {
+    final stream = abilities.stream;
+    if (rank(Upgrade.asyncStream) == 0) {
+      stream.reset();
+      return;
+    }
+    final target = stream.target;
+    if (target == null ||
+        !target.alive ||
+        !enemies.contains(target) ||
+        target.position.distanceTo(player) > attackRange) {
+      stream.reset();
+      final next = _nearestEnemy(player, attackRange);
+      if (next != null) stream.connect(next, _stats.streamPreparation);
+      return;
+    }
+    stream.flash = max(0, stream.flash - dt);
+    if (stream.preparation > 0) {
+      stream.preparation = max(0, stream.preparation - dt);
+      return;
+    }
+    stream.tickTimer -= dt;
+    if (stream.tickTimer <= 0) {
+      _damage(target, _stats.streamDamage);
+      stream.tickTimer = _stats.streamInterval;
+      stream.flash = 0.10;
+    }
+  }
+
+  void _updateMemoryLeak(TaskEnemy enemy, double dt) {
+    if (enemy.position.distanceTo(player) > 360) return;
+    enemy.attackCooldown -= dt;
+    if (enemy.attackCooldown > 0) return;
+    if (leakPatches.length < MemoryLeakPatch.limit &&
+        leakPatches.where((p) => identical(p.source, enemy)).length <
+            MemoryLeakPatch.perSourceLimit) {
+      leakPatches.add(
+        MemoryLeakPatch(enemy.position, enemy, pattern: enemy.cycleCount++),
+      );
+    }
+    enemy.attackCooldown = 2.8;
+  }
+
+  void _updateTimerEvent(TaskEnemy enemy, Vector2 delta, double dt) {
+    if (enemy.telegraphRemaining > 0) {
+      enemy.telegraphRemaining = max(0, enemy.telegraphRemaining - dt);
+      if (enemy.telegraphRemaining == 0) {
+        if (timerPulses.length < TimerPulse.limit) {
+          timerPulses.add(
+            TimerPulse(
+              enemy.position.clone(),
+              atan2(enemy.chargeDirection.y, enemy.chargeDirection.x),
+            ),
+          );
+          cues.add(SoundCue.pulse);
+        }
+        enemy.cycleCount++;
+        enemy.attackCooldown = TimerPulse.cooldown;
+      }
+      return;
+    }
+    if (delta.length > 220) {
+      enemy.position.add(
+        delta.normalized() * enemy.speed * enemy.movementMultiplier * dt,
+      );
+    }
+    if (delta.length > 400) return;
+    enemy.attackCooldown -= dt;
+    if (enemy.attackCooldown <= 0) {
+      final gap = atan2(delta.y, delta.x) + pi / 2 + enemy.cycleCount * 0.9;
+      enemy.chargeDirection.setValues(cos(gap), sin(gap));
+      enemy.telegraphRemaining = TimerPulse.windup;
+    }
+  }
+
+  void _updateWorkloadHazards(double dt) {
+    for (final patch in leakPatches) {
+      patch.advance(dt, sourcePresent: enemies.contains(patch.source));
+    }
+    leakPatches.removeWhere(
+      (p) =>
+          p.remaining <= 0 || p.position.distanceTo(player) > spawnRadius * 2.2,
+    );
+    // All overlapping cells and sources share one hit and normal invulnerability.
+    if (leakPatches.any((p) => p.active && p.touches(player, 13))) {
+      _damagePlayer(MemoryLeakPatch.damage);
+    }
+    for (final pulse in timerPulses) {
+      pulse.advance(dt);
+      if (pulse.touches(player, 13)) _damagePlayer(TimerPulse.damage);
+    }
+    timerPulses.removeWhere(
+      (p) =>
+          p.radius >= TimerPulse.maxRadius ||
+          p.position.distanceTo(player) > spawnRadius * 2.2,
+    );
+  }
+
   void _updateHazards(double dt) {
     for (final hazard in hazards) {
       hazard.remaining -= dt;
@@ -833,6 +942,10 @@ class RunState {
           : (22 + elapsed / 18) *
                 (type == EnemyType.allocation
                     ? 3.0
+                    : type == EnemyType.memoryLeak
+                    ? 1.8
+                    : type == EnemyType.timerEvent
+                    ? 1.5
                     : type == EnemyType.forkBomb
                     ? 2.5
                     : type == EnemyType.rpc
@@ -915,6 +1028,9 @@ class RunState {
               ? 45
               : enemy.type == EnemyType.allocation
               ? 9
+              : enemy.type == EnemyType.memoryLeak ||
+                    enemy.type == EnemyType.timerEvent
+              ? 7
               : 4,
         ),
       );
