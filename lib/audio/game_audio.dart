@@ -2,6 +2,7 @@ import 'sound_backend_stub.dart'
     if (dart.library.js_interop) 'sound_backend_web.dart';
 import 'sound_cue.dart';
 import 'audio_output.dart';
+import 'victory_fanfare.dart';
 
 class GameAudio {
   GameAudio({AudioOutput? output}) : _backend = output ?? SoundBackend();
@@ -42,6 +43,19 @@ class GameAudio {
     };
     if (now - (_lastPlayed[cue] ?? -1000) < cooldown) return;
     _lastPlayed[cue] = now;
+    if (cue == SoundCue.victory) {
+      for (final tone in victoryFanfare) {
+        _backend.note(
+          tone.frequency,
+          tone.offset,
+          tone.duration,
+          'triangle',
+          endFrequencyRatio: 1,
+          hold: tone.hold,
+        );
+      }
+      return;
+    }
     final notes = switch (cue) {
       SoundCue.start => [330.0, 440.0, 660.0],
       SoundCue.hit => [100.0, 70.0],
@@ -53,17 +67,14 @@ class GameAudio {
       SoundCue.warning => [180.0, 180.0, 240.0],
       SoundCue.pulse => [130.0, 260.0],
       SoundCue.collection => [520.0, 260.0, 130.0],
-      SoundCue.victory => [523.25, 659.25, 783.99, 1046.50, 783.99, 1046.50],
+      SoundCue.victory =>
+        const <double>[], // Handled by the musical score above.
     };
     for (var i = 0; i < notes.length; i++) {
       _backend.note(
         notes[i],
-        i * (cue == SoundCue.victory ? 0.18 : 0.075),
-        cue == SoundCue.victory
-            ? 0.65
-            : cue == SoundCue.pickup
-            ? 0.07
-            : 0.13,
+        i * 0.075,
+        cue == SoundCue.pickup ? 0.07 : 0.13,
         cue == SoundCue.hit || cue == SoundCue.warning ? 'square' : 'triangle',
       );
     }

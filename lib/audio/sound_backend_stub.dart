@@ -7,7 +7,14 @@ class SoundBackend implements AudioOutput {
   @override
   void setVolume(double value) {}
   @override
-  void note(double frequency, double offset, double duration, String wave) {}
+  void note(
+    double frequency,
+    double offset,
+    double duration,
+    String wave, {
+    double endFrequencyRatio = 0.75,
+    double hold = 0,
+  }) {}
   @override
   void setMusicPlaying(bool playing) {}
   @override

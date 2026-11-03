@@ -11,14 +11,37 @@ class RecordingOutput implements AudioOutput {
   bool disposed = false;
   double volume = 1;
   int restarts = 0;
-  final List<(double, double, double)> notes = [];
+  final notes =
+      <
+        ({
+          double frequency,
+          double offset,
+          double duration,
+          double endFrequencyRatio,
+          double hold,
+          String wave,
+        })
+      >[];
   @override
   void unlock() {}
   @override
   void setVolume(double value) => volume = value;
   @override
-  void note(double frequency, double offset, double duration, String wave) =>
-      notes.add((frequency, offset, duration));
+  void note(
+    double frequency,
+    double offset,
+    double duration,
+    String wave, {
+    double endFrequencyRatio = 0.75,
+    double hold = 0,
+  }) => notes.add((
+    frequency: frequency,
+    offset: offset,
+    duration: duration,
+    endFrequencyRatio: endFrequencyRatio,
+    hold: hold,
+    wave: wave,
+  ));
   @override
   void setMusicPlaying(bool value) => playing = value;
   @override
@@ -49,10 +72,46 @@ void main() {
       game.update(0.02);
       expect(run.phase, RunPhase.won);
       expect(output.playing, isFalse);
-      expect(output.notes.length, 6);
-      expect(output.notes.last.$2 + output.notes.last.$3, greaterThan(1.5));
+      expect(output.notes.length, 7);
+      expect(output.notes.every((note) => note.endFrequencyRatio == 1), isTrue);
+      expect(output.notes.every((note) => note.wave == 'triangle'), isTrue);
+      final melody = output.notes.take(3).toList();
+      expect(melody[1].frequency, greaterThan(melody[0].frequency));
+      expect(melody[2].frequency, greaterThan(melody[1].frequency));
+      final chord = output.notes.skip(3).toList();
+      expect(chord.map((note) => note.offset).toSet().length, 1);
+      expect(chord.every((note) => note.hold > 0), isTrue);
+      final root = chord.first.frequency;
+      expect(chord[1].frequency / root, closeTo(1.2599, 0.001)); // Major third.
+      expect(chord[2].frequency / root, closeTo(1.4983, 0.001)); // Fifth.
+      expect(chord.last.frequency / root, closeTo(2, 0.001));
+      expect(
+        output.notes.last.offset + output.notes.last.duration,
+        greaterThan(1.5),
+      );
       output.notes.clear();
       audio.configure(muted: true, volume: 1);
+      audio.play(SoundCue.victory);
+      expect(output.notes, isEmpty);
+      audio.dispose();
+    },
+  );
+  test(
+    'impact effects keep their falling pitch and defeat remains distinct',
+    () {
+      final output = RecordingOutput();
+      final audio = GameAudio(output: output);
+      audio.play(SoundCue.end);
+      expect(
+        output.notes.every((note) => note.endFrequencyRatio == 0.75),
+        isTrue,
+      );
+      expect(
+        output.notes.last.frequency,
+        lessThan(output.notes.first.frequency),
+      );
+      output.notes.clear();
+      audio.configure(muted: false, volume: 0);
       audio.play(SoundCue.victory);
       expect(output.notes, isEmpty);
       audio.dispose();

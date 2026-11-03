@@ -48,7 +48,14 @@ class SoundBackend implements AudioOutput {
   }
 
   @override
-  void note(double frequency, double offset, double duration, String wave) {
+  void note(
+    double frequency,
+    double offset,
+    double duration,
+    String wave, {
+    double endFrequencyRatio = 0.75,
+    double hold = 0,
+  }) {
     final context = _context;
     final master = _master;
     if (_disposed ||
@@ -61,12 +68,15 @@ class SoundBackend implements AudioOutput {
     final envelope = context.createGain();
     final start = context.currentTime + offset;
     oscillator.frequency.setValueAtTime(frequency, start);
-    oscillator.frequency.exponentialRampToValueAtTime(
-      frequency * 0.75,
-      start + duration,
-    );
+    if (endFrequencyRatio != 1) {
+      oscillator.frequency.exponentialRampToValueAtTime(
+        frequency * endFrequencyRatio,
+        start + duration,
+      );
+    }
     envelope.gain.setValueAtTime(0.0001, start);
     envelope.gain.exponentialRampToValueAtTime(0.16, start + 0.005);
+    if (hold > 0) envelope.gain.setValueAtTime(0.16, start + hold);
     envelope.gain.exponentialRampToValueAtTime(0.0001, start + duration);
     oscillator.connect(envelope);
     envelope.connect(master);

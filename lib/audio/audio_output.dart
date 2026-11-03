@@ -2,7 +2,14 @@
 abstract interface class AudioOutput {
   void unlock();
   void setVolume(double value);
-  void note(double frequency, double offset, double duration, String wave);
+  void note(
+    double frequency,
+    double offset,
+    double duration,
+    String wave, {
+    double endFrequencyRatio = 0.75,
+    double hold = 0,
+  });
   void setMusicPlaying(bool playing);
   void restartMusic();
   void dispose();
